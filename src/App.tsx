@@ -1,8 +1,16 @@
+
+import { BrowserRouter } from 'react-router-dom'
+import PageRoutes from './routes/PageRoutes'
+
 export default function App() {
+
   return (
-    <div>
-      <h1>Waiot Frontend</h1>
-      <p>Bienvenido al frontend de Waiot</p>
-    </div>
+    <BrowserRouter>
+
+        <div className='main'>
+          <PageRoutes />
+        </div>
+
+    </BrowserRouter>
   )
 }
