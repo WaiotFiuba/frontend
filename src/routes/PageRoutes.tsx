@@ -2,7 +2,7 @@
 
 import { Routes, Route } from 'react-router-dom'
 import Home from '../pages/Home/page.jsx'
-import Map from '../pages/Map/page.jsx'
+import Conteiners from '../pages/Containers/page.jsx'
 import About from '../pages/About/page.jsx'
 import RutaProtegida from '../components/RutaProtegida/page.jsx'
 import { MainLayout } from '../layout/MainLayout'
@@ -17,7 +17,7 @@ export default function PageRoutes() {
 
             <Route element={<MainLayout />}>
                 <Route path='/' element={<Home />} />
-                <Route path='/map' element={<Map />} />
+                <Route path='/map' element={<Conteiners />} />
                 <Route path='/about' element={<About />} />
             </Route>
 

@@ -1,6 +1,7 @@
 import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
+import InteractiveMap from '@/components/InteractiveMap/page'
 
 export default function Map() {
     const navigate = useNavigate()
@@ -21,11 +22,12 @@ export default function Map() {
                     </Button>
                 </div>
 
-                <div className="bg-white rounded-lg border border-slate-200 shadow-lg p-12 h-96 flex items-center justify-center">
-                    <div className="text-center space-y-4">
+                <div className="bg-white rounded-lg border border-slate-200 shadow-lg h-[70vh] w-full flex items-center justify-center">
+                    {/* <div className="text-center space-y-4">
                         <div className="text-6xl">🗺️</div>
                         <p className="text-slate-600 text-lg">Map interface under development</p>
-                    </div>
+                    </div> */}
+                    <InteractiveMap />
                 </div>
             </div>
         </div>
