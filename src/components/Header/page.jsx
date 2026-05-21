@@ -47,7 +47,7 @@ export default function Header() {
                     <div className="flex items-center gap-3">
                         <Button 
                             variant="outline"
-                            onClick={() => navigate('/admin')}
+                            onClick={() => navigate('/login')}
                         >
                             Sign In
                         </Button>
