@@ -1,14 +1,14 @@
 
 
 import { Routes, Route } from 'react-router-dom'
-import Home from '../pages/Home/page.jsx'
-import Conteiners from '../pages/Containers/page.jsx'
-import About from '../pages/About/page.jsx'
-//import RutaProtegida from '../components/RutaProtegida/page.jsx'
+import Home from '../pages/Home/page'
+import Conteiners from '../pages/Containers/page'
+import About from '../pages/About/page'
+//import RutaProtegida from '../components/RutaProtegida/page'
 import { MainLayout } from '../layout/MainLayout'
 //import { AdminLayout } from '../layout/AdminLayout'
-import { Login } from '../pages/Login/Login.jsx'
-//import Admin from '../pages/Admin/page.jsx'
+import { Login } from '../pages/Login/Login'
+//import Admin from '../pages/Admin/page'
 
 export default function PageRoutes() {
 
