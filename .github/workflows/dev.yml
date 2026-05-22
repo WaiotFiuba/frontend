@@ -1,0 +1,41 @@
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descarga el código del repositorio en la máquina virtual
+      - name: Checkout
+        uses: actions/checkout@v4    
+    
+    # 2. Instala y configura Node.js      
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24' 
+          cache: 'npm'
+      
+    # 3. Instalar dependencias exactamente como están en el package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      
+    # 4. Comprobar errores de tipado en TypeScript
+      - name: Type checking (TypeScript)
+        run: npx tsc --noEmit
+      
+    # 5. Ejecutar el linter
+      - name: Run Linter
+        run: npm run lint
+      
+    # 6. Ejecutar tests
+      - name: Run Tests
+        run: npm test
+        
+    # 7. Compilar el proyecto para producción
+      - name: Build del proyecto
+        run: npm run build

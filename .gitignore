@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+npm-debug.log
+npm-debug.log.*
+
+# Production build
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agents
+.agents/
+skills-lock.json
