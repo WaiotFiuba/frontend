@@ -40,8 +40,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
       setUser(data.user);
       return true;
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
       return false;
     } finally {
       setLoading(false);
