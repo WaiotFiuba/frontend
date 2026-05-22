@@ -1,8 +1,19 @@
+
+import { BrowserRouter } from 'react-router-dom'
+import PageRoutes from './routes/PageRoutes'
+import { AuthProvider } from './context/AuthContext'
+
 export default function App() {
+
   return (
-    <div>
-      <h1>Waiot Frontend</h1>
-      <p>Bienvenido al frontend de Waiot</p>
-    </div>
+    <AuthProvider>
+      <BrowserRouter>
+
+          <div className='main'>
+            <PageRoutes />
+          </div>
+
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
