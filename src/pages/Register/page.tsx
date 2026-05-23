@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { useAuthContext } from "../../context/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
@@ -28,7 +29,7 @@ export default function Register() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const navigate = useNavigate()
-    const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? ""
+    const { register } = useAuthContext()
 
     const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value)
     const passwordsMatch = form.password === form.confirmPassword
@@ -66,21 +67,14 @@ export default function Register() {
         }
 
         try {
-            const response = await fetch(`${apiBaseUrl}/auth/register`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            })
-
-            if (!response.ok) {
-                throw new Error("No se pudo registrar al usuario.")
+            const ok = await register({ name: payload.name, email: payload.email, password: payload.password })
+            if (!ok) {
+                throw new Error('No se pudo registrar al usuario.')
             }
 
-            navigate("/login")
+            navigate('/login')
         } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : "No se pudo registrar al usuario.")
+            setError(submitError instanceof Error ? submitError.message : 'No se pudo registrar al usuario.')
         } finally {
             setLoading(false)
         }

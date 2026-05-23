@@ -47,7 +47,7 @@ export const Login = () => {
                         )}
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium">
-                                Usuario
+                                Email
                             </label>
                             <Input
                                 id="name"
@@ -55,7 +55,7 @@ export const Login = () => {
                                 name="name"
                                 value={userForm.name}
                                 onChange={handleChange}
-                                placeholder="Ingresa tu usuario"
+                                placeholder="Ingresa tu email"
                                 disabled={loading}
                             />
                         </div>

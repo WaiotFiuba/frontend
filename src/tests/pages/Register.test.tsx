@@ -4,8 +4,9 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import Register from '../../pages/Register/page'
 
-const { navigateMock } = vi.hoisted(() => ({
+const { navigateMock, registerMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
+  registerMock: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -17,9 +18,16 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
+vi.mock('../../context/AuthContext', async () => {
+  return {
+    useAuthContext: () => ({ register: registerMock }),
+  }
+})
+
 describe('Register page', () => {
   beforeEach(() => {
     navigateMock.mockReset()
+    registerMock.mockReset()
     vi.stubEnv('VITE_BACKEND_URL', 'http://localhost:3000')
   })
 
@@ -71,10 +79,7 @@ describe('Register page', () => {
 
   it('sends the registration payload to the backend and navigates to login on success', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({}),
-    } as Response)
+    registerMock.mockResolvedValue(true)
 
     render(
       <MemoryRouter>
@@ -88,20 +93,7 @@ describe('Register page', () => {
     await user.type(screen.getByLabelText(/confirmar contraseña/i), 'secret12')
     await user.click(screen.getByRole('button', { name: /registrarse/i }))
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: 'Valid User',
-        email: 'test@example.com',
-        password: 'secret12',
-        role_id: 2,
-      }),
-    })
+    expect(registerMock).toHaveBeenCalledWith({ name: 'Valid User', email: 'test@example.com', password: 'secret12' })
     expect(navigateMock).toHaveBeenCalledWith('/login')
-
-    fetchMock.mockRestore()
   })
 })
