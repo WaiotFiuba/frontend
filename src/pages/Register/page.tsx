@@ -21,6 +21,10 @@ export default function Register() {
 
     const isValidEmail = (value: string) => /\S+@\S+\.\S+/.test(value)
     const passwordsMatch = form.password === form.confirmPassword
+    const nameError = form.name.length > 0 && form.name.trim().length < 3
+    const emailError = form.email.length > 0 && !isValidEmail(form.email.trim())
+    const passwordError = form.password.length > 0 && form.password.trim().length < 6
+    const confirmPasswordError = form.confirmPassword.length > 0 && !passwordsMatch
     const canSubmit =
         form.name.trim().length >= 3 &&
         isValidEmail(form.email.trim()) &&
@@ -57,6 +61,14 @@ export default function Register() {
                                 onChange={handleChange}
                                 placeholder="Elegí un usuario"
                             />
+                            <p
+                                aria-live="polite"
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
+                                    nameError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                }`}
+                            >
+                                Debe tener al menos 3 caracteres.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="email" className="text-sm font-medium">
@@ -70,6 +82,14 @@ export default function Register() {
                                 onChange={handleChange}
                                 placeholder="Ingresa tu email"
                             />
+                            <p
+                                aria-live="polite"
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
+                                    emailError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                }`}
+                            >
+                                Ingresá un email válido.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium">
@@ -83,6 +103,14 @@ export default function Register() {
                                 onChange={handleChange}
                                 placeholder="Crea una contraseña"
                             />
+                            <p
+                                aria-live="polite"
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
+                                    passwordError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                }`}
+                            >
+                                Debe tener al menos 6 caracteres.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="confirmPassword" className="text-sm font-medium">
@@ -96,11 +124,14 @@ export default function Register() {
                                 onChange={handleChange}
                                 placeholder="Repite tu contraseña"
                             />
-                        </div>
-                        <div className="min-h-5">
-                            {!passwordsMatch && form.confirmPassword.length > 0 && (
-                                <p className="text-sm text-destructive">Las contraseñas no coinciden.</p>
-                            )}
+                            <p
+                                aria-live="polite"
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
+                                    confirmPasswordError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                }`}
+                            >
+                                Las contraseñas deben coincidir.
+                            </p>
                         </div>
                         <Button type="submit" className="w-full" disabled={!canSubmit}>
                             Registrarse
