@@ -8,6 +8,7 @@ import About from '../pages/About/page.jsx'
 import { MainLayout } from '../layout/MainLayout'
 //import { AdminLayout } from '../layout/AdminLayout'
 import { Login } from '../pages/Login/Login.jsx'
+import Register from '../pages/Register/page.jsx'
 //import Admin from '../pages/Admin/page.jsx'
 
 export default function PageRoutes() {
@@ -20,6 +21,7 @@ export default function PageRoutes() {
                 <Route path='/map' element={<Conteiners />} />
                 <Route path='/about' element={<About />} />
                 <Route path='/login' element={<Login />} />
+                <Route path='/register' element={<Register />} />
             </Route>
 
             {/* <Route path='/admin' element={<AdminLayout />}>
