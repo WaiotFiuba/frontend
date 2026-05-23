@@ -11,6 +11,19 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
 }))
 
+// Provide a default mock for the AuthContext used by Header so tests don't need the provider
+vi.mock('../../context/AuthContext', () => ({
+  useAuthContext: () => ({
+    user: null,
+    accessToken: null,
+    login: async () => false,
+    register: async () => false,
+    logout: () => {},
+    loading: false,
+    error: null,
+  }),
+}))
+
 describe('PageRoutes', () => {
   it('renders Home at root path /', () => {
     render(
