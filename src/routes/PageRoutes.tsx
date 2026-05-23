@@ -7,8 +7,8 @@ import About from '../pages/About/page'
 //import RutaProtegida from '../components/RutaProtegida/page'
 import { MainLayout } from '../layout/MainLayout'
 //import { AdminLayout } from '../layout/AdminLayout'
-import { Login } from '../pages/Login/Login.jsx'
-import Register from '../pages/Register/page.jsx'
+import { Login } from '../pages/Login/Login'
+import Register from '../pages/Register/page'
 //import Admin from '../pages/Admin/page.jsx'
 
 export default function PageRoutes() {
