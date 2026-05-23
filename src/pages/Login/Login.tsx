@@ -1,4 +1,4 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -16,12 +16,12 @@ export const Login = () => {
         return <Navigate to={success_route} replace />
     }
 
-    const handleChange = (e) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setUserForm({ ...userForm, [name]: value });
     }
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const success = await login(userForm.name, userForm.password);
         if (success) {
