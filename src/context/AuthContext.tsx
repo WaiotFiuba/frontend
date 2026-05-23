@@ -30,28 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";
 
-  const fetchCurrentUser = async () => {
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-    if (!token) return;
-    try {
-      const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-      const authHeaders = withAuthorization() as Record<string, string>;
-      const headers = { ...baseHeaders, ...authHeaders };
-
-      const res = await fetch(`${apiBaseUrl}/users/me`, {
-        method: 'GET',
-        headers,
-      });
-      if (!res.ok) {
-        console.warn('Failed to fetch current user', res.status);
-        return;
-      }
-      const json = await res.json();
-      setUser(json as User);
-    } catch (e) {
-      console.warn('Error fetching current user', e);
-    }
-  };
+  
 
   const login = async (name: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -81,7 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data?.token_type) {
         localStorage.setItem(TOKEN_TYPE_KEY, data.token_type);
       }
-      await fetchCurrentUser();
+      // user will be hydrated by the effect that watches `accessToken`
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
@@ -92,11 +71,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (!token) return;
+      try {
+        const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+        const authHeaders = withAuthorization() as Record<string, string>;
+        const headers = { ...baseHeaders, ...authHeaders };
+
+        const res = await fetch(`${apiBaseUrl}/users/me`, {
+          method: 'GET',
+          headers,
+        });
+        if (!res.ok) {
+          console.warn('Failed to fetch current user', res.status);
+          return;
+        }
+        const json = await res.json();
+        setUser(json as User);
+      } catch (e) {
+        console.warn('Error fetching current user', e);
+      }
+    };
+
     if (accessToken) {
       fetchCurrentUser();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [accessToken, apiBaseUrl]);
 
   const register = async ({ name, email, password }: { name: string; email: string; password: string }): Promise<boolean> => {
     setLoading(true);
