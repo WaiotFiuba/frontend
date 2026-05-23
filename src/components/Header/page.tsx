@@ -1,8 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
+import { useAuthContext } from '../../context/AuthContext'
 
 export default function Header() {
     const navigate = useNavigate()
+    const { accessToken, logout, user } = useAuthContext()
 
     return (
         <header className="bg-white shadow-md border-b border-slate-200 sticky top-0 z-50">
@@ -45,12 +47,26 @@ export default function Header() {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-3">
-                        <Button 
-                            variant="outline"
-                            onClick={() => navigate('/login')}
-                        >
-                            Sign In
-                        </Button>
+                        {user && (
+                            <div className="text-sm text-slate-700 mr-2">Hola, {user.name}</div>
+                        )}
+                        {accessToken ? (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    logout()
+                                }}
+                            >
+                                Log Out
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                onClick={() => navigate('/login')}
+                            >
+                                Sign In
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

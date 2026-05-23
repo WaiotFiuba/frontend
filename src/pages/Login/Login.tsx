@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 
-const success_route = '/admin/algo';
+const success_route = '/';
 
 export const Login = () => {
     const [userForm, setUserForm] = useState({ name: "", password: "" })
