@@ -48,7 +48,7 @@ export default function Register() {
                     <CardDescription>Completa tus datos para registrarte</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-2">
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium">
                                 Usuario
@@ -124,16 +124,13 @@ export default function Register() {
                                 onChange={handleChange}
                                 placeholder="Repite tu contraseña"
                             />
-                            <p
-                                aria-live="polite"
-                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
-                                    confirmPasswordError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
-                                }`}
-                            >
-                                Las contraseñas deben coincidir.
-                            </p>
+                            <div className="min-h-5">
+                                {confirmPasswordError && (
+                                    <p className="text-sm text-destructive">Las contraseñas deben coincidir.</p>
+                                )}
+                            </div>
                         </div>
-                        <Button type="submit" className="w-full" disabled={!canSubmit}>
+                        <Button type="submit" className="w-full"  disabled={!canSubmit}>
                             Registrarse
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">

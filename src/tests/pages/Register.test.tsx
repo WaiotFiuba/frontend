@@ -43,7 +43,7 @@ describe('Register page', () => {
     await user.type(passwordInput, 'secret1')
     await user.type(confirmPasswordInput, 'secret2')
 
-    expect(screen.getByText(/las contraseñas no coinciden/i)).toBeInTheDocument()
+    expect(screen.getByText(/Las contraseñas deben coincidir/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /registrarse/i })).toBeDisabled()
   })
 })
