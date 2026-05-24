@@ -8,6 +8,13 @@ Requisitos:
 
 Comandos principales:
 
+- Variables de entorno:
+
+```bash
+cp .env.example .env
+# editá .env con tus valores
+```
+
 - Instalar dependencias (local):
 
 ```bash
