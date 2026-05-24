@@ -24,6 +24,14 @@ function TestConsumer() {
 }
 
 describe('AuthContext', () => {
+  const jsonResponse = <T,>(data: T) =>
+    Promise.resolve({
+      ok: true,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => data,
+      text: async () => JSON.stringify(data),
+    } as Response)
+
   beforeEach(() => {
     vi.restoreAllMocks()
     localStorage.clear()
@@ -36,13 +44,13 @@ describe('AuthContext', () => {
     it('login stores token and hydrates user', async () => {
       const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
         const url = String(input)
-      if (url.endsWith('/auth/login')) {
-        return Promise.resolve({ ok: true, json: async () => ({ access_token: 'tok-123', token_type: 'bearer' }) } as Response)
-      }
-      if (url.endsWith('/users/me')) {
-        return Promise.resolve({ ok: true, json: async () => ({ id: 5, name: 'Usuario', email: 'usuario@example.com' }) } as Response)
-      }
-      return Promise.resolve({ ok: false, status: 404 } as Response)
+        if (url.endsWith('/auth/login')) {
+          return jsonResponse({ access_token: 'tok-123', token_type: 'bearer' })
+        }
+        if (url.endsWith('/users/me')) {
+          return jsonResponse({ id: 5, name: 'Usuario', email: 'usuario@example.com' })
+        }
+        return Promise.resolve({ ok: false, status: 404, headers: new Headers() } as Response)
     })
 
     render(
@@ -64,12 +72,12 @@ describe('AuthContext', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/auth/login')) {
-        return Promise.resolve({ ok: true, json: async () => ({ access_token: 'tok-456', token_type: 'bearer' }) } as Response)
+        return jsonResponse({ access_token: 'tok-456', token_type: 'bearer' })
       }
       if (url.endsWith('/users/me')) {
-        return Promise.resolve({ ok: true, json: async () => ({ id: 5, name: 'Usuario2', email: 'u2@example.com' }) } as Response)
+        return jsonResponse({ id: 5, name: 'Usuario2', email: 'u2@example.com' })
       }
-      return Promise.resolve({ ok: false, status: 404 } as Response)
+      return Promise.resolve({ ok: false, status: 404, headers: new Headers() } as Response)
     })
 
     render(
@@ -97,9 +105,9 @@ describe('AuthContext', () => {
         const body = init?.body
         const parsed = JSON.parse(String(body))
         expect(parsed).toMatchObject({ name: 'Valid User', email: 'test@example.com', password: 'secret12' })
-        return Promise.resolve({ ok: true, json: async () => ({}) } as Response)
+        return jsonResponse({})
       }
-      return Promise.resolve({ ok: false, status: 404 } as Response)
+      return Promise.resolve({ ok: false, status: 404, headers: new Headers() } as Response)
     })
 
     render(

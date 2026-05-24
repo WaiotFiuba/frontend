@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ACCESS_TOKEN_KEY, TOKEN_TYPE_KEY, withAuthorization } from '../lib/auth';
+import { ACCESS_TOKEN_KEY, TOKEN_TYPE_KEY } from '../lib/auth';
+import { api } from '../lib/api';
 
 export interface User {
   id: number;
@@ -28,29 +29,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";  
-
   const login = async (name: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";
-      const response = await fetch(`${apiBaseUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
+      const data = await api.post<{ access_token: string; token_type: string }>(
+        '/auth/login',
+        new URLSearchParams({
           username: name,
           password: password,
-        }),
-      });
+        })
+      );
 
-      if (!response.ok) {
-        throw new Error('Credenciales incorrectas');
-      }
-
-      const data = await response.json();
       if (data?.access_token) {
         localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
         setAccessToken(data.access_token);
@@ -73,19 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (!token) return;
       try {
-        const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-        const authHeaders = withAuthorization() as Record<string, string>;
-        const headers = { ...baseHeaders, ...authHeaders };
-
-        const res = await fetch(`${apiBaseUrl}/users/me`, {
-          method: 'GET',
-          headers,
-        });
-        if (!res.ok) {
-          console.warn('Failed to fetch current user', res.status);
-          return;
-        }
-        const json = await res.json();
+        const json = await api.get<User>('/users/me');
         setUser(json as User);
       } catch (e) {
         console.warn('Error fetching current user', e);
@@ -95,27 +73,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (accessToken) {
       fetchCurrentUser();
     }
-  }, [accessToken, apiBaseUrl]);
+  }, [accessToken]);
 
   const register = async ({ name, email, password }: { name: string; email: string; password: string }): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";
       const payload = { name, email, password, role_id: 2 };
 
-      const response = await fetch(`${apiBaseUrl}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => null);
-        throw new Error(text || 'Error al registrar usuario');
-      }
+      await api.post('/auth/register', payload);
 
       return true;
     } catch (err) {
