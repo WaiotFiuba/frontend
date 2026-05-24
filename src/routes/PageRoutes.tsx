@@ -4,7 +4,7 @@ import { Routes, Route } from 'react-router-dom'
 import Home from '../pages/Home/page'
 import Conteiners from '../pages/Containers/page'
 import About from '../pages/About/page'
-import RutaProtegida from '../components/RutaProtegida/page'
+//import RutaProtegida from '../components/RutaProtegida/page'
 import { MainLayout } from '../layout/MainLayout'
 import { Login } from '../pages/Login/Login'
 import Register from '../pages/Register/page'
@@ -19,9 +19,9 @@ export default function PageRoutes() {
                 <Route
                     path='/map'
                     element={
-                        <RutaProtegida>
+                        // <RutaProtegida>
                             <Conteiners />
-                        </RutaProtegida>
+                        // </RutaProtegida>
                     }
                 />
                 <Route path='/about' element={<About />} />
