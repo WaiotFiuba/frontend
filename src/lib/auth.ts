@@ -1,6 +1,18 @@
 export const ACCESS_TOKEN_KEY = 'access_token'
 export const TOKEN_TYPE_KEY = 'token_type'
 
+type UnauthorizedHandler = () => void
+
+let unauthorizedHandler: UnauthorizedHandler | null = null
+
+export const setUnauthorizedHandler = (handler: UnauthorizedHandler | null) => {
+    unauthorizedHandler = handler
+}
+
+export const handleUnauthorized = () => {
+    unauthorizedHandler?.()
+}
+
 export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY)
 
 export const getTokenType = () => localStorage.getItem(TOKEN_TYPE_KEY)

@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../lib/api'
+import { setUnauthorizedHandler } from '../../lib/auth'
 
 const jsonResponse = <T,>(data: T) =>
   Promise.resolve({
@@ -18,7 +19,23 @@ describe('api client', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
+    setUnauthorizedHandler(null)
     localStorage.clear()
+  })
+
+  it('api client triggers unauthorized handler on 401', async () => {
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ 'content-type': 'text/plain' }),
+      text: async () => 'Unauthorized',
+    } as Response)
+
+    await expect(api.get('/private')).rejects.toThrow('Unauthorized')
+    expect(handler).toHaveBeenCalledOnce()
   })
 
   it('api.get sends Authorization header and parses JSON', async () => {

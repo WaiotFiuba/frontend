@@ -1,4 +1,5 @@
 import { withAuthorization } from './auth'
+import { handleUnauthorized } from './auth'
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, '') ?? ''
 
@@ -48,6 +49,10 @@ const request = async <T>(path: string, init: RequestInit & ApiOptions = {}): Pr
   })
 
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized()
+    }
+
     const errorText = await response.text().catch(() => '')
     throw new Error(errorText || `Request failed with status ${response.status}`)
   }

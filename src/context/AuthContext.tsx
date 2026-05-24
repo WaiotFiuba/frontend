@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ACCESS_TOKEN_KEY, TOKEN_TYPE_KEY } from '../lib/auth';
+import { ACCESS_TOKEN_KEY, TOKEN_TYPE_KEY, setUnauthorizedHandler } from '../lib/auth';
 import { api } from '../lib/api';
 
 export interface User {
@@ -59,6 +59,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      setAccessToken(null);
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(TOKEN_TYPE_KEY);
+      setError('Tu sesión expiró. Volvé a iniciar sesión.');
+    });
+
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchCurrentUser = async () => {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (!token) return;
@@ -95,6 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     setUser(null);
     setAccessToken(null);
+    setError(null);
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(TOKEN_TYPE_KEY);
   };
