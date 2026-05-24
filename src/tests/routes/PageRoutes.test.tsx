@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import PageRoutes from '../../routes/PageRoutes'
+
+const { authState } = vi.hoisted(() => ({
+  authState: { accessToken: null as string | null },
+}))
 
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children?: ReactNode }) => <div data-testid="mock-map">{children}</div>,
@@ -11,7 +15,28 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
 }))
 
+vi.mock('../../context/AuthContext', () => ({
+  useAuthContext: () => ({
+    user: null,
+    accessToken: authState.accessToken,
+    login: async () => false,
+    register: async () => false,
+    logout: () => {},
+    loading: false,
+    error: null,
+  }),
+}))
+
 describe('PageRoutes', () => {
+  beforeEach(() => {
+    authState.accessToken = null
+    vi.unstubAllEnvs()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('renders Home at root path /', () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
@@ -23,8 +48,32 @@ describe('PageRoutes', () => {
   })
 
   it('renders Map page at /map', () => {
+    authState.accessToken = 'token-123'
+
     render(
       <MemoryRouter initialEntries={["/map"]}>
+        <PageRoutes />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
+  })
+
+  it('redirects /map to login when there is no token', () => {
+    render(
+      <MemoryRouter initialEntries={['/map']}>
+        <PageRoutes />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
+  })
+
+  it('allows /map when auth bypass is enabled in development', () => {
+    vi.stubEnv('VITE_AUTH_DEV_BYPASS', 'true')
+
+    render(
+      <MemoryRouter initialEntries={['/map']}>
         <PageRoutes />
       </MemoryRouter>
     )

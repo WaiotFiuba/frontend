@@ -1,11 +1,11 @@
 import React, { useState } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 
-const success_route = '/admin/algo';
+const success_route = '/';
 
 export const Login = () => {
     const [userForm, setUserForm] = useState({ name: "", password: "" })
@@ -47,7 +47,7 @@ export const Login = () => {
                         )}
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium">
-                                Usuario
+                                Email
                             </label>
                             <Input
                                 id="name"
@@ -55,7 +55,7 @@ export const Login = () => {
                                 name="name"
                                 value={userForm.name}
                                 onChange={handleChange}
-                                placeholder="Ingresa tu usuario"
+                                placeholder="Ingresa tu email"
                                 disabled={loading}
                             />
                         </div>
@@ -80,6 +80,12 @@ export const Login = () => {
                         >
                             {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
                         </Button>
+                        <p className="text-center text-sm text-muted-foreground">
+                            ¿No tienes una cuenta?{" "}
+                            <Button asChild variant="link" className="h-auto p-0 text-sm font-medium">
+                                <Link to="/register">Crear cuenta</Link>
+                            </Button>
+                        </p>
                     </form>
                 </CardContent>
             </Card>

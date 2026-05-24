@@ -20,3 +20,6 @@ Thumbs.db
 # Agents
 .agents/
 skills-lock.json
+
+# Environment variables
+.env
