@@ -28,9 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";
-
-  
+  const apiBaseUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ?? "";  
 
   const login = async (name: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -60,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data?.token_type) {
         localStorage.setItem(TOKEN_TYPE_KEY, data.token_type);
       }
-      // user will be hydrated by the effect that watches `accessToken`
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
