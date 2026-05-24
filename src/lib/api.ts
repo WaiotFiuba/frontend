@@ -53,6 +53,16 @@ const request = async <T>(path: string, init: RequestInit & ApiOptions = {}): Pr
       handleUnauthorized()
     }
 
+    const contentType = response.headers.get('content-type') ?? ''
+    if (contentType.includes('application/json')) {
+      const payload = await response.json().catch(() => null) as
+        | { detail?: string; message?: string }
+        | null
+
+      const message = payload?.detail || payload?.message
+      throw new Error(message || `Request failed with status ${response.status}`)
+    }
+
     const errorText = await response.text().catch(() => '')
     throw new Error(errorText || `Request failed with status ${response.status}`)
   }

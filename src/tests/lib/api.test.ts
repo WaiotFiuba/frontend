@@ -38,6 +38,20 @@ describe('api client', () => {
     expect(handler).toHaveBeenCalledOnce()
   })
 
+  it('api client surfaces JSON detail field on errors', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ detail: 'Incorrect email or password' }),
+      text: async () => JSON.stringify({ detail: 'Incorrect email or password' }),
+    } as Response)
+
+    await expect(api.post('/auth/login', { email: 'x', password: 'y' })).rejects.toThrow(
+      'Incorrect email or password'
+    )
+  })
+
   it('api.get sends Authorization header and parses JSON', async () => {
     localStorage.setItem('access_token', 'token-123')
     localStorage.setItem('token_type', 'bearer')
