@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ACCESS_TOKEN_KEY, TOKEN_TYPE_KEY, setUnauthorizedHandler } from '../lib/auth';
+import { ACCESS_TOKEN_KEY, clearAuthTokens, setAuthTokens, setUnauthorizedHandler } from '../lib/auth';
 import { api } from '../lib/api';
 
 export interface User {
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post<{ access_token: string; token_type: string }>(
+      const data = await api.post<{ access_token: string; token_type: string; refresh_token?: string }>(
         '/auth/login',
         new URLSearchParams({
           username: name,
@@ -42,11 +42,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (data?.access_token) {
-        localStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+        setAuthTokens({
+          accessToken: data.access_token,
+          tokenType: data.token_type,
+          refreshToken: data.refresh_token,
+        });
         setAccessToken(data.access_token);
-      }
-      if (data?.token_type) {
-        localStorage.setItem(TOKEN_TYPE_KEY, data.token_type);
       }
 
       return true;
@@ -62,8 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUnauthorizedHandler(() => {
       setUser(null);
       setAccessToken(null);
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
-      localStorage.removeItem(TOKEN_TYPE_KEY);
+      clearAuthTokens();
       setError('Tu sesión expiró. Volvé a iniciar sesión.');
     });
 
@@ -110,8 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setAccessToken(null);
     setError(null);
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(TOKEN_TYPE_KEY);
+    clearAuthTokens();
   };
 
   return (
