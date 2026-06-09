@@ -74,13 +74,13 @@ export const fetchContainers = async (): Promise<Container[]> => {
                     type = "organico"
                 }
 
-                // Color based on fill level (current_level)
+                // Color basado en el nivel de llenado
                 const level = c.current_level
-                let color = "#10b981" // Green (<50%)
+                let color = "#10b981" //(<50%)
                 if (level >= 80) {
-                    color = "#ef4444" // Red (>=80%)
+                    color = "#ef4444" //(>=80%)
                 } else if (level >= 50) {
-                    color = "#f59e0b" // Yellow/Orange (50% - 79%)
+                    color = "#f59e0b" //(50% - 79%)
                 }
 
                 return {

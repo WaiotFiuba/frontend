@@ -1,14 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Button } from '@/components/ui/button'
-import { api } from '@/lib/api'
-import { Database, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
+import { api } from '@/lib/api'
+import { Button } from '@/components/ui/button'
+import { useState, useEffect, useMemo } from 'react'
 import { BackendContainer } from './components/types'
 import GestionStats from './components/GestionStats'
 import ContainersTable from './components/ContainersTable'
-// import ContainerTypesCard from './components/ContainerTypesCard'
 import AddContainerForm from './components/AddContainerForm'
 import DeleteContainerForm from './components/DeleteContainerForm'
+import { Database, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 export default function Gestion() {
   const [containers, setContainers] = useState<BackendContainer[]>([])
@@ -17,20 +16,15 @@ export default function Gestion() {
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  // States for generation parameters
   const [forceRegen, setForceRegen] = useState(false)
-
-  // Confirmation state for local deletion
   const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
-
-  // Filtering state shared with stats cards
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false)
 
   const loadContainers = async () => {
     setLoading(true)
     setError(null)
     try {
-      // Fetch up to 1000 containers for representation in the management console
+      // Solo hace fetch hasta 1000 contenedores, en caso de necesitar mas, modificar endpoint.
       const data = await api.get<BackendContainer[]>('/map/containers/?limit=1000')
       setContainers(data)
     } catch (err: any) {
@@ -59,7 +53,6 @@ export default function Gestion() {
           ? 'Base de datos regenerada exitosamente con nuevos contenedores.'
           : 'Siembra de datos ejecutada. Se agregaron nuevos contenedores si faltaban.'
       )
-      // Clear success message after 5 seconds
       setTimeout(() => setSuccessMsg(null), 5000)
       await loadContainers()
     } catch (err: any) {
@@ -155,6 +148,7 @@ export default function Gestion() {
         <ContainersTable containers={containers} loading={loading} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} onRemoveContainer={setContainerToRemove} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Por si se quiere implementar en el futuro, es para ver los tipos de contenedores disponibles y su cantidad */}
           {/* <ContainerTypesCard containers={containers} /> */}
 
           <AddContainerForm containerTypes={containerTypes} onContainerCreated={loadContainers} onError={setError} onSuccess={setSuccessMsg} />
