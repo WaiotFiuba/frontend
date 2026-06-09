@@ -2,7 +2,6 @@ import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
 import { MapPin } from "lucide-react"
 import { Container, Site } from "./types"
-import containersData from "../../../api/containers.json"
 
 
 export const groupContainersBySite = (containers: Container[]): Site[] => {
@@ -94,10 +93,10 @@ export const fetchContainers = async (): Promise<Container[]> => {
                 }
             })
         }
-        return containersData as Container[]
+        return []
     } catch (error) {
-        console.error("Error al obtener contenedores del backend, usando mock data:", error)
-        return containersData as Container[]
+        console.error("Error al obtener contenedores del backend:", error)
+        return []
     }
 }
 
