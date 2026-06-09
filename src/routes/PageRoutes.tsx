@@ -21,12 +21,12 @@ export default function PageRoutes() {
                     path='/map'
                     element={
                         // <RutaProtegida>
-                            <Conteiners />
+                        <Conteiners />
                         // </RutaProtegida>
                     }
                 />
                 <Route path='/about' element={<About />} />
-                <Route path='/gestion' element={<Gestion />} />
+                <Route path='/management' element={<Gestion />} />
                 <Route path='/login' element={<Login />} />
                 <Route path='/register' element={<Register />} />
             </Route>
