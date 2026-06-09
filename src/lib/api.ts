@@ -83,4 +83,5 @@ export const api = {
       method: 'POST',
       body: prepareBody(body),
     }),
+  delete: <T>(path: string, options?: ApiOptions) => request<T>(path, { ...options, method: 'DELETE' }),
 }
