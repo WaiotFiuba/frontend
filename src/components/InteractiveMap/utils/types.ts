@@ -25,7 +25,6 @@ export const labels: Record<ContainerType, string> = {
     indiferenciado: "Indiferenciado",
 }
 
-// Tipos de respuesta del backend para el mapa, pueden ser contenedores individuales o clusters de contenedores según el zoom
 export type BackendContainer = {
     id: number | string
     site_id?: number | string

@@ -114,7 +114,6 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
         }, 250)
     }, [fetchForBounds])
 
-    // Effect for handling initial load, cleanups, and refreshTrigger changes (from gestion)
     useEffect(() => {
         mountedRef.current = true
         cacheRef.current.clear()

@@ -130,7 +130,7 @@ export const fetchContainersBBox = async (
                 type = "organico"
             }
 
-            // Color basado en el nivel de llenado (funcionalidad de gestion)
+            // Color basado en el nivel de llenado
             const level = c.current_level ?? 0
             let color = "#10b981" // (<50%)
             if (level >= 80) {
