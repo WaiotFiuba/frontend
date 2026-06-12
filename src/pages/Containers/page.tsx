@@ -2,7 +2,7 @@ import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/components/InteractiveMap/page'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Play, Pause, Square, Clock, Database, AlertCircle } from 'lucide-react'
 
@@ -26,7 +26,6 @@ interface SimulationRead {
 export default function Map() {
     const navigate = useNavigate()
     const [activeSim, setActiveSim] = useState<SimulationRead | null>(null)
-    const [refreshTrigger, setRefreshTrigger] = useState(0)
     const [actionLoading, setActionLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
@@ -68,29 +67,11 @@ export default function Map() {
         ].filter(Boolean).join(':')
     }
 
-    const activeSimRef = useRef<SimulationRead | null>(null)
-    activeSimRef.current = activeSim
-
     const fetchActiveSimulation = async () => {
         try {
             const data = await api.get<SimulationRead>(`/digital-twin/simulations/active?t=${Date.now()}`)
-
-            if (activeSimRef.current) {
-                const timeChanged = data.simulated_time !== activeSimRef.current.simulated_time
-                const countChanged = data.measurements_sent !== activeSimRef.current.measurements_sent
-                const statusChanged = data.status !== activeSimRef.current.status
-                if (timeChanged || countChanged || statusChanged) {
-                    setRefreshTrigger(prev => prev + 1)
-                }
-            } else {
-                setRefreshTrigger(prev => prev + 1)
-            }
-
             setActiveSim(data)
         } catch (err: any) {
-            if (activeSimRef.current !== null) {
-                setRefreshTrigger(prev => prev + 1)
-            }
             setActiveSim(null)
         }
     }
@@ -284,7 +265,6 @@ export default function Map() {
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative">
                     <InteractiveMap
-                        refreshTrigger={refreshTrigger}
                         isSimulationActive={activeSim?.status === 'running'}
                         simulationInterval={simulationInterval}
                     />

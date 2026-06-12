@@ -8,6 +8,13 @@ export interface Container {
     type: ContainerType
     color: string
     description: string
+    currentLevel?: number
+    available?: boolean
+    deviceImei?: string
+    zone?: string
+    wasteTypes?: string[]
+    lastReading?: string
+    updatedAt?: string
 }
 
 export interface Site {
@@ -33,6 +40,10 @@ export type BackendContainer = {
     longitude: number
     current_level?: number
     available?: boolean
+    device_imei?: string | null
+    zone?: string | null
+    last_reading?: string | null
+    updated_at?: string | null
     container_type?: {
         name?: string
         waste_types?: Array<{ name?: string; color?: string }>
@@ -42,4 +53,15 @@ export type BackendCluster = {
     latitude: number
     longitude: number
     total: number
+}
+
+export type BackendContainerSnapshot = {
+    cursor: number
+    containers: BackendContainer[]
+    clusters: BackendCluster[]
+}
+
+export type BackendContainerChanges = {
+    cursor: number
+    containers: BackendContainer[]
 }

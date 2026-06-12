@@ -2,8 +2,29 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
 import { Container, Site } from "./utils/types"
-import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon } from "./utils/functions"
+import {
+    createMapPinIcon,
+    fetchContainerChanges,
+    fetchContainersSnapshot,
+    getContainerFetchConfigByZoom,
+    groupContainersBySite,
+} from "./utils/functions"
+import type { ContainerBounds } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
+
+type Viewport = ContainerBounds & {
+    incremental: boolean
+}
+
+const formatContainerDate = (value?: string) => {
+    if (!value) return "Sin datos"
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleString("es-AR", {
+        dateStyle: "short",
+        timeStyle: "medium",
+    })
+}
 
 function MapViewportController({
     mapRef,
@@ -42,53 +63,37 @@ function MapViewportController({
 }
 
 interface InteractiveMapProps {
-    refreshTrigger?: number
     isSimulationActive?: boolean
     simulationInterval?: number
 }
 
-export default function InteractiveMap({ refreshTrigger = 0, isSimulationActive = false, simulationInterval = 5000 }: InteractiveMapProps) {
+export default function InteractiveMap({ isSimulationActive = false, simulationInterval = 5000 }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const mapRef = useRef<LeafletMap | null>(null)
-    const cacheRef = useRef<Map<string, Container[]>>(new Map())
-    const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
+    const cursorRef = useRef(0)
+    const viewportRef = useRef<Viewport | null>(null)
+    const requestVersionRef = useRef(0)
+    const pollingRef = useRef(false)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
-        // estas constantes no se que tan necesarias son, se pueden eliminar y usar directamente los valores, o se pueden ajustar para cambiar la cantidad de datos que pide el mapa
-        const { backendZoom, limit } = { backendZoom: zoom, limit: 1000 }
-        // aca cachea los resultados para no pedir los mismos datos varias veces, se puede eliminar si no se quiere cachear o ajustar la key para cachear de otra forma
-        const key = `${lat_min.toFixed(5)}_${lat_max.toFixed(5)}_${lng_min.toFixed(5)}_${lng_max.toFixed(5)}_${backendZoom}`
-        const cached = cacheRef.current.get(key)
-        if (cached) {
-            if (mountedRef.current) setContainers(cached)
-            return
-        }
-        // Si ya hay una petición en curso para esa key, espera a que termine en vez de hacer otra igual
-        const pending = pendingRef.current.get(key)
-        if (pending) {
-            try {
-                const data = await pending
-                if (mountedRef.current) setContainers(data)
-            } catch (e) {
-                console.error('Error awaiting pending fetch', e)
-            }
-            return
-        }
-
-        // Si no hay cache ni petición pendiente, hace una nueva petición
-        const promise = fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
-        pendingRef.current.set(key, promise)
+        const { backendZoom, limit } = getContainerFetchConfigByZoom(zoom)
+        const bounds = { lat_min, lat_max, lng_min, lng_max }
+        const requestVersion = ++requestVersionRef.current
 
         try {
-            const data = await promise
-            cacheRef.current.set(key, data)
-            if (mountedRef.current) setContainers(data)
+            const snapshot = await fetchContainersSnapshot(bounds, backendZoom, limit)
+            if (!mountedRef.current || requestVersion !== requestVersionRef.current) return
+
+            cursorRef.current = snapshot.cursor
+            viewportRef.current = {
+                ...bounds,
+                incremental: !snapshot.clustered,
+            }
+            setContainers(snapshot.containers)
         } catch (e) {
             console.error('Error al cargar contenedores:', e)
-        } finally {
-            pendingRef.current.delete(key)
         }
     }, [])
 
@@ -118,7 +123,6 @@ export default function InteractiveMap({ refreshTrigger = 0, isSimulationActive 
 
     useEffect(() => {
         mountedRef.current = true
-        cacheRef.current.clear()
 
         if (mapRef.current) {
             fetchForMap(mapRef.current)
@@ -133,22 +137,37 @@ export default function InteractiveMap({ refreshTrigger = 0, isSimulationActive 
                 window.clearTimeout(currentDebounce)
             }
         }
-    }, [refreshTrigger, fetchForBounds, fetchForMap])
+    }, [fetchForBounds, fetchForMap])
 
     useEffect(() => {
-        if (!isSimulationActive) return
+        const pollingInterval = isSimulationActive ? simulationInterval : 15000
 
-        const intervalId = setInterval(() => {
-            cacheRef.current.clear()
-            if (mapRef.current) {
-                fetchForMap(mapRef.current)
-            } else {
-                void fetchForBounds(-90, 90, -180, 180, 5)
+        const intervalId = window.setInterval(async () => {
+            const viewport = viewportRef.current
+            if (!viewport?.incremental || pollingRef.current) return
+
+            pollingRef.current = true
+            try {
+                const changes = await fetchContainerChanges(viewport, cursorRef.current)
+                if (!mountedRef.current || viewport !== viewportRef.current) return
+
+                cursorRef.current = changes.cursor
+                if (changes.containers.length === 0) return
+
+                setContainers((current) => {
+                    const byId = new Map(current.map((container) => [container.id, container]))
+                    changes.containers.forEach((container) => byId.set(container.id, container))
+                    return Array.from(byId.values())
+                })
+            } catch (error) {
+                console.error('Error al sincronizar cambios de contenedores:', error)
+            } finally {
+                pollingRef.current = false
             }
-        }, simulationInterval)
+        }, pollingInterval)
 
-        return () => clearInterval(intervalId)
-    }, [isSimulationActive, simulationInterval, fetchForMap, fetchForBounds])
+        return () => window.clearInterval(intervalId)
+    }, [isSimulationActive, simulationInterval])
 
     // Calcular sitios agrupados. Se recalcula automáticamente cuando cambian los contenedores
     const sites: Site[] = useMemo(() => {
@@ -218,8 +237,22 @@ export default function InteractiveMap({ refreshTrigger = 0, isSimulationActive 
                                             <p className="text-xs font-semibold mb-1">Contenedores:</p>
                                             <div className="space-y-1 max-h-40 overflow-y-auto">
                                                 {site.containers.map((container) => (
-                                                    <div key={container.id} className="h-full p-1  text-xs rounded-md bg-gray-100">
-                                                        <p className="font-semibold">ID: {container.id}</p>
+                                                    <div key={container.id} className="h-full p-2 text-xs rounded-md bg-gray-100 space-y-0.5">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <p className="font-semibold">ID: {container.id}</p>
+                                                            <span className={container.available ? "text-emerald-700" : "text-rose-700"}>
+                                                                {container.available ? "Disponible" : "No disponible"}
+                                                            </span>
+                                                        </div>
+                                                        <p><strong>Nivel:</strong> {container.currentLevel ?? 0}%</p>
+                                                        <p><strong>Tipo:</strong> {container.type}</p>
+                                                        {container.wasteTypes?.length ? (
+                                                            <p><strong>Residuo:</strong> {container.wasteTypes.join(", ")}</p>
+                                                        ) : null}
+                                                        {container.zone ? <p><strong>Barrio:</strong> {container.zone}</p> : null}
+                                                        {container.deviceImei ? <p><strong>Dispositivo:</strong> {container.deviceImei}</p> : null}
+                                                        <p><strong>Última lectura:</strong> {formatContainerDate(container.lastReading)}</p>
+                                                        <p><strong>Actualización backend:</strong> {formatContainerDate(container.updatedAt)}</p>
                                                     </div>
                                                 ))}
                                             </div>

@@ -49,9 +49,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [neighborhoods, setNeighborhoods] = useState<string[]>([])
 
   // Form states for NEW simulation
-  const [speedup, setSpeedup] = useState<number | string>(1)
+  const [speedup, setSpeedup] = useState<number | string>(60)
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
-  const [transitionMinutes, setTransitionMinutes] = useState<number | string>(30)
+  const [transitionMinutes, setTransitionMinutes] = useState<number | string>(60)
+  const [frequencyMinutes, setFrequencyMinutes] = useState<number | string>(15)
+  const [periods, setPeriods] = useState<number | string>(96)
+  const [containerLimit, setContainerLimit] = useState<number | string>(1000)
+  const [readingJitterMinutes, setReadingJitterMinutes] = useState<number | string>(0)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
   // Form states for LIVE controls
@@ -62,6 +66,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const simulatedDurationHours = Number(periods || 0) * Number(frequencyMinutes || 0) / 60
 
   // Fetch active simulation
   const fetchActiveSimulation = async (showLoading = false) => {
@@ -141,10 +146,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
     try {
       const payload = {
-        speedup: speedup === '' ? 1 : Math.max(1, parseInt(String(speedup)) || 1),
+        speedup: speedup === '' ? 60 : Math.max(1, parseInt(String(speedup)) || 1),
         global_demand_multiplier: globalDemandMultiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(globalDemandMultiplier)) || 0.1),
-        transition_minutes: transitionMinutes === '' ? 30 : Math.max(0, parseInt(String(transitionMinutes)) || 0),
-        scenario: {},
+        transition_minutes: transitionMinutes === '' ? 60 : Math.max(0, parseInt(String(transitionMinutes)) || 0),
+        scenario: {
+          container_limit: containerLimit === '' ? 1000 : Math.max(1, parseInt(String(containerLimit)) || 1),
+          frequency_minutes: frequencyMinutes === '' ? 15 : Math.max(1, parseInt(String(frequencyMinutes)) || 1),
+          periods: periods === '' ? 96 : Math.max(1, parseInt(String(periods)) || 1),
+          reading_jitter_minutes: readingJitterMinutes === '' ? 0 : Math.max(0, parseInt(String(readingJitterMinutes)) || 0),
+        },
         zone_overrides: zoneOverrides.map(zo => ({
           neighborhood: zo.neighborhood,
           multiplier: zo.multiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(zo.multiplier)) || 0.1)
@@ -542,7 +552,58 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   onChange={(e) => setTransitionMinutes(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
                 />
-                 <p className="text-[10px] text-slate-400">Default: 30 min.</p>
+                 <p className="text-[10px] text-slate-400">Default: 60 simulated min.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Minutes per Period *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={frequencyMinutes}
+                  onChange={(e) => setFrequencyMinutes(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                />
+                <p className="text-[10px] text-slate-400">Timestamp distance between telemetry ticks.</p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Periods *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={periods}
+                  onChange={(e) => setPeriods(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                />
+                <p className="text-[10px] text-slate-400">{simulatedDurationHours.toLocaleString()} simulated hours total.</p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Container Limit *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={containerLimit}
+                  onChange={(e) => setContainerLimit(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                />
+                <p className="text-[10px] text-slate-400">Maximum containers updated per tick.</p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Reading Jitter Minutes *</label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={readingJitterMinutes}
+                  onChange={(e) => setReadingJitterMinutes(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                />
+                <p className="text-[10px] text-slate-400">Use 0 to align every reading with the displayed clock.</p>
               </div>
             </div>
 

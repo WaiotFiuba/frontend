@@ -1,6 +1,13 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, BackendContainer, BackendCluster } from "./types"
+import {
+    BackendCluster,
+    BackendContainer,
+    BackendContainerChanges,
+    BackendContainerSnapshot,
+    Container,
+    Site,
+} from "./types"
 import { api } from "../../../lib/api"
 
 export type ContainerFetchZoomConfig = {
@@ -82,57 +89,106 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
     return Object.values(sitesMap)
 }
 
-export const fetchContainersBBox = async (
-    lat_min: number,
-    lat_max: number,
-    lng_min: number,
-    lng_max: number,
+export type ContainerBounds = {
+    lat_min: number
+    lat_max: number
+    lng_min: number
+    lng_max: number
+}
+
+export type ContainerSnapshot = {
+    cursor: number
+    containers: Container[]
+    clustered: boolean
+}
+
+const containerParams = (
+    bounds: ContainerBounds,
+    extra: Record<string, string>,
+) => new URLSearchParams({
+    lat_min: String(bounds.lat_min),
+    lat_max: String(bounds.lat_max),
+    lng_min: String(bounds.lng_min),
+    lng_max: String(bounds.lng_max),
+    ...extra,
+})
+
+const mapBackendContainer = (container: BackendContainer): Container => {
+    const typeName = (container.container_type?.name ?? 'indiferenciado').toString().toLowerCase()
+    const currentLevel = container.current_level ?? 0
+    const color = currentLevel >= 80
+        ? '#ef4444'
+        : currentLevel >= 50
+            ? '#f59e0b'
+            : '#10b981'
+
+    return {
+        id: String(container.id),
+        siteId: String(container.site_id ?? container.id),
+        lat: container.latitude,
+        long: container.longitude,
+        type: typeName as Container["type"],
+        color,
+        description: '',
+        currentLevel,
+        available: container.available,
+        deviceImei: container.device_imei ?? undefined,
+        zone: container.zone ?? undefined,
+        wasteTypes: container.container_type?.waste_types
+            ?.map((wasteType) => wasteType.name)
+            .filter((name): name is string => Boolean(name)),
+        lastReading: container.last_reading ?? undefined,
+        updatedAt: container.updated_at ?? undefined,
+    }
+}
+
+const mapClusters = (clusters: BackendCluster[]): Container[] => clusters.map((cluster, index) => ({
+    id: `cluster-${index}`,
+    siteId: `cluster-${index}`,
+    lat: cluster.latitude,
+    long: cluster.longitude,
+    type: 'indiferenciado',
+    color: '#6b7280',
+    description: String(cluster.total),
+}))
+
+export const fetchContainersSnapshot = async (
+    bounds: ContainerBounds,
     zoom: number,
     limit = 500
-): Promise<Container[]> => {
-    try {
-        const params = new URLSearchParams({
-            lat_min: String(lat_min),
-            lat_max: String(lat_max),
-            lng_min: String(lng_min),
-            lng_max: String(lng_max),
-            zoom: String(zoom),
-            limit: String(limit),
-        })
+): Promise<ContainerSnapshot> => {
+    const params = containerParams(bounds, {
+        zoom: String(zoom),
+        limit: String(limit),
+    })
+    const snapshot = await api.get<BackendContainerSnapshot>(
+        `/map/containers/bbox/snapshot?${params.toString()}`,
+    )
+    const clustered = snapshot.clusters.length > 0
+    return {
+        cursor: snapshot.cursor,
+        clustered,
+        containers: clustered
+            ? mapClusters(snapshot.clusters)
+            : snapshot.containers.map(mapBackendContainer),
+    }
+}
 
-        const url = `/map/containers/bbox?${params.toString()}`
-        const data = await api.get<BackendContainer[] | BackendCluster[]>(url)
-
-        if (Array.isArray(data) && data.length > 0 && (data[0] as BackendCluster).total != null) {
-            const clusters = data as BackendCluster[]
-            return clusters.map((cl, idx) => ({
-                id: `cluster-${idx}`,
-                siteId: `cluster-${idx}`,
-                lat: cl.latitude,
-                long: cl.longitude,
-                type: 'indiferenciado',
-                color: '#6b7280',
-                description: String(cl.total),
-            }))
-        }
-
-        return (data as BackendContainer[]).map((c) => {
-            const typeName = (c.container_type?.name ?? 'indiferenciado').toString().toLowerCase()
-            const color = c.container_type?.waste_types?.[0]?.color ?? '#1f2937'
-
-            return {
-                id: String(c.id),
-                siteId: String(c.site_id ?? c.id),
-                lat: c.latitude,
-                long: c.longitude,
-                type: typeName as any,
-                color,
-                description: '',
-            } as Container
-        })
-    } catch (error) {
-        console.warn('Error obteniendo los contenedores:', error)
-        return []
+export const fetchContainerChanges = async (
+    bounds: ContainerBounds,
+    after: number,
+    limit = 2000,
+): Promise<{ cursor: number; containers: Container[] }> => {
+    const params = containerParams(bounds, {
+        after: String(after),
+        limit: String(limit),
+    })
+    const changes = await api.get<BackendContainerChanges>(
+        `/map/containers/changes?${params.toString()}`,
+    )
+    return {
+        cursor: changes.cursor,
+        containers: changes.containers.map(mapBackendContainer),
     }
 }
 
