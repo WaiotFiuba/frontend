@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
-import { Container, Site, labels } from "./utils/types"
+import { Container, Site } from "./utils/types"
 import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
 
@@ -43,9 +43,11 @@ function MapViewportController({
 
 interface InteractiveMapProps {
     refreshTrigger?: number
+    isSimulationActive?: boolean
+    simulationInterval?: number
 }
 
-export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapProps) {
+export default function InteractiveMap({ refreshTrigger = 0, isSimulationActive = false, simulationInterval = 5000 }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const mapRef = useRef<LeafletMap | null>(null)
     const cacheRef = useRef<Map<string, Container[]>>(new Map())
@@ -133,6 +135,21 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
         }
     }, [refreshTrigger, fetchForBounds, fetchForMap])
 
+    useEffect(() => {
+        if (!isSimulationActive) return
+
+        const intervalId = setInterval(() => {
+            cacheRef.current.clear()
+            if (mapRef.current) {
+                fetchForMap(mapRef.current)
+            } else {
+                void fetchForBounds(-90, 90, -180, 180, 5)
+            }
+        }, simulationInterval)
+
+        return () => clearInterval(intervalId)
+    }, [isSimulationActive, simulationInterval, fetchForMap, fetchForBounds])
+
     // Calcular sitios agrupados. Se recalcula automáticamente cuando cambian los contenedores
     const sites: Site[] = useMemo(() => {
         return groupContainersBySite(containers)
@@ -188,7 +205,7 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
                                 <Popup>
                                     <div className="p-2 space-y-2 max-w-xs">
                                         <h3 className="font-bold text-sm border-b pb-1">
-                                            Sitio - {labels[site.type]}
+                                            Sitio - {site.type}
                                         </h3>
                                         <p className="text-xs">
                                             <strong>Total:</strong> {containerCount} contenedor{containerCount > 1 ? "es" : ""}
@@ -203,8 +220,6 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
                                                 {site.containers.map((container) => (
                                                     <div key={container.id} className="h-full p-1  text-xs rounded-md bg-gray-100">
                                                         <p className="font-semibold">ID: {container.id}</p>
-                                                        <p className="font-semibold">Descripción: {container.description}</p>
-                                                        <p className="font-semibold">Tipo: {labels[container.type]}</p>
                                                     </div>
                                                 ))}
                                             </div>

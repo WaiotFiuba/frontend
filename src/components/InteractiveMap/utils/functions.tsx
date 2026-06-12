@@ -1,6 +1,6 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType, BackendContainer, BackendCluster } from "./types"
+import { Container, Site, BackendContainer, BackendCluster } from "./types"
 import { api } from "../../../lib/api"
 
 export type ContainerFetchZoomConfig = {
@@ -9,7 +9,6 @@ export type ContainerFetchZoomConfig = {
     limit: number
 }
 
-// Ajustá esta función para cambiar cuánto área y cuántos resultados pide el mapa según el zoom.
 export const getContainerFetchConfigByZoom = (zoom: number): ContainerFetchZoomConfig => {
     const normalizedZoom = Math.max(0, Math.floor(zoom))
 
@@ -83,7 +82,6 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
     return Object.values(sitesMap)
 }
 
-// Devuelve contendeores en el area dada, o clusters si hay demasiados contenedores para mostrar
 export const fetchContainersBBox = async (
     lat_min: number,
     lat_max: number,
@@ -105,9 +103,7 @@ export const fetchContainersBBox = async (
         const url = `/map/containers/bbox?${params.toString()}`
         const data = await api.get<BackendContainer[] | BackendCluster[]>(url)
 
-        // Determine if response is clusters (has total) or containers (has id)
         if (Array.isArray(data) && data.length > 0 && (data[0] as BackendCluster).total != null) {
-            // clusters
             const clusters = data as BackendCluster[]
             return clusters.map((cl, idx) => ({
                 id: `cluster-${idx}`,
@@ -121,32 +117,17 @@ export const fetchContainersBBox = async (
         }
 
         return (data as BackendContainer[]).map((c) => {
-            let type: ContainerType = "indiferenciado"
-
-            const typeName = (c.container_type?.name || "").toLowerCase()
-            if (typeName.includes("seca") || typeName.includes("reciclaje")) {
-                type = "reciclaje"
-            } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
-                type = "organico"
-            }
-
-            // Color basado en el nivel de llenado
-            const level = c.current_level ?? 0
-            let color = "#10b981" // (<50%)
-            if (level >= 80) {
-                color = "#ef4444" // (>=80%)
-            } else if (level >= 50) {
-                color = "#f59e0b" // (50% - 79%)
-            }
+            const typeName = (c.container_type?.name ?? 'indiferenciado').toString().toLowerCase()
+            const color = c.container_type?.waste_types?.[0]?.color ?? '#1f2937'
 
             return {
                 id: String(c.id),
                 siteId: String(c.site_id ?? c.id),
                 lat: c.latitude,
                 long: c.longitude,
-                type: type,
-                color: color,
-                description: `${c.site_name || 'Contenedor'} - ${c.container_type?.name || 'Genérico'} (Nivel: ${level}%)`
+                type: typeName as any,
+                color,
+                description: '',
             } as Container
         })
     } catch (error) {

@@ -1,6 +1,5 @@
 
 import { api } from '@/lib/api'
-import { Button } from '@/components/ui/button'
 import { useState, useEffect, useMemo } from 'react'
 import { BackendContainer } from './components/types'
 import ManagementStats from './components/ManagementStats'
@@ -8,7 +7,7 @@ import ContainersTable from './components/ContainersTable'
 import AddContainerForm from './components/AddContainerForm'
 import DeleteContainerForm from './components/DeleteContainerForm'
 import SimulationControl from './components/SimulationControl'
-import { RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 export default function Management() {
   const [containers, setContainers] = useState<BackendContainer[]>([])
@@ -73,21 +72,7 @@ export default function Management() {
               Administration and control of containers and synthetic topology seeding.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={loadContainers} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-5 py-5 rounded-lg transition-all transform hover:scale-[1.02] flex items-center gap-2">
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                  Actualizando...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4.5 w-4.5" />
-                  Actualizar
-                </>
-              )}
-            </Button>
-          </div>
+
         </div>
 
         {error && (
@@ -112,7 +97,7 @@ export default function Management() {
 
         <ManagementStats containers={containers} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} />
 
-        <SimulationControl />
+        <SimulationControl onSimulationStateChange={loadContainers} />
 
         <ContainersTable containers={containers} loading={loading} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} onRemoveContainer={setContainerToRemove} />
 

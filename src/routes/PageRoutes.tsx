@@ -20,9 +20,7 @@ export default function PageRoutes() {
                 <Route
                     path='/map'
                     element={
-                        // <RutaProtegida>
                         <Conteiners />
-                        // </RutaProtegida>
                     }
                 />
                 <Route path='/about' element={<About />} />

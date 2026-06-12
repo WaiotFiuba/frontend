@@ -7,20 +7,20 @@ import { api } from '@/lib/api'
 import { Play, Pause, Square, Clock, Database, AlertCircle } from 'lucide-react'
 
 interface SimulationRead {
-  id: number
-  status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
-  scenario: Record<string, any>
-  speedup: number
-  global_demand_current: number
-  global_demand_target: number
-  transition_minutes: number
-  simulated_time: string | null
-  current_period: number
-  total_periods: number
-  measurements_sent: number
-  collections_generated: number
-  alarms_generated: number
-  error_message: string | null
+    id: number
+    status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
+    scenario: Record<string, any>
+    speedup: number
+    global_demand_current: number
+    global_demand_target: number
+    transition_minutes: number
+    simulated_time: string | null
+    current_period: number
+    total_periods: number
+    measurements_sent: number
+    collections_generated: number
+    alarms_generated: number
+    error_message: string | null
 }
 
 export default function Map() {
@@ -30,6 +30,7 @@ export default function Map() {
     const [actionLoading, setActionLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
+    const [simulationInterval, setSimulationInterval] = useState<number>(5000)
 
     useEffect(() => {
         if (activeSim) {
@@ -67,15 +68,13 @@ export default function Map() {
         ].filter(Boolean).join(':')
     }
 
-    // Keep reference of activeSim to avoid interval closures issues
     const activeSimRef = useRef<SimulationRead | null>(null)
     activeSimRef.current = activeSim
 
     const fetchActiveSimulation = async () => {
         try {
             const data = await api.get<SimulationRead>(`/digital-twin/simulations/active?t=${Date.now()}`)
-            
-            // Check if simulated time, measurements or status has changed to trigger map reload
+
             if (activeSimRef.current) {
                 const timeChanged = data.simulated_time !== activeSimRef.current.simulated_time
                 const countChanged = data.measurements_sent !== activeSimRef.current.measurements_sent
@@ -86,7 +85,7 @@ export default function Map() {
             } else {
                 setRefreshTrigger(prev => prev + 1)
             }
-            
+
             setActiveSim(data)
         } catch (err: any) {
             if (activeSimRef.current !== null) {
@@ -96,20 +95,18 @@ export default function Map() {
         }
     }
 
-    // Initial fetch
     useEffect(() => {
         fetchActiveSimulation()
     }, [])
 
-    // Dynamic polling based on simulation speed
     useEffect(() => {
         let intervalTime = 5000
         if (activeSim) {
             const frequencyMinutes = activeSim.scenario?.frequency_minutes ?? 60
             const calculatedInterval = ((frequencyMinutes * 60) / activeSim.speedup) * 1000
-            // Poll between 2 and 8 seconds to prevent flooding while keeping sync
             intervalTime = Math.max(2000, Math.min(calculatedInterval, 8000))
         }
+        setSimulationInterval(intervalTime)
 
         const intervalId = setInterval(() => {
             fetchActiveSimulation()
@@ -173,7 +170,7 @@ export default function Map() {
                         </h1>
                         <p className="text-slate-600 mt-1">Monitoring of containers and geographic telemetry.</p>
                     </div>
-                    <Button 
+                    <Button
                         variant="outline"
                         onClick={() => navigate('/')}
                         className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-sm transition-all"
@@ -192,13 +189,12 @@ export default function Map() {
                                         {activeSim.status === 'running' && (
                                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                         )}
-                                        <span className={`relative inline-flex rounded-full h-3 w-3 ${
-                                            activeSim.status === 'running' 
-                                                ? 'bg-emerald-500' 
-                                                : activeSim.status === 'paused'
+                                        <span className={`relative inline-flex rounded-full h-3 w-3 ${activeSim.status === 'running'
+                                            ? 'bg-emerald-500'
+                                            : activeSim.status === 'paused'
                                                 ? 'bg-amber-500'
                                                 : 'bg-slate-400'
-                                        }`}></span>
+                                            }`}></span>
                                     </span>
                                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                                         Simulation #{activeSim.id} ({activeSim.status})
@@ -211,7 +207,7 @@ export default function Map() {
                                     <Clock className="h-4 w-4 text-slate-400" />
                                     <span>Simulated clock: </span>
                                     <strong className="text-indigo-600">
-                                        {activeSim.simulated_time 
+                                        {activeSim.simulated_time
                                             ? new Date(activeSim.simulated_time).toLocaleDateString() + ' ' + new Date(activeSim.simulated_time).toLocaleTimeString()
                                             : 'Not started'}
                                     </strong>
@@ -287,7 +283,11 @@ export default function Map() {
                 )}
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative">
-                    <InteractiveMap refreshTrigger={refreshTrigger} />
+                    <InteractiveMap
+                        refreshTrigger={refreshTrigger}
+                        isSimulationActive={activeSim?.status === 'running'}
+                        simulationInterval={simulationInterval}
+                    />
                 </div>
             </div>
         </div>
