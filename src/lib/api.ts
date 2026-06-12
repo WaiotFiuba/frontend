@@ -155,4 +155,11 @@ export const api = {
       method: 'POST',
       body: prepareBody(body),
     }),
+  patch: <T>(path: string, body?: ApiBody, options?: ApiOptions) =>
+    request<T>(path, {
+      ...options,
+      method: 'PATCH',
+      body: prepareBody(body),
+    }),
+  delete: <T>(path: string, options?: ApiOptions) => request<T>(path, { ...options, method: 'DELETE' }),
 }

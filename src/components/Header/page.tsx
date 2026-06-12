@@ -10,11 +10,11 @@ export default function Header() {
         <header className="bg-white shadow-md border-b border-slate-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="flex items-center justify-between">
-                    {/* Logo and Brand */}
+
                     <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
-                        <img 
-                            src="/images/WAIOT FIUBA.png" 
-                            alt="Waiot Logo" 
+                        <img
+                            src="/images/WAIOT FIUBA.png"
+                            alt="Waiot Logo"
                             className="h-10 w-auto"
                         />
                         <div>
@@ -23,47 +23,31 @@ export default function Header() {
                         </div>
                     </div>
 
-                    {/* Navigation */}
                     <nav className="hidden md:flex items-center gap-8">
-                        <button 
-                            onClick={() => navigate('/')}
-                            className="text-slate-600 hover:text-slate-900 font-medium transition-colors"
-                        >
+                        <button onClick={() => navigate('/')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Home
                         </button>
-                        <button 
-                            onClick={() => navigate('/map')}
-                            className="text-slate-600 hover:text-slate-900 font-medium transition-colors"
-                        >
+                        <button onClick={() => navigate('/map')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Map
                         </button>
-                        <button 
-                            onClick={() => navigate('/about')}
-                            className="text-slate-600 hover:text-slate-900 font-medium transition-colors"
-                        >
+                        <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                            Management
+                        </button>
+                        <button onClick={() => navigate('/about')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             About
                         </button>
                     </nav>
 
-                    {/* Action Buttons */}
                     <div className="flex items-center gap-3">
                         {user && (
                             <div className="text-sm text-slate-700 mr-2">Hola, {user.name}</div>
                         )}
                         {accessToken ? (
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    logout()
-                                }}
-                            >
+                            <Button variant="outline" onClick={() => logout()} className="cursor-pointer">
                                 Log Out
                             </Button>
                         ) : (
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate('/login')}
-                            >
+                            <Button variant="outline" onClick={() => navigate('/login')} className="cursor-pointer">
                                 Sign In
                             </Button>
                         )}

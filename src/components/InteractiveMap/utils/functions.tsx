@@ -1,9 +1,8 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, BackendContainer, BackendCluster } from "./types"
+import { Container, Site, ContainerType, BackendContainer, BackendCluster } from "./types"
 import { api } from "../../../lib/api"
 
-// Esto tambien se puede llegar a eliminar tranquilamente
 export type ContainerFetchZoomConfig = {
     backendZoom: number
     boundsPadding: number
@@ -11,7 +10,6 @@ export type ContainerFetchZoomConfig = {
 }
 
 // Ajustá esta función para cambiar cuánto área y cuántos resultados pide el mapa según el zoom.
-// Ya casi no se usa, se puede llegar a eliminar o volver a usar si es necesario
 export const getContainerFetchConfigByZoom = (zoom: number): ContainerFetchZoomConfig => {
     const normalizedZoom = Math.max(0, Math.floor(zoom))
 
@@ -49,6 +47,37 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
         }
 
         sitesMap[siteId].containers.push(container)
+    })
+
+    const colorPriority: Record<string, number> = {
+        "#ef4444": 3,
+        "#f59e0b": 2,
+        "#10b981": 1,
+    }
+
+    Object.values(sitesMap).forEach((site) => {
+        const counts: Record<string, number> = {}
+        site.containers.forEach((c) => {
+            counts[c.color] = (counts[c.color] || 0) + 1
+        })
+
+        let majorityColor = site.containers[0]?.color || "#10b981"
+        let maxCount = 0
+
+        Object.entries(counts).forEach(([color, count]) => {
+            if (count > maxCount) {
+                maxCount = count
+                majorityColor = color
+            } else if (count === maxCount) {
+                const currentPri = colorPriority[color] || 0
+                const majorityPri = colorPriority[majorityColor] || 0
+                if (currentPri > majorityPri) {
+                    majorityColor = color
+                }
+            }
+        })
+
+        site.color = majorityColor
     })
 
     return Object.values(sitesMap)
@@ -91,19 +120,33 @@ export const fetchContainersBBox = async (
             }))
         }
 
-        // otherwise treat as containers
         return (data as BackendContainer[]).map((c) => {
-            const typeName = (c.container_type?.name ?? 'indiferenciado').toString().toLowerCase()
-            const color = c.container_type?.waste_types?.[0]?.color ?? '#1f2937'
+            let type: ContainerType = "indiferenciado"
+
+            const typeName = (c.container_type?.name || "").toLowerCase()
+            if (typeName.includes("seca") || typeName.includes("reciclaje")) {
+                type = "reciclaje"
+            } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
+                type = "organico"
+            }
+
+            // Color basado en el nivel de llenado
+            const level = c.current_level ?? 0
+            let color = "#10b981" // (<50%)
+            if (level >= 80) {
+                color = "#ef4444" // (>=80%)
+            } else if (level >= 50) {
+                color = "#f59e0b" // (50% - 79%)
+            }
 
             return {
                 id: String(c.id),
                 siteId: String(c.site_id ?? c.id),
                 lat: c.latitude,
                 long: c.longitude,
-                type: typeName,
-                color,
-                description: '',
+                type: type,
+                color: color,
+                description: `${c.site_name || 'Contenedor'} - ${c.container_type?.name || 'Genérico'} (Nivel: ${level}%)`
             } as Container
         })
     } catch (error) {
