@@ -3,13 +3,19 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet"
 import { Container, Site, labels } from "./utils/types"
 import { fetchContainers, groupContainersBySite, createMapPinIcon } from "./utils/functions"
 
-export default function InteractiveMap() {
+interface InteractiveMapProps {
+    refreshTrigger?: number
+}
+
+export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         const loadContainers = async () => {
-            setLoading(true)
+            if (containers.length === 0) {
+                setLoading(true)
+            }
 
             try {
                 const data = await fetchContainers()
@@ -24,7 +30,7 @@ export default function InteractiveMap() {
         }
 
         loadContainers()
-    }, [])
+    }, [refreshTrigger])
 
     // Calcular sitios agrupados. Se recalcula automáticamente cuando cambian los contenedores
     const sites: Site[] = useMemo(() => {

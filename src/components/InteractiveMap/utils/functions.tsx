@@ -61,7 +61,7 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
 export const fetchContainers = async (): Promise<Container[]> => {
     try {
         const { api } = await import("../../../lib/api")
-        const backendContainers = await api.get<any[]>('/map/containers/?limit=1000')
+        const backendContainers = await api.get<any[]>(`/map/containers/?limit=1000&t=${Date.now()}`)
         if (backendContainers && backendContainers.length > 0) {
             return backendContainers.map(c => {
                 let type: any = "indiferenciado"

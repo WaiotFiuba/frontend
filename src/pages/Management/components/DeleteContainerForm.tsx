@@ -22,7 +22,7 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
       onConfirm()
     } catch (err: any) {
       console.error(err)
-      setError('Error al eliminar el contenedor: ' + (err.message || err))
+      setError('Error deleting container: ' + (err.message || err))
     } finally {
       setLoading(false)
     }
@@ -36,9 +36,9 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             <AlertTriangle className="h-6 w-6" />
           </div>
           <div className="space-y-2 w-full">
-            <h3 className="text-lg font-bold text-slate-900">Eliminar Contenedor</h3>
+            <h3 className="text-lg font-bold text-slate-900">Delete Container</h3>
             <p className="text-sm text-slate-500 leading-relaxed">
-              ¿Está seguro de que desea eliminar el contenedor <span className="font-mono font-bold text-slate-800">{container.site_id}</span> ({container.site_name || 'Sin Nombre'})?
+              Are you sure you want to delete container <span className="font-mono font-bold text-slate-800">{container.site_id}</span> ({container.site_name || 'No Name'})?
             </p>
             {error && (
               <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg border border-rose-100 font-medium">
@@ -49,16 +49,16 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
         </div>
         <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
           <Button variant="outline" onClick={onClose} disabled={loading} className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold">
-            Cancelar
+            Cancel
           </Button>
           <Button onClick={handleConfirmDelete} disabled={loading} className="bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-md flex items-center gap-2">
             {loading ? (
               <>
                 <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                Eliminando...
+                Deleting...
               </>
             ) : (
-              'Eliminar Contenedor'
+              'Delete Container'
             )}
           </Button>
         </div>

@@ -3,13 +3,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { BackendContainer } from './types'
 
-interface GestionStatsProps {
+interface ManagementStatsProps {
   containers: BackendContainer[]
   showOnlyAlerts: boolean
   onToggleAlerts: (show: boolean) => void
 }
 
-export default function GestionStats({ containers, showOnlyAlerts, onToggleAlerts, }: GestionStatsProps) {
+export default function ManagementStats({ containers, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
   const stats = useMemo(() => {
     const total = containers.length
     const available = containers.filter((c) => c.available).length
@@ -29,7 +29,7 @@ export default function GestionStats({ containers, showOnlyAlerts, onToggleAlert
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Contenedores Totales
+              Total Containers
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{stats.total}</h3>
           </div>
@@ -44,7 +44,7 @@ export default function GestionStats({ containers, showOnlyAlerts, onToggleAlert
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Disponibles / Activos
+              Available / Active
             </p>
             <h3 className="text-3xl font-extrabold text-emerald-600">{stats.available}</h3>
           </div>
@@ -59,7 +59,7 @@ export default function GestionStats({ containers, showOnlyAlerts, onToggleAlert
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Llenado Promedio
+              Average Fill Level
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{stats.avgFill}%</h3>
           </div>
@@ -73,7 +73,7 @@ export default function GestionStats({ containers, showOnlyAlerts, onToggleAlert
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Alertas de Reboce
+              Overflow Alerts
             </p>
             <h3 className="text-3xl font-extrabold text-amber-600">{stats.alertLevel}</h3>
           </div>
