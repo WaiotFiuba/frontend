@@ -15,6 +15,10 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
 }))
 
+vi.mock('@/components/InteractiveMap/page', () => ({
+  default: () => <div data-testid="interactive-map-mock">Mocked map</div>,
+}))
+
 vi.mock('../../context/AuthContext', () => ({
   useAuthContext: () => ({
     user: null,

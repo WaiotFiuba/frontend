@@ -45,7 +45,7 @@ describe('AuthContext', () => {
       const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
         const url = String(input)
         if (url.endsWith('/auth/login')) {
-          return jsonResponse({ access_token: 'tok-123', token_type: 'bearer' })
+            return jsonResponse({ access_token: 'tok-123', token_type: 'bearer', refresh_token: 'ref-123' })
         }
         if (url.endsWith('/users/me')) {
           return jsonResponse({ id: 5, name: 'Usuario', email: 'usuario@example.com' })
@@ -63,6 +63,7 @@ describe('AuthContext', () => {
     await user.click(screen.getByText('doLogin'))
 
     await waitFor(() => expect(localStorage.getItem('access_token')).toBe('tok-123'))
+    await waitFor(() => expect(localStorage.getItem('refresh_token')).toBe('ref-123'))
     await waitFor(() => expect(screen.getByText(/user:Usuario/)).toBeInTheDocument())
 
     fetchMock.mockRestore()
@@ -72,7 +73,7 @@ describe('AuthContext', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/auth/login')) {
-        return jsonResponse({ access_token: 'tok-456', token_type: 'bearer' })
+        return jsonResponse({ access_token: 'tok-456', token_type: 'bearer', refresh_token: 'ref-456' })
       }
       if (url.endsWith('/users/me')) {
         return jsonResponse({ id: 5, name: 'Usuario2', email: 'u2@example.com' })
@@ -95,6 +96,7 @@ describe('AuthContext', () => {
     await u.click(screen.getByText('doLogout'))
 
     await waitFor(() => expect(localStorage.getItem('access_token')).toBeNull())
+    await waitFor(() => expect(localStorage.getItem('refresh_token')).toBeNull())
     await waitFor(() => expect(screen.getByText('user:')).toBeInTheDocument())
   })
 
