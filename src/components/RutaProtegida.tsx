@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuthContext } from "../../context/AuthContext";
+import { useAuthContext } from "../context/AuthContext";
 
 export default function RutaProtegida({ children }: { children: ReactNode }) {
     const { accessToken } = useAuthContext();

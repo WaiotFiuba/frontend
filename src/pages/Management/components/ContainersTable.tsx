@@ -115,7 +115,7 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
             <p className="text-lg font-bold text-slate-500">No containers found</p>
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
               {containers.length === 0
-                ? "The database is empty. Use the 'Generate Containers' button at the top to seed the initial data."
+                ? "The database is empty. Please register a container using the form below."
                 : 'No containers match the search or selected filter.'}
             </p>
           </div>

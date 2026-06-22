@@ -1,7 +1,7 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Container, Site, ContainerType, BackendContainer, BackendCluster } from "./types"
-import { api } from "../../../lib/api"
+import { api } from "../../lib/api"
 
 export type ContainerFetchZoomConfig = {
     backendZoom: number
@@ -154,7 +154,6 @@ export const fetchContainersBBox = async (
         return []
     }
 }
-
 
 
 //PROVISIONAL HASTA ENCONTRAR UNA LIBRERIA DE ICONOS PERSONALIZABLE

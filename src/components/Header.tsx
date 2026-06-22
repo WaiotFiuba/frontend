@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
-import { useAuthContext } from '../../context/AuthContext'
+import { useAuthContext } from '../context/AuthContext'
 
 export default function Header() {
     const navigate = useNavigate()

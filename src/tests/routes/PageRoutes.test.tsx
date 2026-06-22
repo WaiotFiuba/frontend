@@ -15,7 +15,7 @@ vi.mock('react-leaflet', () => ({
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
 }))
 
-vi.mock('@/components/InteractiveMap/page', () => ({
+vi.mock('@/components/InteractiveMap', () => ({
   default: () => <div data-testid="interactive-map-mock">Mocked map</div>,
 }))
 

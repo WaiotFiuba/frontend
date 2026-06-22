@@ -9,10 +9,12 @@ function MapViewportController({
     mapRef,
     debounceRef,
     fetchForMap,
+    onZoomChange,
 }: {
     mapRef: MutableRefObject<LeafletMap | null>
     debounceRef: MutableRefObject<number | null>
     fetchForMap: (map: LeafletMap) => void
+    onZoomChange?: (zoom: number) => void
 }) {
     const map = useMapEvents({
         moveend: () => {
@@ -22,6 +24,9 @@ function MapViewportController({
         zoomend: () => {
             mapRef.current = map
             fetchForMap(map)
+            if (onZoomChange) {
+                onZoomChange(map.getZoom())
+            }
         },
     })
 
@@ -29,6 +34,9 @@ function MapViewportController({
         mapRef.current = map
         const currentDebounce = debounceRef.current
         fetchForMap(map)
+        if (onZoomChange) {
+            onZoomChange(map.getZoom())
+        }
 
         return () => {
             if (currentDebounce) {
@@ -36,31 +44,36 @@ function MapViewportController({
             }
             mapRef.current = null
         }
-    }, [map, mapRef, debounceRef, fetchForMap])
+    }, [map, mapRef, debounceRef, fetchForMap, onZoomChange])
 
     return null
 }
 
 interface InteractiveMapProps {
     refreshTrigger?: number
+    containers?: Container[]
 }
 
-export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapProps) {
+export default function InteractiveMap({ refreshTrigger = 0, containers: propContainers }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
+    const [zoom, setZoom] = useState<number>(13)
     const mapRef = useRef<LeafletMap | null>(null)
     const cacheRef = useRef<Map<string, Container[]>>(new Map())
     const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
+    const latestRequestIdRef = useRef<number>(0)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
-        // estas constantes no se que tan necesarias son, se pueden eliminar y usar directamente los valores, o se pueden ajustar para cambiar la cantidad de datos que pide el mapa
-        const { backendZoom, limit } = { backendZoom: zoom, limit: 1000 }
-        // aca cachea los resultados para no pedir los mismos datos varias veces, se puede eliminar si no se quiere cachear o ajustar la key para cachear de otra forma
+        const requestId = ++latestRequestIdRef.current
+        const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
+        
         const key = `${lat_min.toFixed(5)}_${lat_max.toFixed(5)}_${lng_min.toFixed(5)}_${lng_max.toFixed(5)}_${backendZoom}`
         const cached = cacheRef.current.get(key)
         if (cached) {
-            if (mountedRef.current) setContainers(cached)
+            if (mountedRef.current && requestId === latestRequestIdRef.current) {
+                setContainers(cached)
+            }
             return
         }
         // Si ya hay una petición en curso para esa key, espera a que termine en vez de hacer otra igual
@@ -68,7 +81,9 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
         if (pending) {
             try {
                 const data = await pending
-                if (mountedRef.current) setContainers(data)
+                if (mountedRef.current && requestId === latestRequestIdRef.current) {
+                    setContainers(data)
+                }
             } catch (e) {
                 console.error('Error awaiting pending fetch', e)
             }
@@ -82,7 +97,9 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
         try {
             const data = await promise
             cacheRef.current.set(key, data)
-            if (mountedRef.current) setContainers(data)
+            if (mountedRef.current && requestId === latestRequestIdRef.current) {
+                setContainers(data)
+            }
         } catch (e) {
             console.error('Error al cargar contenedores:', e)
         } finally {
@@ -115,6 +132,9 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
     }, [fetchForBounds])
 
     useEffect(() => {
+        if (propContainers) {
+            return
+        }
         mountedRef.current = true
         cacheRef.current.clear()
 
@@ -131,12 +151,72 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
                 window.clearTimeout(currentDebounce)
             }
         }
-    }, [refreshTrigger, fetchForBounds, fetchForMap])
+    }, [refreshTrigger, fetchForBounds, fetchForMap, propContainers])
+
+    // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
+    // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
+    const displayContainers = useMemo(() => {
+        if (!propContainers) {
+            return containers
+        }
+
+        const getGridSize = (z: number): number | null => {
+            if (z < 11) return 0.15
+            if (z < 13) return 0.05
+            if (z < 15) return 0.015
+            if (z < 17) return 0.003
+            return null
+        }
+
+        const gridSize = getGridSize(zoom)
+        if (gridSize === null) {
+            return propContainers
+        }
+
+        const groups: Record<string, Container[]> = {}
+        propContainers.forEach((c) => {
+            const snapLat = Math.round(c.lat / gridSize)
+            const snapLong = Math.round(c.long / gridSize)
+            const cellKey = `${snapLat}_${snapLong}`
+            if (!groups[cellKey]) {
+                groups[cellKey] = []
+            }
+            groups[cellKey].push(c)
+        })
+
+        const clustered: Container[] = []
+        Object.entries(groups).forEach(([cellKey, cellContainers]) => {
+            if (cellContainers.length === 1) {
+                clustered.push(cellContainers[0])
+            } else {
+                let sumLat = 0
+                let sumLong = 0
+                cellContainers.forEach((c) => {
+                    sumLat += c.lat
+                    sumLong += c.long
+                })
+                const avgLat = sumLat / cellContainers.length
+                const avgLong = sumLong / cellContainers.length
+
+                clustered.push({
+                    id: `cluster-${cellKey}`,
+                    siteId: `cluster-${cellKey}`,
+                    lat: avgLat,
+                    long: avgLong,
+                    type: 'indiferenciado',
+                    color: '#6b7280',
+                    description: String(cellContainers.length),
+                })
+            }
+        })
+
+        return clustered
+    }, [propContainers, containers, zoom])
 
     // Calcular sitios agrupados. Se recalcula automáticamente cuando cambian los contenedores
     const sites: Site[] = useMemo(() => {
-        return groupContainersBySite(containers)
-    }, [containers])
+        return groupContainersBySite(displayContainers)
+    }, [displayContainers])
 
     // Centro del mapa en CABA
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
@@ -159,6 +239,7 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
                     mapRef={mapRef}
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
+                    onZoomChange={setZoom}
                 />
 
                 {sites.map((site) => {
@@ -194,7 +275,7 @@ export default function InteractiveMap({ refreshTrigger = 0 }: InteractiveMapPro
                                             <strong>Total:</strong> {containerCount} contenedor{containerCount > 1 ? "es" : ""}
                                         </p>
                                         <p className="text-xs">
-                                            <strong>Coordenadas:</strong> ({site.lat.toFixed(4)}, {site.long.toFixed(4)})
+                                            <strong>Coordenadas:</strong> ({site.lat.toFixed(6)}, {site.long.toFixed(6)})
                                         </p>
 
                                         <div className="border-t pt-1">
