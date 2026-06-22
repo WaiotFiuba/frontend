@@ -40,6 +40,19 @@ interface ZoneDemandRead {
   commune: string | null
 }
 
+const getMinTickSeconds = (): number => {
+  const envVal = import.meta.env.VITE_MIN_TICK_SECONDS
+  if (envVal !== undefined && envVal !== '') {
+    const parsed = Number(envVal)
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return 16
+}
+
+const MIN_TICK_SECONDS = getMinTickSeconds()
+
 interface SimulationControlProps {
   onSimulationStateChange?: () => void
 }
@@ -289,10 +302,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const isGlobalInvalid = isGlobal &&
     speedup !== '' &&
     transitionMinutes !== '' &&
-    (Number(transitionMinutes) / Number(speedup)) < 16;
+    (Number(transitionMinutes) / Number(speedup)) < MIN_TICK_SECONDS;
 
-  const maxSpeedupForCurrentTransition = transitionMinutes !== '' ? Math.floor(Number(transitionMinutes) / 16) : 0;
-  const minTransitionForCurrentSpeedup = speedup !== '' ? Math.ceil(Number(speedup) * 16) : 0;
+  const maxSpeedupForCurrentTransition = transitionMinutes !== '' ? Math.floor(Number(transitionMinutes) / MIN_TICK_SECONDS) : 0;
+  const minTransitionForCurrentSpeedup = speedup !== '' ? Math.ceil(Number(speedup) * MIN_TICK_SECONDS) : 0;
 
   const secondsPerTick = (speedup !== '' && Number(speedup) > 0 && transitionMinutes !== '')
     ? (Number(transitionMinutes) / Number(speedup))
@@ -509,14 +522,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-3.5 rounded-r-lg shadow-sm text-xs mt-2 animate-in fade-in duration-200">
                 <p className="font-semibold">Intervalo de actualización no válido para simulación global</p>
                 <p className="text-amber-700 mt-0.5">
-                  Para simular a nivel global (28k+ contenedores), la espera por tick debe ser de al menos 16 segundos para evitar sobrecargar el sistema.
+                  Para simular a nivel global (28k+ contenedores), la espera por tick debe ser de al menos {MIN_TICK_SECONDS} segundos para evitar sobrecargar el sistema.
                   El intervalo actual es de <strong>{(Number(transitionMinutes) / Number(speedup)).toFixed(1)}s</strong>.
                 </p>
                 <div className="mt-2 pt-2 border-t border-amber-200/60 space-y-1 text-amber-700">
                   {maxSpeedupForCurrentTransition >= 1 ? (
                     <p>• Si desea mantener los minutos de transición actual, configure el <strong>Speedup máximo en {maxSpeedupForCurrentTransition}</strong>.</p>
                   ) : (
-                    <p>• Los minutos de transición actuales ({transitionMinutes} min) son demasiado bajos para un Speedup válido. Aumente la transición a al menos 16 min.</p>
+                    <p>• Los minutos de transición actuales ({transitionMinutes} min) son demasiado bajos para un Speedup válido. Aumente la transición a al menos {MIN_TICK_SECONDS} min.</p>
                   )}
                   <p>• Si desea mantener el Speedup actual, configure los <strong>Minutos de Transición mínimo en {minTransitionForCurrentSpeedup} min</strong>.</p>
                   <p>• O desmarque <strong>"Simulación Global"</strong> para permitir cualquier velocidad.</p>
