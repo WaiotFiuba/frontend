@@ -283,22 +283,21 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             Digital Twin Control
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
-            {activeSim 
-              ? 'Monitor and adjust the active simulation in real-time.' 
+            {activeSim
+              ? 'Monitor and adjust the active simulation in real-time.'
               : 'Configure and start the real-time synthetic telemetry stream.'}
           </CardDescription>
         </div>
         {activeSim && (
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
-              activeSim.status === 'running' 
+            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${activeSim.status === 'running'
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                 : activeSim.status === 'paused'
-                ? 'bg-amber-50 border-amber-200 text-amber-700'
-                : activeSim.status === 'pending'
-                ? 'bg-blue-50 border-blue-200 text-blue-700'
-                : 'bg-slate-50 border-slate-200 text-slate-700'
-            }`}>
+                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                  : activeSim.status === 'pending'
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
               {activeSim.status === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-spin mr-1" />}
               {activeSim.status === 'running' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
               {activeSim.status === 'pending' ? 'GENERATING' : activeSim.status.toUpperCase()}
@@ -342,7 +341,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulated Clock</p>
                 <p className="text-xs font-bold text-indigo-700 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
-                  {activeSim.simulated_time 
+                  {activeSim.simulated_time
                     ? new Date(activeSim.simulated_time).toLocaleDateString() + ' ' + new Date(activeSim.simulated_time).toLocaleTimeString()
                     : 'Not started'}
                 </p>
@@ -552,7 +551,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   onChange={(e) => setTransitionMinutes(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
                 />
-                 <p className="text-[10px] text-slate-400">Default: 60 simulated min.</p>
+                <p className="text-[10px] text-slate-400">Default: 60 simulated min.</p>
               </div>
             </div>
 

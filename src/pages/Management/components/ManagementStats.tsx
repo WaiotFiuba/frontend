@@ -1,26 +1,16 @@
-import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
-import { BackendContainer } from './types'
+import { ContainerStats } from './types'
 
 interface ManagementStatsProps {
-  containers: BackendContainer[]
+  stats: ContainerStats | null
   showOnlyAlerts: boolean
   onToggleAlerts: (show: boolean) => void
 }
 
-export default function ManagementStats({ containers, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
-  const stats = useMemo(() => {
-    const total = containers.length
-    const available = containers.filter((c) => c.available).length
-    const alertLevel = containers.filter((c) => c.current_level >= 80).length
-    const avgFill =
-      total > 0
-        ? Math.round(containers.reduce((acc, c) => acc + c.current_level, 0) / total)
-        : 0
+export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
+  const statsValues = stats || { total: 0, available: 0, avg_fill: 0, alert_level: 0 }
 
-    return { total, available, alertLevel, avgFill }
-  }, [containers])
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -31,7 +21,7 @@ export default function ManagementStats({ containers, showOnlyAlerts, onToggleAl
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Total Containers
             </p>
-            <h3 className="text-3xl font-extrabold text-slate-900">{stats.total}</h3>
+            <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.total}</h3>
           </div>
           <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
             <Database className="h-6 w-6" />
@@ -46,7 +36,7 @@ export default function ManagementStats({ containers, showOnlyAlerts, onToggleAl
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Available / Active
             </p>
-            <h3 className="text-3xl font-extrabold text-emerald-600">{stats.available}</h3>
+            <h3 className="text-3xl font-extrabold text-emerald-600">{statsValues.available}</h3>
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
             <CheckCircle2 className="h-6 w-6" />
@@ -61,7 +51,7 @@ export default function ManagementStats({ containers, showOnlyAlerts, onToggleAl
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Average Fill Level
             </p>
-            <h3 className="text-3xl font-extrabold text-slate-900">{stats.avgFill}%</h3>
+            <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.avg_fill}%</h3>
           </div>
           <div className="p-3 bg-slate-50 text-slate-600 rounded-xl">
             <TrendingUp className="h-6 w-6" />
@@ -75,7 +65,7 @@ export default function ManagementStats({ containers, showOnlyAlerts, onToggleAl
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
               Overflow Alerts
             </p>
-            <h3 className="text-3xl font-extrabold text-amber-600">{stats.alertLevel}</h3>
+            <h3 className="text-3xl font-extrabold text-amber-600">{statsValues.alert_level}</h3>
           </div>
           <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
             <AlertTriangle className="h-6 w-6" />

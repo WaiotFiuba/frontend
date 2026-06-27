@@ -25,3 +25,16 @@ export interface BackendContainer {
   zone: string | null
   density_factor: number
 }
+
+export interface ContainerStats {
+  total: number
+  available: number
+  avg_fill: number
+  alert_level: number
+}
+
+export interface PaginatedContainers {
+  items: BackendContainer[]
+  total: number
+}
+

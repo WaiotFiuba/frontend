@@ -1,7 +1,7 @@
 
 import { api } from '@/lib/api'
-import { useState, useEffect, useMemo } from 'react'
-import { BackendContainer } from './components/types'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { BackendContainer, ContainerStats, PaginatedContainers } from './components/types'
 import ManagementStats from './components/ManagementStats'
 import ContainersTable from './components/ContainersTable'
 import AddContainerForm from './components/AddContainerForm'
@@ -9,54 +9,111 @@ import DeleteContainerForm from './components/DeleteContainerForm'
 import SimulationControl from './components/SimulationControl'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 
+const PAGE_SIZE = 10
+
 export default function Management() {
   const [containers, setContainers] = useState<BackendContainer[]>([])
+  const [total, setTotal] = useState(0)
+  const [stats, setStats] = useState<ContainerStats | null>(null)
+  const [containerTypes, setContainerTypes] = useState<Array<{ id: number; name: string }>>([])
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
+  // Table state (lifted up to drive backend requests)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedType, setSelectedType] = useState('all')
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const loadContainers = async () => {
+  const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
+
+  // Debounce search input
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(value)
+      setCurrentPage(1)
+    }, 350)
+  }, [])
+
+  const handleTypeChange = (value: string) => {
+    setSelectedType(value)
+    setCurrentPage(1)
+  }
+
+  const handleToggleAlerts = (show: boolean) => {
+    setShowOnlyAlerts(show)
+    setCurrentPage(1)
+  }
+
+  // Fetch paginated containers
+  const loadContainers = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<BackendContainer[]>(`/map/containers/?limit=1000&t=${Date.now()}`)
-      setContainers(data)
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        page_size: String(PAGE_SIZE),
+      })
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (selectedType && selectedType !== 'all') params.set('type', selectedType)
+      if (showOnlyAlerts) params.set('only_alerts', 'true')
+
+      const data = await api.get<PaginatedContainers>(`/map/containers/?${params.toString()}`)
+      setContainers(data.items)
+      setTotal(data.total)
     } catch (err: any) {
       console.error(err)
-      setError(
-        'Error connecting to the containers database. Please make sure the backend and database are running.'
-      )
+      setError('Error connecting to the containers database. Please make sure the backend and database are running.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, debouncedSearch, selectedType, showOnlyAlerts])
+
+  // Fetch stats independently
+  const loadStats = useCallback(async () => {
+    try {
+      const data = await api.get<ContainerStats>('/map/containers/stats')
+      setStats(data)
+    } catch (err) {
+      console.error('Error fetching container stats:', err)
+    }
+  }, [])
+
+  // Fetch container types once on mount
+  useEffect(() => {
+    const loadContainerTypes = async () => {
+      try {
+        const data = await api.get<Array<{ id: number; name: string }>>('/map/containers/types')
+        setContainerTypes(data)
+      } catch (err) {
+        console.error('Error fetching container types:', err)
+      }
+    }
+    loadContainerTypes()
+    loadStats()
+  }, [loadStats])
 
   useEffect(() => {
     loadContainers()
-  }, [])
-
-
-  const containerTypes = useMemo(() => {
-    const uniqueTypes: Record<number, { id: number; name: string }> = {}
-    containers.forEach((c) => {
-      if (c.container_type && c.container_type.id) {
-        uniqueTypes[c.container_type.id] = {
-          id: c.container_type.id,
-          name: c.container_type.name,
-        }
-      }
-    })
-    return Object.values(uniqueTypes)
-  }, [containers])
+  }, [loadContainers])
 
   const confirmRemoveLocalContainer = () => {
     if (containerToRemove) {
       setContainers((prev) => prev.filter((c) => c.id !== containerToRemove.id))
+      setTotal((prev) => Math.max(0, prev - 1))
       setContainerToRemove(null)
     }
+  }
+
+  const handleRefreshAll = () => {
+    loadContainers()
+    loadStats()
   }
 
   return (
@@ -72,7 +129,6 @@ export default function Management() {
               Administration and control of containers and synthetic topology seeding.
             </p>
           </div>
-
         </div>
 
         {error && (
@@ -95,13 +151,26 @@ export default function Management() {
           </div>
         )}
 
-        <ManagementStats containers={containers} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} />
+        <ManagementStats stats={stats} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={handleToggleAlerts} />
 
-        <SimulationControl onSimulationStateChange={loadContainers} />
+        <SimulationControl onSimulationStateChange={handleRefreshAll} />
 
-        <ContainersTable containers={containers} loading={loading} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} onRemoveContainer={setContainerToRemove} />
+        <ContainersTable
+          containers={containers}
+          total={total}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          selectedType={selectedType}
+          onTypeChange={handleTypeChange}
+          loading={loading}
+          showOnlyAlerts={showOnlyAlerts}
+          onToggleAlerts={handleToggleAlerts}
+          onRemoveContainer={setContainerToRemove}
+        />
 
-        <AddContainerForm containerTypes={containerTypes} onContainerCreated={loadContainers} onError={setError} onSuccess={setSuccessMsg} />
+        <AddContainerForm containerTypes={containerTypes} onContainerCreated={handleRefreshAll} onError={setError} onSuccess={setSuccessMsg} />
       </div>
 
       {containerToRemove && (
