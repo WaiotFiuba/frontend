@@ -1,9 +1,9 @@
 import { useState, type ChangeEvent, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/ui/card"
+import { Button } from "../../common/ui/button"
+import { Input } from "../../common/ui/input"
 
 type RegisterForm = {
     name: string
@@ -124,9 +124,8 @@ export default function Register() {
                             />
                             <p
                                 aria-live="polite"
-                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
-                                    emailError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
-                                }`}
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${emailError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                    }`}
                             >
                                 Ingresá un email válido.
                             </p>
@@ -146,9 +145,8 @@ export default function Register() {
                             />
                             <p
                                 aria-live="polite"
-                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${
-                                    passwordError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
-                                }`}
+                                className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${passwordError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
+                                    }`}
                             >
                                 Debe tener entre 8 y 72 caracteres.
                             </p>

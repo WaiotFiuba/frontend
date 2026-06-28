@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
+import { Button } from '@/common/ui/button'
 import {
   Search,
   AlertTriangle,
@@ -11,57 +11,79 @@ import {
   RefreshCw,
   Database,
 } from 'lucide-react'
-import { BackendContainer } from './types'
+import { BackendContainer, PaginatedContainers } from './types'
+import { api } from '@/lib/api'
 
 interface ContainersTableProps {
-  containers: BackendContainer[]
-  loading: boolean
-  showOnlyAlerts: boolean
-  onToggleAlerts: (show: boolean) => void
   onRemoveContainer: (container: BackendContainer) => void
+  refreshTrigger: number
 }
 
-export default function ContainersTable({ containers, loading, showOnlyAlerts, onToggleAlerts, onRemoveContainer }: ContainersTableProps) {
+const ITEMS_PER_PAGE = 10
+
+export default function ContainersTable({ onRemoveContainer, refreshTrigger }: ContainersTableProps) {
+
+  const [containers, setContainers] = useState<BackendContainer[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('all')
+  const [showOnlyAlerts, setShowOnlyAlerts] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
 
-  const filteredContainers = useMemo(() => {
-    return containers.filter((container) => {
-      const matchesSearch =
-        String(container.id).includes(searchTerm) ||
-        container.site_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (container.site_name &&
-          container.site_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (container.zone && container.zone.toLowerCase().includes(searchTerm.toLowerCase()))
-
-      const containerTypeName = container.container_type?.name || ''
-      const matchesType =
-        selectedType === 'all' ||
-        (selectedType === 'lateral' && containerTypeName.toLowerCase().includes('lateral')) ||
-        (selectedType === 'bilateral' && containerTypeName.toLowerCase().includes('bilateral')) ||
-        (selectedType === 'soterrado' && containerTypeName.toLowerCase().includes('soterrado'))
-
-      const matchesAlert = !showOnlyAlerts || container.current_level >= 80
-
-      return matchesSearch && matchesType && matchesAlert
-    })
-  }, [containers, searchTerm, selectedType, showOnlyAlerts])
-
-  const totalPages = Math.ceil(filteredContainers.length / itemsPerPage) || 1
+  // Debounce search input to avoid excessive API calls
+  const [debouncedSearch, setDebouncedSearch] = useState('')
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
       setCurrentPage(1)
-    }
-  }, [filteredContainers, totalPages, currentPage])
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
-  const paginatedContainers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredContainers.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredContainers, currentPage])
+  const fetchContainers = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        page_size: String(ITEMS_PER_PAGE),
+      })
+      if (debouncedSearch) params.set('search', debouncedSearch)
+      if (selectedType !== 'all') params.set('type', selectedType)
+      if (showOnlyAlerts) params.set('only_alerts', 'true')
+
+      const data = await api.get<PaginatedContainers>(`/map/containers/?${params.toString()}`)
+      setContainers(data.items)
+      setTotalItems(data.total)
+    } catch (err: any) {
+      console.error(err)
+      setError('Error loading containers.')
+      setContainers([])
+      setTotalItems(0)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage, debouncedSearch, selectedType, showOnlyAlerts])
+
+  useEffect(() => {
+    fetchContainers()
+  }, [fetchContainers, refreshTrigger])
+
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1
+
+  const handleToggleAlerts = (show: boolean) => {
+    setShowOnlyAlerts(show)
+    setCurrentPage(1)
+  }
+
+  const handleTypeChange = (type: string) => {
+    setSelectedType(type)
+    setCurrentPage(1)
+  }
 
   return (
     <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden rounded-2xl">
@@ -79,7 +101,7 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold px-2.5 py-1.5 animate-fade-in shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
                 Only ≥80%
-                <button onClick={() => onToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
+                <button onClick={() => handleToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
                   ×
                 </button>
               </span>
@@ -91,7 +113,7 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
-              <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium">
+              <select value={selectedType} onChange={(e) => handleTypeChange(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium">
                 <option value="all">All Types</option>
                 <option value="lateral">Side Load (Carga Lateral)</option>
                 <option value="bilateral">Bilateral Load (Carga Bilateral)</option>
@@ -103,17 +125,22 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
       </CardHeader>
 
       <CardContent className="p-0">
+        {error && (
+          <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-800 p-3 m-4 rounded-lg shadow-sm text-xs">
+            {error}
+          </div>
+        )}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
             <RefreshCw className="h-10 w-10 animate-spin text-indigo-500" />
             <p className="text-sm font-medium">Loading containers...</p>
           </div>
-        ) : paginatedContainers.length === 0 ? (
+        ) : containers.length === 0 ? (
           <div className="py-20 text-center text-slate-400 space-y-2">
             <Database className="h-12 w-12 mx-auto text-slate-300" />
             <p className="text-lg font-bold text-slate-500">No containers found</p>
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
-              {containers.length === 0
+              {totalItems === 0 && !debouncedSearch && selectedType === 'all' && !showOnlyAlerts
                 ? "The database is empty. Please register a container using the form below."
                 : 'No containers match the search or selected filter.'}
             </p>
@@ -133,7 +160,7 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {paginatedContainers.map((container) => {
+                {containers.map((container) => {
                   const fillPercentage = container.current_level
 
                   let fillBg = 'bg-emerald-500'
@@ -197,18 +224,18 @@ export default function ContainersTable({ containers, loading, showOnlyAlerts, o
         )}
       </CardContent>
 
-      {!loading && filteredContainers.length > 0 && (
+      {!loading && totalItems > 0 && (
         <div className="border-t border-slate-100 bg-slate-50/30 px-6 py-4 flex items-center justify-between">
           <div className="text-xs text-slate-500 font-medium">
             Showing{' '}
             <span className="font-bold text-slate-700">
-              {Math.min(filteredContainers.length, (currentPage - 1) * itemsPerPage + 1)}
+              {Math.min(totalItems, (currentPage - 1) * ITEMS_PER_PAGE + 1)}
             </span>{' '}
             to{' '}
             <span className="font-bold text-slate-700">
-              {Math.min(filteredContainers.length, currentPage * itemsPerPage)}
+              {Math.min(totalItems, currentPage * ITEMS_PER_PAGE)}
             </span>{' '}
-            of <span className="font-bold text-slate-700">{filteredContainers.length}</span>{' '}
+            of <span className="font-bold text-slate-700">{totalItems}</span>{' '}
             containers
           </div>
           <div className="flex items-center gap-2">

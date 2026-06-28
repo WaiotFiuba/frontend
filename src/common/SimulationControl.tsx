@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
+import { Button } from '@/common/ui/button'
 import { Play, Pause, Square, Plus, Trash2, RefreshCw, Activity } from 'lucide-react'
 import { api } from '@/lib/api'
 

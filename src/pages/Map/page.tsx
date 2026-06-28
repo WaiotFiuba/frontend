@@ -1,19 +1,11 @@
 import 'leaflet/dist/leaflet.css';
-import { Button } from '@/components/ui/button'
+import { Button } from '@/common/ui/button'
 import { useNavigate } from 'react-router-dom'
-import InteractiveMap from '@/components/InteractiveMap'
+import InteractiveMap from '@/common/InteractiveMap'
 import { useState } from 'react'
-import SimulationControl from '@/components/SimulationControl'
-import { BackendContainer } from '@/pages/Management/components/types'
+import SimulationControl from '@/common/SimulationControl'
 
-interface MapProps {
-    containers: BackendContainer[]
-    loading: boolean
-    error: string | null
-    loadContainers: () => Promise<void>
-}
-
-export default function Map({ error }: MapProps) {
+export default function Map() {
     const navigate = useNavigate()
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -35,12 +27,6 @@ export default function Map({ error }: MapProps) {
                         Back to Home
                     </Button>
                 </div>
-
-                {error && (
-                    <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-800 p-3 rounded-lg shadow-sm text-xs">
-                        {error}
-                    </div>
-                )}
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative">
                     <InteractiveMap refreshTrigger={refreshTrigger} />

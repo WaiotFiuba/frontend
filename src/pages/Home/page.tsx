@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/common/ui/button'
 
 export default function Home() {
     const navigate = useNavigate()
@@ -12,13 +12,13 @@ export default function Home() {
                         Welcome to Waiot FIUBA!
                     </h1>
                     <p className="text-xl text-slate-600 leading-relaxed">
-                       First steps in digital twin solutions.
+                        First steps in digital twin solutions.
                     </p>
                 </div>
-                
+
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                    <Button 
-                        onClick={() => navigate('/map')} 
+                    <Button
+                        onClick={() => navigate('/map')}
                         size="lg"
                         className="px-8 py-6 text-base font-semibold"
                     >

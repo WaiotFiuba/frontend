@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
 import { Database } from 'lucide-react'
 import { BackendContainer } from './types'
 

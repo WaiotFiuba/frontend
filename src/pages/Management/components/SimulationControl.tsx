@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
+import { Button } from '@/common/ui/button'
 import { Play, Pause, Square, Plus, Trash2, Settings, RefreshCw, Activity } from 'lucide-react'
 import { api } from '@/lib/api'
 
@@ -291,12 +291,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         {activeSim && (
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${activeSim.status === 'running'
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                : activeSim.status === 'paused'
-                  ? 'bg-amber-50 border-amber-200 text-amber-700'
-                  : activeSim.status === 'pending'
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-slate-50 border-slate-200 text-slate-700'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : activeSim.status === 'paused'
+                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                : activeSim.status === 'pending'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : 'bg-slate-50 border-slate-200 text-slate-700'
               }`}>
               {activeSim.status === 'pending' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-spin mr-1" />}
               {activeSim.status === 'running' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}

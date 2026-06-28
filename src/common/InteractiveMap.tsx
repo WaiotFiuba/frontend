@@ -67,7 +67,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
         const requestId = ++latestRequestIdRef.current
         const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
-        
+
         const key = `${lat_min.toFixed(5)}_${lat_max.toFixed(5)}_${lng_min.toFixed(5)}_${lng_max.toFixed(5)}_${backendZoom}`
         const cached = cacheRef.current.get(key)
         if (cached) {
@@ -252,7 +252,6 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                         if (!map) return
 
                         if (isCluster) {
-                            // Zoom in on cluster center to attempt expansion
                             const currentZoom = map.getZoom()
                             const targetZoom = Math.min(map.getMaxZoom(), Math.max(currentZoom + 3, 13))
                             map.flyTo([site.lat, site.long], targetZoom, { animate: true })

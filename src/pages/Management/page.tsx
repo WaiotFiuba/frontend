@@ -1,63 +1,58 @@
-import { useState, useMemo } from 'react'
-import { BackendContainer, ContainerStats } from './components/types'
+import { useState, useEffect, useCallback } from 'react'
+import { ContainerStats } from './components/types'
 import ManagementStats from './components/ManagementStats'
 import ContainersTable from './components/ContainersTable'
 import AddContainerForm from './components/AddContainerForm'
 import DeleteContainerForm from './components/DeleteContainerForm'
+import { BackendContainer } from './components/types'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { api } from '@/lib/api'
 
-interface ManagementProps {
-  containers: BackendContainer[]
-  loading: boolean
-  error: string | null
-  loadContainers: () => Promise<void>
-  setContainers: React.Dispatch<React.SetStateAction<BackendContainer[]>>
-}
-
-export default function Management({
-  containers,
-  loading,
-  error: parentError,
-  loadContainers,
-  setContainers,
-}: ManagementProps) {
+export default function Management() {
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
-  const [showOnlyAlerts, setShowOnlyAlerts] = useState(false)
 
-  const error = parentError || localError
+  // Stats fetched from /map/containers/stats
+  const [stats, setStats] = useState<ContainerStats | null>(null)
 
-  // Stats computadas localmente desde los containers que llegan del ContainersHub
-  const stats: ContainerStats = useMemo(() => {
-    const total = containers.length
-    const available = containers.filter((c) => c.available).length
-    const alert_level = containers.filter((c) => c.current_level >= 80).length
-    const avg_fill =
-      total > 0
-        ? Math.round(containers.reduce((acc, c) => acc + c.current_level, 0) / total)
-        : 0
-    return { total, available, alert_level, avg_fill }
-  }, [containers])
+  const [tableRefreshTrigger, setTableRefreshTrigger] = useState(0)
 
-  const containerTypes = useMemo(() => {
-    const uniqueTypes: Record<number, { id: number; name: string }> = {}
-    containers.forEach((c) => {
-      if (c.container_type && c.container_type.id) {
-        uniqueTypes[c.container_type.id] = {
-          id: c.container_type.id,
-          name: c.container_type.name,
-        }
-      }
-    })
-    return Object.values(uniqueTypes)
-  }, [containers])
+  const [containerTypes, setContainerTypes] = useState<Array<{ id: number; name: string }>>([])
 
-  const confirmRemoveLocalContainer = () => {
-    if (containerToRemove) {
-      setContainers((prev) => prev.filter((c) => c.id !== containerToRemove.id))
-      setContainerToRemove(null)
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await api.get<ContainerStats>('/map/containers/stats')
+      setStats(data)
+    } catch (err: any) {
+      console.error('Error fetching stats:', err)
     }
+  }, [])
+
+  const fetchContainerTypes = useCallback(async () => {
+    try {
+      const data = await api.get<Array<{ id: number; name: string }>>('/map/containers/types')
+      setContainerTypes(data)
+    } catch (err: any) {
+      console.error('Error fetching container types:', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+    fetchContainerTypes()
+  }, [fetchStats, fetchContainerTypes])
+
+  const handleContainerCreated = () => {
+    fetchStats()
+    setTableRefreshTrigger((prev) => prev + 1)
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!containerToRemove) return
+    setContainerToRemove(null)
+    fetchStats()
+    setTableRefreshTrigger((prev) => prev + 1)
   }
 
   return (
@@ -75,12 +70,12 @@ export default function Management({
           </div>
         </div>
 
-        {error && (
+        {localError && (
           <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-800 p-4 rounded-r-xl shadow-sm text-sm flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Error detected</p>
-              <p className="text-rose-700">{error}</p>
+              <p className="text-rose-700">{localError}</p>
             </div>
           </div>
         )}
@@ -95,19 +90,16 @@ export default function Management({
           </div>
         )}
 
-        <ManagementStats stats={stats} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} />
+        <ManagementStats stats={stats} showOnlyAlerts={false} onToggleAlerts={() => { }} />
 
         <ContainersTable
-          containers={containers}
-          loading={loading}
-          showOnlyAlerts={showOnlyAlerts}
-          onToggleAlerts={setShowOnlyAlerts}
           onRemoveContainer={setContainerToRemove}
+          refreshTrigger={tableRefreshTrigger}
         />
 
         <AddContainerForm
           containerTypes={containerTypes}
-          onContainerCreated={loadContainers}
+          onContainerCreated={handleContainerCreated}
           onError={setLocalError}
           onSuccess={setSuccessMsg}
         />
@@ -117,7 +109,7 @@ export default function Management({
         <DeleteContainerForm
           container={containerToRemove}
           onClose={() => setContainerToRemove(null)}
-          onConfirm={confirmRemoveLocalContainer}
+          onConfirm={handleConfirmRemove}
         />
       )}
     </div>

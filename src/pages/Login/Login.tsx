@@ -1,9 +1,9 @@
 import React, { useState } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
-import { Button } from "../../components/ui/button"
-import { Input } from "../../components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/ui/card"
+import { Button } from "../../common/ui/button"
+import { Input } from "../../common/ui/input"
 
 const success_route = '/';
 
