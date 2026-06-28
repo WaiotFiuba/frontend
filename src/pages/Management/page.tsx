@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { BackendContainer } from './components/types'
+import { BackendContainer, ContainerStats } from './components/types'
 import ManagementStats from './components/ManagementStats'
 import ContainersTable from './components/ContainersTable'
 import AddContainerForm from './components/AddContainerForm'
@@ -23,12 +23,22 @@ export default function Management({
 }: ManagementProps) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
-
   const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
   const [showOnlyAlerts, setShowOnlyAlerts] = useState(false)
 
   const error = parentError || localError
 
+  // Stats computadas localmente desde los containers que llegan del ContainersHub
+  const stats: ContainerStats = useMemo(() => {
+    const total = containers.length
+    const available = containers.filter((c) => c.available).length
+    const alert_level = containers.filter((c) => c.current_level >= 80).length
+    const avg_fill =
+      total > 0
+        ? Math.round(containers.reduce((acc, c) => acc + c.current_level, 0) / total)
+        : 0
+    return { total, available, alert_level, avg_fill }
+  }, [containers])
 
   const containerTypes = useMemo(() => {
     const uniqueTypes: Record<number, { id: number; name: string }> = {}
@@ -85,15 +95,30 @@ export default function Management({
           </div>
         )}
 
-        <ManagementStats containers={containers} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} />
+        <ManagementStats stats={stats} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} />
 
-        <ContainersTable containers={containers} loading={loading} showOnlyAlerts={showOnlyAlerts} onToggleAlerts={setShowOnlyAlerts} onRemoveContainer={setContainerToRemove} />
+        <ContainersTable
+          containers={containers}
+          loading={loading}
+          showOnlyAlerts={showOnlyAlerts}
+          onToggleAlerts={setShowOnlyAlerts}
+          onRemoveContainer={setContainerToRemove}
+        />
 
-        <AddContainerForm containerTypes={containerTypes} onContainerCreated={loadContainers} onError={setLocalError} onSuccess={setSuccessMsg} />
+        <AddContainerForm
+          containerTypes={containerTypes}
+          onContainerCreated={loadContainers}
+          onError={setLocalError}
+          onSuccess={setSuccessMsg}
+        />
       </div>
 
       {containerToRemove && (
-        <DeleteContainerForm container={containerToRemove} onClose={() => setContainerToRemove(null)} onConfirm={confirmRemoveLocalContainer} />
+        <DeleteContainerForm
+          container={containerToRemove}
+          onClose={() => setContainerToRemove(null)}
+          onConfirm={confirmRemoveLocalContainer}
+        />
       )}
     </div>
   )

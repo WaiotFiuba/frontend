@@ -4,6 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Play, Pause, Square, Plus, Trash2, RefreshCw, Activity } from 'lucide-react'
 import { api } from '@/lib/api'
 
+interface UpdateLog {
+  id: number
+  timestamp: string
+  simulatedTime: string
+  measurementsSent: number
+  duration: number | null
+}
+
 interface ZoneOverride {
   neighborhood: string
   multiplier: number | string
@@ -40,18 +48,19 @@ interface ZoneDemandRead {
   commune: string | null
 }
 
-const getMinTickSeconds = (): number => {
-  const envVal = import.meta.env.VITE_MIN_TICK_SECONDS
-  if (envVal !== undefined && envVal !== '') {
-    const parsed = Number(envVal)
-    if (!isNaN(parsed) && parsed > 0) {
-      return parsed
-    }
-  }
-  return 16
-}
 
-const MIN_TICK_SECONDS = getMinTickSeconds()
+const CABA_FALLBACK_NEIGHBORHOODS = [
+  'Agronomia', 'Almagro', 'Balvanera', 'Barracas', 'Belgrano', 'Boedo',
+  'Caballito', 'Chacarita', 'Coghlan', 'Colegiales', 'Constitucion', 'Flores',
+  'Floresta', 'La Boca', 'Liniers', 'Mataderos', 'Monserrat', 'Monte Castro',
+  'Nueva Pompeya', 'Nuñez', 'Palermo', 'Parque Avellaneda', 'Parque Chacabuco',
+  'Parque Chas', 'Parque Patricios', 'Paternal', 'Puerto Madero', 'Recoleta',
+  'Retiro', 'Saavedra', 'San Cristobal', 'San Nicolas', 'San Telmo',
+  'Velez Sarsfield', 'Versalles', 'Villa Crespo', 'Villa Del Parque',
+  'Villa Devoto', 'Villa Gral. Mitre', 'Villa Lugano', 'Villa Luro',
+  'Villa Ortuzar', 'Villa Pueyrredon', 'Villa Real', 'Villa Riachuelo',
+  'Villa Santa Rita', 'Villa Soldati', 'Villa Urquiza'
+]
 
 interface SimulationControlProps {
   onSimulationStateChange?: () => void
@@ -66,16 +75,28 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   // Form states for NEW simulation
   const [speedup, setSpeedup] = useState<number | string>(1)
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
-  const [transitionMinutes, setTransitionMinutes] = useState<number | string>(30)
+  const [frequencyMinutes, setFrequencyMinutes] = useState<number | string>(15)
+  // const [periods, setPeriods] = useState<number | string>(96)
+  const [containerLimit, setContainerLimit] = useState<number | string>(1000)
   const [isGlobal, setIsGlobal] = useState<boolean>(true)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
+
+  // const simulatedDurationHours = Number(periods || 0) * Number(frequencyMinutes || 0) / 60
 
   // Real elapsed stopwatch state
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
   const isFirstRenderRef = useRef(true)
 
-  // Form states for LIVE controls
+  // States for tracking intervals between new telemetry sets
+  const [lastSetTime, setLastSetTime] = useState<number | null>(null)
+  const [timeSinceLastSet, setTimeSinceLastSet] = useState<number>(0)
+  const [updateLogs, setUpdateLogs] = useState<UpdateLog[]>([])
 
+  const prevMeasurementsSentRef = useRef<number | null>(null)
+  const prevSimStatusRef = useRef<string | null>(null)
+  const prevSimIdRef = useRef<number | null>(null)
+
+  // Form states for LIVE controls
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -106,15 +127,17 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     }
   }
 
-  // Fetch neighborhoods for dropdowns
   const fetchNeighborhoods = async () => {
     try {
       const data = await api.get<ZoneDemandRead[]>('/digital-twin/demand/zones')
-      if (data && Array.isArray(data)) {
+      if (data && Array.isArray(data) && data.length > 0) {
         setNeighborhoods(data.map((z) => z.neighborhood))
+      } else {
+        setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
       }
     } catch (err) {
-      console.error('Error fetching neighborhoods:', err)
+      console.error('Error fetching neighborhoods, using fallback:', err)
+      setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
     }
   }
 
@@ -131,7 +154,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     if (activeSim) {
       setSpeedup(activeSim.speedup)
       setGlobalDemandMultiplier(activeSim.global_demand_current)
-      setTransitionMinutes(activeSim.transition_minutes)
       if (activeSim.zone_overrides) {
         setZoneOverrides(
           activeSim.zone_overrides.map((zo) => ({
@@ -209,6 +231,75 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     }
   }, [activeSim?.id, activeSim?.status])
 
+  // Track intervals between incoming telemetry sets
+  useEffect(() => {
+    if (!activeSim) {
+      setLastSetTime(null)
+      setTimeSinceLastSet(0)
+      setUpdateLogs([])
+      prevMeasurementsSentRef.current = null
+      prevSimStatusRef.current = null
+      prevSimIdRef.current = null
+      return
+    }
+
+    const currentMeasurements = activeSim.measurements_sent
+    const currentStatus = activeSim.status
+    const currentId = activeSim.id
+
+    // If starting a new simulation or transitioning to running status
+    if (prevSimIdRef.current !== currentId || (prevSimStatusRef.current !== 'running' && currentStatus === 'running')) {
+      setLastSetTime(Date.now())
+      setTimeSinceLastSet(0)
+      setUpdateLogs([])
+      prevMeasurementsSentRef.current = currentMeasurements
+      prevSimStatusRef.current = currentStatus
+      prevSimIdRef.current = currentId
+      return
+    }
+
+    // If simulation is running and we receive a new set of measurements
+    if (currentStatus === 'running' && prevMeasurementsSentRef.current !== null && currentMeasurements > prevMeasurementsSentRef.current) {
+      const now = Date.now()
+      let deltaSeconds: number | null = null
+      if (lastSetTime !== null) {
+        deltaSeconds = (now - lastSetTime) / 1000
+      }
+
+      const newLog: UpdateLog = {
+        id: Date.now(), // Unique ID using timestamp
+        timestamp: new Date().toLocaleTimeString(),
+        simulatedTime: activeSim.simulated_time
+          ? new Date(activeSim.simulated_time).toLocaleTimeString()
+          : 'Not started',
+        measurementsSent: currentMeasurements,
+        duration: deltaSeconds
+      }
+
+      setUpdateLogs((prev) => [newLog, ...prev].slice(0, 10))
+      setLastSetTime(now)
+      setTimeSinceLastSet(0)
+    }
+
+    prevMeasurementsSentRef.current = currentMeasurements
+    prevSimStatusRef.current = currentStatus
+    prevSimIdRef.current = currentId
+  }, [activeSim?.measurements_sent, activeSim?.status, activeSim?.id, lastSetTime])
+
+  // Live timer for seconds elapsed since the last telemetry set was received
+  useEffect(() => {
+    if (!activeSim || activeSim.status !== 'running' || lastSetTime === null) {
+      setTimeSinceLastSet(0)
+      return
+    }
+
+    const intervalId = setInterval(() => {
+      setTimeSinceLastSet(Math.max(0, Math.floor((Date.now() - lastSetTime) / 1000)))
+    }, 1000)
+
+    return () => clearInterval(intervalId)
+  }, [activeSim?.status, lastSetTime])
+
   const formatElapsed = (ms: number): string => {
     if (ms <= 0) return '00:00'
     const totalSeconds = Math.floor(ms / 1000)
@@ -226,10 +317,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
     try {
       const payload = {
-        speedup: speedup === '' ? 1 : Math.max(1, parseInt(String(speedup)) || 1),
+        speedup: speedup === '' ? 1.0 : Math.max(1.0, parseFloat(String(speedup)) || 1.0),
         global_demand_multiplier: globalDemandMultiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(globalDemandMultiplier)) || 0.1),
-        transition_minutes: transitionMinutes === '' ? 30 : Math.max(0, parseInt(String(transitionMinutes)) || 0),
-        scenario: {},
+        // transition_minutes: transitionMinutes === '' ? 30 : Math.max(0, parseInt(String(transitionMinutes)) || 0),
+        scenario: {
+          frequency_minutes: frequencyMinutes === '' ? 15 : Math.max(1, parseInt(String(frequencyMinutes)) || 1),
+          // periods: periods === '' ? 96 : Math.max(1, parseInt(String(periods)) || 1),
+          container_limit: containerLimit === '' ? 1000 : Math.max(1, parseInt(String(containerLimit)) || 1),
+        },
         zone_overrides: zoneOverrides.map(zo => ({
           neighborhood: zo.neighborhood,
           multiplier: zo.multiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(zo.multiplier)) || 0.1)
@@ -299,18 +394,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     )
   }
 
-  const isGlobalInvalid = isGlobal &&
-    speedup !== '' &&
-    transitionMinutes !== '' &&
-    (Number(transitionMinutes) / Number(speedup)) < MIN_TICK_SECONDS;
-
-  const maxSpeedupForCurrentTransition = transitionMinutes !== '' ? Math.floor(Number(transitionMinutes) / MIN_TICK_SECONDS) : 0;
-  const minTransitionForCurrentSpeedup = speedup !== '' ? Math.ceil(Number(speedup) * MIN_TICK_SECONDS) : 0;
-
-  const secondsPerTick = (speedup !== '' && Number(speedup) > 0 && transitionMinutes !== '')
-    ? (Number(transitionMinutes) / Number(speedup))
-    : 0;
-
   return (
     <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden rounded-2xl relative">
       {activeSim && ['pending', 'stopping'].includes(activeSim.status) && (
@@ -335,9 +418,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             Digital Twin Control
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
-            {activeSim
-              ? 'Monitor and adjust the active simulation in real-time.'
-              : 'Configure and start the real-time synthetic telemetry stream.'}
+            {activeSim ? 'Monitor and adjust the active simulation in real-time.' : 'Configure and start the real-time synthetic telemetry stream.'}
           </CardDescription>
         </div>
         {activeSim && (
@@ -438,6 +519,72 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           </div>
         )}
 
+
+        {activeSim && (
+          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl mb-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                Intervalo entre Sets de Telemetría
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">
+                  Tiempo transcurrido: {timeSinceLastSet}s
+                </span>
+                {updateLogs.filter(log => log.duration !== null).length > 0 && (
+                  <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                    Promedio: {(
+                      updateLogs
+                        .filter(log => log.duration !== null)
+                        .reduce((acc, log) => acc + (log.duration || 0), 0) /
+                      updateLogs.filter(log => log.duration !== null).length
+                    ).toFixed(1)}s
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {updateLogs.length === 0 ? (
+              <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
+                Esperando el primer set de telemetría de la simulación activa...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Historial de actualizaciones
+                </span>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                  {updateLogs.map((log, idx) => (
+                    <div key={log.id} className="flex items-center justify-between bg-white border border-slate-100 px-3 py-2.5 rounded-xl shadow-sm hover:border-slate-200/80 transition-colors animate-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-extrabold text-slate-400 bg-slate-100 rounded-md w-6 h-6 flex items-center justify-center shrink-0">
+                          {updateLogs.length - idx}
+                        </span>
+                        <div>
+                          <p className="font-bold text-slate-700 text-xs">Set de Mediciones</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Total acumulado: {log.measurementsSent}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-700 text-xs">Recibido: {log.timestamp}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Simulado: {log.simulatedTime}</p>
+                      </div>
+                      <div className="bg-indigo-50/70 border border-indigo-100/60 rounded-lg px-2.5 py-1 text-center shrink-0 min-w-[70px] ml-2">
+                        <span className="font-extrabold text-indigo-700 text-xs block leading-tight">
+                          {log.duration !== null ? `+${log.duration.toFixed(1)}s` : 'Inicio'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Parameters Form (Visible always, but disabled if simulation is active) */}
         <div className="relative group">
           {activeSim && (
@@ -454,7 +601,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <label className="text-xs font-bold text-slate-500 uppercase">Speed (Speedup) *</label>
                 <input
                   type="number"
-                  min="1"
+                  step="any"
+                  min="1.0"
                   required
                   value={speedup}
                   onChange={(e) => setSpeedup(e.target.value)}
@@ -479,20 +627,47 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <p className="text-[10px] text-slate-400">General fill multiplier.</p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Transition Minutes *</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Frequency minutes *</label>
                 <input
                   type="number"
-                  min="0"
-                  max="10080"
+                  min="1"
                   required
-                  value={transitionMinutes}
-                  onChange={(e) => setTransitionMinutes(e.target.value)}
+                  value={frequencyMinutes}
+                  onChange={(e) => setFrequencyMinutes(e.target.value)}
                   disabled={!!activeSim}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
                 />
-                <p className="text-[10px] text-slate-400">Default: 30 min.</p>
+                <p className="text-[10px] text-slate-400">Timestamp distance between telemetry ticks.</p>
               </div>
-              <div className="flex items-center gap-2 pt-6">
+              {/* <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Periods *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={periods}
+                  onChange={(e) => setPeriods(e.target.value)}
+                  disabled={!!activeSim}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
+                />
+              <p className="text-[10px] text-slate-400">{simulatedDurationHours.toLocaleString()} simulated hours total.</p>
+            </div>*/}
+            </div>
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase">Container Limit *</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={containerLimit}
+                  onChange={(e) => setContainerLimit(e.target.value)}
+                  disabled={!!activeSim}
+                  className="w-36 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
+                />
+                <p className="text-[10px] text-slate-400">Maximum containers updated per tick.</p>
+              </div>
+              <div className="flex items-center gap-2 pt-4">
                 <input
                   type="checkbox"
                   id="isGlobal"
@@ -509,33 +684,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 </div>
               </div>
             </div>
-
-            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg p-2.5 leading-relaxed">
-              💡 Dada la configuración actual, las actualizaciones reales de telemetría serán cada <strong className="text-indigo-600">{secondsPerTick.toFixed(1)} segundos</strong> con una demanda global de <strong className="text-indigo-600">{globalDemandMultiplier || 1.0}x</strong>
-              {zoneOverrides.length > 0 && (
-                <> salvo en los barrios de <span className="text-slate-700 font-semibold">{zoneOverrides.map(zo => `${zo.neighborhood} (${zo.multiplier}x)`).join(', ')}</span></>
-              )}
-              .
-            </p>
-
-            {isGlobalInvalid && (
-              <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-3.5 rounded-r-lg shadow-sm text-xs mt-2 animate-in fade-in duration-200">
-                <p className="font-semibold">Intervalo de actualización no válido para simulación global</p>
-                <p className="text-amber-700 mt-0.5">
-                  Para simular a nivel global (28k+ contenedores), la espera por tick debe ser de al menos {MIN_TICK_SECONDS} segundos para evitar sobrecargar el sistema.
-                  El intervalo actual es de <strong>{(Number(transitionMinutes) / Number(speedup)).toFixed(1)}s</strong>.
-                </p>
-                <div className="mt-2 pt-2 border-t border-amber-200/60 space-y-1 text-amber-700">
-                  {maxSpeedupForCurrentTransition >= 1 ? (
-                    <p>• Si desea mantener los minutos de transición actual, configure el <strong>Speedup máximo en {maxSpeedupForCurrentTransition}</strong>.</p>
-                  ) : (
-                    <p>• Los minutos de transición actuales ({transitionMinutes} min) son demasiado bajos para un Speedup válido. Aumente la transición a al menos {MIN_TICK_SECONDS} min.</p>
-                  )}
-                  <p>• Si desea mantener el Speedup actual, configure los <strong>Minutos de Transición mínimo en {minTransitionForCurrentSpeedup} min</strong>.</p>
-                  <p>• O desmarque <strong>"Simulación Global"</strong> para permitir cualquier velocidad.</p>
-                </div>
-              </div>
-            )}
 
             {/* Zone Overrides */}
             <div className="space-y-2 pt-2">
@@ -574,11 +722,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           </option>
                         ))}
                       </select>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        max="10"
+                      <input type="number" step="0.1" min="0.1" max="10"
                         required
                         value={zo.multiplier}
                         onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
@@ -621,13 +765,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           </form>
         </div>
 
-        {success && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-500/25 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>{success}</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        {
+          success && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-500/25 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{success}</span>
+            </div>
+          )
+        }
+      </CardContent >
+    </Card >
   )
 }

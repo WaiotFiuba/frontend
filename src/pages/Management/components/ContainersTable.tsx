@@ -21,11 +21,10 @@ interface ContainersTableProps {
   onRemoveContainer: (container: BackendContainer) => void
 }
 
-export default function ContainersTable({ containers, loading, showOnlyAlerts, onToggleAlerts, onRemoveContainer, }: ContainersTableProps) {
+export default function ContainersTable({ containers, loading, showOnlyAlerts, onToggleAlerts, onRemoveContainer }: ContainersTableProps) {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('all')
-
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 

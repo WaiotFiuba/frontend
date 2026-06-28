@@ -18,7 +18,7 @@ export default function ContainersHub() {
         try {
             // Se usa el endpoint de bbox con coordenadas globales a zoom 18 para obtener los puntos individuales para administración
             const data = await api.get<BackendContainer[]>(
-                `/map/containers/bbox?lat_min=-90&lat_max=90&lng_min=-180&lng_max=180&zoom=18&limit=1000&t=${Date.now()}`
+                `/map/containers/bbox?lat_min=-90&lat_max=90&lng_min=-180&lng_max=180&zoom=18&limit=100000000&t=${Date.now()}`
             )
             setContainers(data)
         } catch (err: any) {
@@ -32,9 +32,7 @@ export default function ContainersHub() {
     }
 
     useEffect(() => {
-        if (location.pathname === '/management') {
-            loadContainers()
-        }
+        loadContainers()
     }, [location.pathname])
 
     if (location.pathname === '/management') {
