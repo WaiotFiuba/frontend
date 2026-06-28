@@ -77,8 +77,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [frequencyMinutes, setFrequencyMinutes] = useState<number | string>(15)
   // const [periods, setPeriods] = useState<number | string>(96)
-  const [containerLimit, setContainerLimit] = useState<number | string>(1000)
-  const [isGlobal, setIsGlobal] = useState<boolean>(true)
+  const [containerLimit, setContainerLimit] = useState<number | string>(100000)
+  // const [isGlobal, setIsGlobal] = useState<boolean>(true)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
   // const simulatedDurationHours = Number(periods || 0) * Number(frequencyMinutes || 0) / 60
@@ -319,11 +319,9 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       const payload = {
         speedup: speedup === '' ? 1.0 : Math.max(1.0, parseFloat(String(speedup)) || 1.0),
         global_demand_multiplier: globalDemandMultiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(globalDemandMultiplier)) || 0.1),
-        // transition_minutes: transitionMinutes === '' ? 30 : Math.max(0, parseInt(String(transitionMinutes)) || 0),
         scenario: {
           frequency_minutes: frequencyMinutes === '' ? 15 : Math.max(1, parseInt(String(frequencyMinutes)) || 1),
-          // periods: periods === '' ? 96 : Math.max(1, parseInt(String(periods)) || 1),
-          container_limit: containerLimit === '' ? 1000 : Math.max(1, parseInt(String(containerLimit)) || 1),
+          container_limit: containerLimit === '' ? 100000 : Math.max(1, parseInt(String(containerLimit)) || 1),
         },
         zone_overrides: zoneOverrides.map(zo => ({
           neighborhood: zo.neighborhood,
@@ -448,7 +446,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
 
         {activeSim && (
-          // Active simulation panel
+
           <div className="space-y-6 mb-6">
             {/* Monitor stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
@@ -487,30 +485,17 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <span className="text-sm font-bold text-slate-700">Execution Controls:</span>
               <div className="flex gap-2">
                 {activeSim.status === 'running' ? (
-                  <Button
-                    onClick={() => handleStatusAction('pause')}
-                    disabled={actionLoading}
-                    variant="outline"
-                    className="border-amber-200 text-amber-700 hover:bg-amber-50 gap-2 h-9 px-3 text-xs font-bold"
-                  >
+                  <Button onClick={() => handleStatusAction('pause')} disabled={actionLoading} variant="outline" className="border-amber-200 text-amber-700 hover:bg-amber-50 gap-2 h-9 px-3 text-xs font-bold">
                     <Pause className="h-3.5 w-3.5" />
                     Pause
                   </Button>
                 ) : (
-                  <Button
-                    onClick={() => handleStatusAction('resume')}
-                    disabled={actionLoading || activeSim.status !== 'paused'}
-                    className="!bg-emerald-600 hover:!bg-emerald-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  <Button onClick={() => handleStatusAction('resume')} disabled={actionLoading || activeSim.status !== 'paused'} className="!bg-emerald-600 hover:!bg-emerald-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                     <Play className="h-3.5 w-3.5" />
                     Play
                   </Button>
                 )}
-                <Button
-                  onClick={() => handleStatusAction('stop')}
-                  disabled={actionLoading || activeSim.status === 'stopping'}
-                  className="!bg-red-600 hover:!bg-red-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button onClick={() => handleStatusAction('stop')} disabled={actionLoading || activeSim.status === 'stopping'} className="!bg-red-600 hover:!bg-red-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">
                   <Square className="h-3.5 w-3.5" />
                   Stop
                 </Button>
@@ -599,104 +584,27 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Speed (Speedup) *</label>
-                <input
-                  type="number"
-                  step="any"
-                  min="1.0"
-                  required
-                  value={speedup}
-                  onChange={(e) => setSpeedup(e.target.value)}
-                  disabled={!!activeSim}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
+                <input type="number" step="any" min="1.0" required value={speedup} onChange={(e) => setSpeedup(e.target.value)} disabled={!!activeSim} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed" />
                 <p className="text-[10px] text-slate-400">Ex: 1 = 1 simulated min per real sec (60x speedup).</p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Initial Global Demand *</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  max="10"
-                  required
-                  value={globalDemandMultiplier}
-                  onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
-                  disabled={!!activeSim}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
+                <label className="text-xs font-bold text-slate-500 uppercase">Global Demand *</label>
+                <input type="number" step="0.1" min="0.1" max="10" required value={globalDemandMultiplier} onChange={(e) => setGlobalDemandMultiplier(e.target.value)} disabled={!!activeSim} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed" />
                 <p className="text-[10px] text-slate-400">General fill multiplier.</p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Frequency minutes *</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={frequencyMinutes}
-                  onChange={(e) => setFrequencyMinutes(e.target.value)}
-                  disabled={!!activeSim}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
+                <input type="number" min="1" required value={frequencyMinutes} onChange={(e) => setFrequencyMinutes(e.target.value)} disabled={!!activeSim} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed" />
                 <p className="text-[10px] text-slate-400">Timestamp distance between telemetry ticks.</p>
               </div>
-              {/* <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Periods *</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={periods}
-                  onChange={(e) => setPeriods(e.target.value)}
-                  disabled={!!activeSim}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-              <p className="text-[10px] text-slate-400">{simulatedDurationHours.toLocaleString()} simulated hours total.</p>
-            </div>*/}
-            </div>
-            <div className="flex flex-wrap items-center gap-6">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Container Limit *</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={containerLimit}
-                  onChange={(e) => setContainerLimit(e.target.value)}
-                  disabled={!!activeSim}
-                  className="w-36 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-                <p className="text-[10px] text-slate-400">Maximum containers updated per tick.</p>
-              </div>
-              <div className="flex items-center gap-2 pt-4">
-                <input
-                  type="checkbox"
-                  id="isGlobal"
-                  checked={isGlobal}
-                  onChange={(e) => setIsGlobal(e.target.checked)}
-                  disabled={!!activeSim}
-                  className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                />
-                <div className="space-y-0.5 select-none">
-                  <label htmlFor="isGlobal" className="text-xs font-bold text-slate-700 uppercase cursor-pointer">
-                    Simulación Global
-                  </label>
-                  <p className="text-[10px] text-slate-400">Simular todos los contenedores de la base de datos (28k+).</p>
-                </div>
-              </div>
+
             </div>
 
             {/* Zone Overrides */}
             <div className="space-y-2 pt-2">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <span className="text-xs font-bold text-slate-500 uppercase">Specific neighborhood overrides</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addZoneOverride}
-                  disabled={!!activeSim}
-                  className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={addZoneOverride} disabled={!!activeSim} className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed">
                   <Plus className="h-3.5 w-3.5 text-slate-500" />
                   Add Neighborhood
                 </Button>
@@ -710,34 +618,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                   {zoneOverrides.map((zo, index) => (
                     <div key={index} className="flex gap-3 items-center">
-                      <select
-                        value={zo.neighborhood}
-                        onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
-                        disabled={!!activeSim}
-                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                      >
+                      <select value={zo.neighborhood} onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)} disabled={!!activeSim} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed">
                         {neighborhoods.map((n) => (
                           <option key={n} value={n}>
                             {n}
                           </option>
                         ))}
                       </select>
-                      <input type="number" step="0.1" min="0.1" max="10"
-                        required
-                        value={zo.multiplier}
-                        onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
-                        disabled={!!activeSim}
-                        className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed"
-                        placeholder="Multiplier"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeZoneOverride(index)}
-                        disabled={!!activeSim}
-                        className="h-9 w-9 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
+                      <input type="number" step="0.1" min="0.1" max="10" required value={zo.multiplier} onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)} disabled={!!activeSim} className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed" placeholder="Multiplier" />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeZoneOverride(index)} disabled={!!activeSim} className="h-9 w-9 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                         <Trash2 className="h-4.5 w-4.5" />
                       </Button>
                     </div>
@@ -747,11 +636,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             </div>
 
             <div className="pt-2 flex justify-end">
-              <Button
-                type="submit"
-                disabled={actionLoading || !!activeSim}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-5 py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button type="submit" disabled={actionLoading || !!activeSim} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-5 py-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {actionLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin mr-2 inline" />
