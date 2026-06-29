@@ -166,11 +166,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   }, [activeSim])
 
   useEffect(() => {
-    if (!activeSim || ['completed', 'failed'].includes(activeSim.status)) return
+    if (!activeSim || ['completed', 'failed', 'stopping', 'paused'].includes(activeSim.status)) return
 
     const frequencyMinutes = activeSim.scenario?.frequency_minutes ?? 60
     const calculatedInterval = (frequencyMinutes / activeSim.speedup) * 1000
-    const pollInterval = Math.max(1000, Math.min(calculatedInterval, 8000))
+    const pollInterval = activeSim.status === 'running'
+      ? Math.max(1000, Math.min(calculatedInterval, 2000))
+      : Math.max(1000, Math.min(calculatedInterval, 5000))
 
     const intervalId = setInterval(() => {
       fetchActiveSimulation()
@@ -179,43 +181,43 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     return () => clearInterval(intervalId)
   }, [activeSim?.status, activeSim?.speedup, activeSim?.scenario?.frequency_minutes])
 
+  // Refs to track running time across pauses without localStorage or backend changes
+  const accumRunningMsRef = useRef<number>(0)
+  const lastResumeMsRef = useRef<number | null>(null)
+
   useEffect(() => {
-    if (!activeSim) {
+    if (!activeSim || ['pending'].includes(activeSim.status)) {
+      accumRunningMsRef.current = 0
+      lastResumeMsRef.current = null
       setRealElapsedMs(0)
       return
     }
 
-    const accumKey = `sim_accum_${activeSim.id}`
-    const resumeKey = `sim_last_resume_${activeSim.id}`
-
-    let accum = Number(localStorage.getItem(accumKey)) || 0
-    let lastResumeStr = localStorage.getItem(resumeKey)
-    let lastResume = lastResumeStr ? Number(lastResumeStr) : null
-
-    const isFirst = isFirstRenderRef.current
-    isFirstRenderRef.current = false
+    if (['completed', 'stopping', 'failed'].includes(activeSim.status)) {
+      if (lastResumeMsRef.current !== null) {
+        accumRunningMsRef.current += Date.now() - lastResumeMsRef.current
+        lastResumeMsRef.current = null
+      }
+      setRealElapsedMs(accumRunningMsRef.current)
+      return
+    }
 
     if (activeSim.status === 'running') {
-      if (!lastResume) {
-        lastResume = Date.now()
-        localStorage.setItem(resumeKey, String(lastResume))
+      if (lastResumeMsRef.current === null) {
+        lastResumeMsRef.current = Date.now()
       }
-    } else {
-      if (lastResume) {
-        if (!isFirst) {
-          accum += Date.now() - lastResume
-          localStorage.setItem(accumKey, String(accum))
-        }
-        localStorage.removeItem(resumeKey)
-        lastResume = null
+    } else if (activeSim.status === 'paused') {
+      if (lastResumeMsRef.current !== null) {
+        accumRunningMsRef.current += Date.now() - lastResumeMsRef.current
+        lastResumeMsRef.current = null
       }
     }
 
     const updateDisplay = () => {
-      if (activeSim.status === 'running' && lastResume) {
-        setRealElapsedMs(accum + (Date.now() - lastResume))
+      if (activeSim.status === 'running' && lastResumeMsRef.current !== null) {
+        setRealElapsedMs(accumRunningMsRef.current + (Date.now() - lastResumeMsRef.current))
       } else {
-        setRealElapsedMs(accum)
+        setRealElapsedMs(accumRunningMsRef.current)
       }
     }
 
@@ -348,10 +350,18 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     setError(null)
     setSuccess(null)
     try {
+      if (action === 'stop') {
+        accumRunningMsRef.current = 0
+        lastResumeMsRef.current = null
+        setRealElapsedMs(0)
+        setActiveSim(null)
+      }
       await api.post<SimulationRead>(`/digital-twin/simulations/active/${action}`)
       setSuccess(`Simulation ${action === 'pause' ? 'paused' : action === 'resume' ? 'resumed' : 'stopped'} successfully.`)
       setTimeout(() => setSuccess(null), 5000)
-      await fetchActiveSimulation(true)
+      if (action !== 'stop') {
+        await fetchActiveSimulation(true)
+      }
       if (onSimulationStateChange) onSimulationStateChange()
     } catch (err: any) {
       console.error(err)
