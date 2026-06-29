@@ -222,11 +222,11 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
 
     return (
-        <div className="relative h-full w-full">
+        <div className="h-full w-full">
             <MapContainer
                 center={cabaCenter}
                 zoom={13}
-                className="h-full w-full"
+                className="h-full w-full relative"
                 maxZoom={18}
                 minZoom={10}
             >

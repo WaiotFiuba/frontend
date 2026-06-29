@@ -9,9 +9,9 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
 
-          <div className='main'>
-            <PageRoutes />
-          </div>
+        <div className='main'>
+          <PageRoutes />
+        </div>
 
       </BrowserRouter>
     </AuthProvider>

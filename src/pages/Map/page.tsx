@@ -28,7 +28,7 @@ export default function Map() {
                     </Button>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center ">
                     <InteractiveMap refreshTrigger={refreshTrigger} />
                 </div>
 

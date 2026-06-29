@@ -251,7 +251,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
     // If starting a new simulation or transitioning to running status
     if (prevSimIdRef.current !== currentId || (prevSimStatusRef.current !== 'running' && currentStatus === 'running')) {
-      setLastSetTime(Date.now())
+      setLastSetTime(null) // null: esperar el primer dato antes de empezar a contar
       setTimeSinceLastSet(0)
       setUpdateLogs([])
       prevMeasurementsSentRef.current = currentMeasurements
@@ -263,24 +263,29 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     // If simulation is running and we receive a new set of measurements
     if (currentStatus === 'running' && prevMeasurementsSentRef.current !== null && currentMeasurements > prevMeasurementsSentRef.current) {
       const now = Date.now()
-      let deltaSeconds: number | null = null
-      if (lastSetTime !== null) {
-        deltaSeconds = (now - lastSetTime) / 1000
-      }
 
-      const newLog: UpdateLog = {
-        id: Date.now(), // Unique ID using timestamp
-        timestamp: new Date().toLocaleTimeString(),
-        simulatedTime: activeSim.simulated_time
-          ? new Date(activeSim.simulated_time).toLocaleTimeString()
-          : 'Not started',
-        measurementsSent: currentMeasurements,
-        duration: deltaSeconds
-      }
+      if (lastSetTime === null) {
+        // Primer set recibido: iniciar el timer desde acá, sin loguear
+        setLastSetTime(now)
+        setTimeSinceLastSet(0)
+      } else {
+        // Sets siguientes: calcular intervalo real y loguear
+        const deltaSeconds = (now - lastSetTime) / 1000
 
-      setUpdateLogs((prev) => [newLog, ...prev].slice(0, 10))
-      setLastSetTime(now)
-      setTimeSinceLastSet(0)
+        const newLog: UpdateLog = {
+          id: Date.now(),
+          timestamp: new Date().toLocaleTimeString(),
+          simulatedTime: activeSim.simulated_time
+            ? new Date(activeSim.simulated_time).toLocaleTimeString()
+            : 'Not started',
+          measurementsSent: currentMeasurements,
+          duration: deltaSeconds
+        }
+
+        setUpdateLogs((prev) => [newLog, ...prev].slice(0, 10))
+        setLastSetTime(now)
+        setTimeSinceLastSet(0)
+      }
     }
 
     prevMeasurementsSentRef.current = currentMeasurements
@@ -603,7 +608,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <p className="text-[10px] text-slate-400">General fill multiplier.</p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Frequency minutes *</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Frequency *</label>
                 <input type="number" min="1" required value={frequencyMinutes} onChange={(e) => setFrequencyMinutes(e.target.value)} disabled={!!activeSim} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-600/10 disabled:text-slate-400 disabled:cursor-not-allowed" />
                 <p className="text-[10px] text-slate-400">Timestamp distance between telemetry ticks.</p>
               </div>
