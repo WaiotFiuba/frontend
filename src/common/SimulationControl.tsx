@@ -119,7 +119,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         }
         return data
       })
-    } catch (err: any) {
+    } catch {
       setActiveSim(null)
     } finally {
       if (showLoading) setLoading(false)

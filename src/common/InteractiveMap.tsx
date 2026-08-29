@@ -86,28 +86,7 @@ export default function InteractiveMap({
     const latestRequestIdRef = useRef<number>(0)
     const latestCursorRef = useRef<number>(0)
 
-    useEffect(() => {
-        if (levelAggregation !== currentAgg) {
-            setCurrentAgg(levelAggregation)
-            cacheRef.current.clear()
-            if (mapRef.current) {
-                fetchForMap(mapRef.current)
-            }
-        }
-    }, [levelAggregation])
-
-    const handleAggChange = (newAgg: LevelAggregation) => {
-        setCurrentAgg(newAgg)
-        cacheRef.current.clear()
-        if (onLevelAggregationChange) {
-            onLevelAggregationChange(newAgg)
-        }
-        if (mapRef.current) {
-            fetchForMap(mapRef.current)
-        }
-    }
-
-    const processResults = (items: (BackendSite | SiteCluster)[]) => {
+    const processResults = useCallback((items: (BackendSite | SiteCluster)[]) => {
         if (!items || items.length === 0) {
             setSites([])
             setClusters([])
@@ -122,7 +101,7 @@ export default function InteractiveMap({
             setSites(items as BackendSite[])
             setClusters([])
         }
-    }
+    }, [])
 
     const fetchForBounds = useCallback(
         async (
@@ -179,7 +158,7 @@ export default function InteractiveMap({
                 pendingRef.current.delete(key)
             }
         },
-        [currentAgg]
+        [currentAgg, processResults]
     )
 
     const fetchForMap = useCallback(
@@ -211,6 +190,17 @@ export default function InteractiveMap({
         },
         [fetchForBounds, propContainers]
     )
+
+    const handleAggChange = (newAgg: LevelAggregation) => {
+        setCurrentAgg(newAgg)
+        cacheRef.current.clear()
+        if (onLevelAggregationChange) {
+            onLevelAggregationChange(newAgg)
+        }
+        if (mapRef.current) {
+            fetchForMap(mapRef.current)
+        }
+    }
 
     // Polling reactivo para simulación activa
     useEffect(() => {
