@@ -13,9 +13,18 @@ vi.mock('react-leaflet', () => ({
   TileLayer: () => <div data-testid="mock-tile" />,
   Marker: ({ children }: { children?: ReactNode }) => <div data-testid="mock-marker">{children}</div>,
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
+  useMapEvents: () => ({
+    getZoom: () => 13,
+    getBounds: () => ({
+      getSouthWest: () => ({ lat: -34.7, lng: -58.5 }),
+      getNorthEast: () => ({ lat: -34.5, lng: -58.3 }),
+    }),
+    getMaxZoom: () => 19,
+    flyTo: () => {},
+  }),
 }))
 
-vi.mock('@/components/InteractiveMap', () => ({
+vi.mock('@/common/InteractiveMap', () => ({
   default: () => <div data-testid="interactive-map-mock">Mocked map</div>,
 }))
 
@@ -52,20 +61,18 @@ describe('PageRoutes', () => {
   })
 
   it('renders Map page at /map', () => {
-    authState.accessToken = 'token-123'
-
     render(
       <MemoryRouter initialEntries={["/map"]}>
         <PageRoutes />
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Mapa de Sitios/i })).toBeInTheDocument()
   })
 
-  it('redirects /map to login when there is no token', () => {
+  it('redirects /management to login when there is no token', () => {
     render(
-      <MemoryRouter initialEntries={['/map']}>
+      <MemoryRouter initialEntries={['/management']}>
         <PageRoutes />
       </MemoryRouter>
     )
@@ -73,15 +80,15 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
   })
 
-  it('allows /map when auth bypass is enabled in development', () => {
+  it('allows /management when auth bypass is enabled in development', () => {
     vi.stubEnv('VITE_AUTH_DEV_BYPASS', 'true')
 
     render(
-      <MemoryRouter initialEntries={['/map']}>
+      <MemoryRouter initialEntries={['/management']}>
         <PageRoutes />
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Container Management/i })).toBeInTheDocument()
   })
 })
