@@ -109,15 +109,23 @@ export const fetchContainersBBox = async (
         if (Array.isArray(data) && data.length > 0 && (data[0] as BackendCluster).total != null) {
             // clusters
             const clusters = data as BackendCluster[]
-            return clusters.map((cl, idx) => ({
-                id: `cluster-${idx}`,
-                siteId: `cluster-${idx}`,
-                lat: cl.latitude,
-                long: cl.longitude,
-                type: 'indiferenciado',
-                color: '#6b7280',
-                description: String(cl.total),
-            }))
+            return clusters.map((cl) => {
+                const avgLevel = cl.avg_level ?? 0
+                let color = "#10b981"
+                if (avgLevel >= 80) color = "#ef4444"
+                else if (avgLevel >= 50) color = "#f59e0b"
+
+                const clusterId = `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}`
+                return {
+                    id: clusterId,
+                    siteId: clusterId,
+                    lat: cl.latitude,
+                    long: cl.longitude,
+                    type: 'indiferenciado',
+                    color: color,
+                    description: `Cluster (${cl.total} cont.) (Nivel: ${avgLevel}%)`,
+                }
+            })
         }
 
         return (data as BackendContainer[]).map((c) => {

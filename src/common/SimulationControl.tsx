@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 
 interface UpdateLog {
   id: number
+  setNumber: number
   timestamp: string
   simulatedTime: string
   measurementsSent: number
@@ -86,12 +87,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   // Real elapsed stopwatch state
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
   const isFirstRenderRef = useRef(true)
-
   // States for tracking intervals between new telemetry sets
   const [lastSetTime, setLastSetTime] = useState<number | null>(null)
   const [timeSinceLastSet, setTimeSinceLastSet] = useState<number>(0)
   const [updateLogs, setUpdateLogs] = useState<UpdateLog[]>([])
 
+  const lastSetTimeRef = useRef<number | null>(null)
+  const prevPeriodRef = useRef<number | null>(null)
   const prevMeasurementsSentRef = useRef<number | null>(null)
   const prevSimStatusRef = useRef<string | null>(null)
   const prevSimIdRef = useRef<number | null>(null)
@@ -111,10 +113,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           setTimeout(() => setSuccess(null), 5000)
         }
         if (onSimulationStateChange) {
-          if (!prev ||
+          if (
+            !prev ||
             prev.simulated_time !== data.simulated_time ||
             prev.measurements_sent !== data.measurements_sent ||
-            prev.status !== data.status) {
+            prev.current_period !== data.current_period ||
+            prev.status !== data.status
+          ) {
             onSimulationStateChange()
           }
         }
@@ -135,19 +140,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       } else {
         setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
       }
-    } catch (err) {
-      console.error('Error fetching neighborhoods, using fallback:', err)
+    } catch (e) {
       setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
     }
   }
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true)
-      await Promise.all([fetchActiveSimulation(), fetchNeighborhoods()])
-      setLoading(false)
-    }
-    init()
+    fetchActiveSimulation(true)
+    fetchNeighborhoods()
   }, [])
 
   useEffect(() => {
@@ -165,20 +165,27 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     }
   }, [activeSim])
 
+  // Poll for status updates while a simulation is in progress
   useEffect(() => {
-    if (!activeSim || ['completed', 'failed', 'stopping', 'paused'].includes(activeSim.status)) return
+    if (!activeSim) return
+
+    const isRunning = activeSim.status === 'running'
+    const isStopping = activeSim.status === 'stopping'
+    const isPending = activeSim.status === 'pending'
+
+    if (!isRunning && !isStopping && !isPending) return
 
     const frequencyMinutes = activeSim.scenario?.frequency_minutes ?? 60
     const calculatedInterval = (frequencyMinutes / activeSim.speedup) * 1000
-    const pollInterval = activeSim.status === 'running'
+    const pollInterval = isRunning
       ? Math.max(1000, Math.min(calculatedInterval, 2000))
-      : Math.max(1000, Math.min(calculatedInterval, 5000))
+      : 2000
 
-    const intervalId = setInterval(() => {
-      fetchActiveSimulation()
+    const timer = setInterval(() => {
+      fetchActiveSimulation(false)
     }, pollInterval)
 
-    return () => clearInterval(intervalId)
+    return () => clearInterval(timer)
   }, [activeSim?.status, activeSim?.speedup, activeSim?.scenario?.frequency_minutes])
 
   // Refs to track running time across pauses without localStorage or backend changes
@@ -236,9 +243,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   // Track intervals between incoming telemetry sets
   useEffect(() => {
     if (!activeSim) {
+      lastSetTimeRef.current = null
       setLastSetTime(null)
       setTimeSinceLastSet(0)
       setUpdateLogs([])
+      prevPeriodRef.current = null
       prevMeasurementsSentRef.current = null
       prevSimStatusRef.current = null
       prevSimIdRef.current = null
@@ -246,52 +255,55 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     }
 
     const currentMeasurements = activeSim.measurements_sent
+    const currentPeriod = activeSim.current_period
     const currentStatus = activeSim.status
     const currentId = activeSim.id
 
     // If starting a new simulation or transitioning to running status
     if (prevSimIdRef.current !== currentId || (prevSimStatusRef.current !== 'running' && currentStatus === 'running')) {
-      setLastSetTime(null) // null: esperar el primer dato antes de empezar a contar
+      const now = Date.now()
+      lastSetTimeRef.current = now
+      setLastSetTime(now)
       setTimeSinceLastSet(0)
       setUpdateLogs([])
+      prevPeriodRef.current = currentPeriod
       prevMeasurementsSentRef.current = currentMeasurements
       prevSimStatusRef.current = currentStatus
       prevSimIdRef.current = currentId
       return
     }
 
-    // If simulation is running and we receive a new set of measurements
-    if (currentStatus === 'running' && prevMeasurementsSentRef.current !== null && currentMeasurements > prevMeasurementsSentRef.current) {
+    // If simulation is running and we advance to a new period
+    if (
+      currentStatus === 'running' &&
+      prevPeriodRef.current !== null &&
+      currentPeriod > prevPeriodRef.current
+    ) {
       const now = Date.now()
+      const deltaSeconds = lastSetTimeRef.current ? (now - lastSetTimeRef.current) / 1000 : 0
+      lastSetTimeRef.current = now
+      setLastSetTime(now)
+      setTimeSinceLastSet(0)
 
-      if (lastSetTime === null) {
-        // Primer set recibido: iniciar el timer desde acá, sin loguear
-        setLastSetTime(now)
-        setTimeSinceLastSet(0)
-      } else {
-        // Sets siguientes: calcular intervalo real y loguear
-        const deltaSeconds = (now - lastSetTime) / 1000
-
-        const newLog: UpdateLog = {
-          id: Date.now(),
-          timestamp: new Date().toLocaleTimeString(),
-          simulatedTime: activeSim.simulated_time
-            ? new Date(activeSim.simulated_time).toLocaleTimeString()
-            : 'Not started',
-          measurementsSent: currentMeasurements,
-          duration: deltaSeconds
-        }
-
-        setUpdateLogs((prev) => [newLog, ...prev].slice(0, 10))
-        setLastSetTime(now)
-        setTimeSinceLastSet(0)
+      const newLog: UpdateLog = {
+        id: Date.now(),
+        setNumber: currentPeriod,
+        timestamp: new Date().toLocaleTimeString(),
+        simulatedTime: activeSim.simulated_time
+          ? new Date(activeSim.simulated_time).toLocaleTimeString()
+          : 'Not started',
+        measurementsSent: currentMeasurements,
+        duration: deltaSeconds > 0 ? deltaSeconds : null,
       }
+
+      setUpdateLogs((prev) => [newLog, ...prev].slice(0, 10))
     }
 
+    prevPeriodRef.current = currentPeriod
     prevMeasurementsSentRef.current = currentMeasurements
     prevSimStatusRef.current = currentStatus
     prevSimIdRef.current = currentId
-  }, [activeSim?.measurements_sent, activeSim?.status, activeSim?.id, lastSetTime])
+  }, [activeSim?.current_period, activeSim?.status, activeSim?.id, activeSim?.measurements_sent])
 
   // Live timer for seconds elapsed since the last telemetry set was received
   useEffect(() => {
@@ -557,15 +569,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   Historial de actualizaciones
                 </span>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {updateLogs.map((log, idx) => (
+                  {updateLogs.map((log) => (
                     <div key={log.id} className="flex items-center justify-between bg-white border border-slate-100 px-3 py-2.5 rounded-xl shadow-sm hover:border-slate-200/80 transition-colors animate-in slide-in-from-top-1 duration-200">
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] font-extrabold text-slate-400 bg-slate-100 rounded-md w-6 h-6 flex items-center justify-center shrink-0">
-                          {updateLogs.length - idx}
+                          {log.setNumber}
                         </span>
                         <div>
-                          <p className="font-bold text-slate-700 text-xs">Set de Mediciones</p>
-                          <p className="text-[10px] text-slate-400 font-medium">Total acumulado: {log.measurementsSent}</p>
+                          <p className="font-bold text-slate-700 text-xs">Set #{log.setNumber}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Total acumulado: {log.measurementsSent.toLocaleString()}</p>
                         </div>
                       </div>
                       <div className="text-right">

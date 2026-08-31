@@ -86,6 +86,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (accessToken) {
       fetchCurrentUser();
+    } else {
+      // Auto-register y auto-login por defecto
+      const autoAuth = async () => {
+        const defaultCreds = {
+          name: 'prueba',
+          email: 'prueba@gmail.com',
+          password: 'prueba123456',
+        };
+
+        try {
+          // Intenta registrar si el usuario aún no existe
+          await api.post('/auth/register', { ...defaultCreds, role_id: 2 });
+        } catch {
+          // Si ya existe u ocurre un error de registro previo, continúa al login
+        }
+
+        try {
+          // Inicia sesión automáticamente con las credenciales por defecto
+          await login(defaultCreds.email, defaultCreds.password);
+        } catch (e) {
+          console.warn('Error en auto-login:', e);
+        }
+      };
+
+      void autoAuth();
     }
   }, [accessToken]);
 

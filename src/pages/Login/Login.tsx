@@ -8,7 +8,7 @@ import { Input } from "../../common/ui/input"
 const success_route = '/';
 
 export const Login = () => {
-    const [userForm, setUserForm] = useState({ name: "", password: "" })
+    const [userForm, setUserForm] = useState({ name: "prueba@gmail.com", password: "prueba123456" })
     const { user, login, loading, error } = useAuthContext();
     const navigate = useNavigate();
 

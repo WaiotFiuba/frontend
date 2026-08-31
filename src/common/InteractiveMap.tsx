@@ -58,25 +58,18 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
     const mapRef = useRef<LeafletMap | null>(null)
-    const cacheRef = useRef<Map<string, Container[]>>(new Map())
     const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
+    const prevContainersLevelMapRef = useRef<Map<string, number>>(new Map())
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
         const requestId = ++latestRequestIdRef.current
         const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
 
         const key = `${lat_min.toFixed(5)}_${lat_max.toFixed(5)}_${lng_min.toFixed(5)}_${lng_max.toFixed(5)}_${backendZoom}`
-        const cached = cacheRef.current.get(key)
-        if (cached) {
-            if (mountedRef.current && requestId === latestRequestIdRef.current) {
-                setContainers(cached)
-            }
-            return
-        }
-        // Si ya hay una petición en curso para esa key, espera a que termine en vez de hacer otra igual
+        // Si ya hay una petición en curso para esa key, espera a que termine
         const pending = pendingRef.current.get(key)
         if (pending) {
             try {
@@ -90,14 +83,21 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             return
         }
 
-        // Si no hay cache ni petición pendiente, hace una nueva petición
+        // Petición en vivo al backend
         const promise = fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
         pendingRef.current.set(key, promise)
 
         try {
             const data = await promise
-            cacheRef.current.set(key, data)
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
+                // Registrar cambios de nivel de llenado para los contenedores visualizados
+                const changedLogs: string[] = []
+                data.forEach((c) => {
+                    const match = c.description.match(/Nivel:\s*(\d+)%/)
+                    const currentLevel = match ? Number(match[1]) : 0
+                    prevContainersLevelMapRef.current.set(c.id, currentLevel)
+                })
+
                 setContainers(data)
             }
         } catch (e) {
@@ -136,10 +136,24 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             return
         }
         mountedRef.current = true
-        cacheRef.current.clear()
 
         if (mapRef.current) {
-            fetchForMap(mapRef.current)
+            const map = mapRef.current
+            const bounds = map.getBounds()
+            const sw = bounds.getSouthWest()
+            const ne = bounds.getNorthEast()
+            const currentZoom = map.getZoom()
+            const { boundsPadding } = getContainerFetchConfigByZoom(currentZoom)
+            const latPadding = (ne.lat - sw.lat) * boundsPadding
+            const lngPadding = (ne.lng - sw.lng) * boundsPadding
+
+            void fetchForBounds(
+                sw.lat - latPadding,
+                ne.lat + latPadding,
+                sw.lng - lngPadding,
+                ne.lng + lngPadding,
+                currentZoom
+            )
         } else {
             void fetchForBounds(-90, 90, -180, 180, 5)
         }
@@ -151,7 +165,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                 window.clearTimeout(currentDebounce)
             }
         }
-    }, [refreshTrigger, fetchForBounds, fetchForMap, propContainers])
+    }, [refreshTrigger, fetchForBounds, propContainers])
 
     // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
     // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
@@ -227,12 +241,13 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                 center={cabaCenter}
                 zoom={13}
                 className="h-full w-full relative"
-                maxZoom={18}
+                maxZoom={21}
                 minZoom={10}
             >
                 <TileLayer
-                    //Before: url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    maxZoom={21}
+                    maxNativeZoom={19}
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
 
@@ -258,10 +273,11 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                             map.flyTo([site.lat, site.long], targetZoom, { animate: true })
                         }
                     }
+                    const siteKey = `${site.id}-${site.color}-${site.containers.map((c) => c.description).join('-')}`
                     if (!isCluster) {
                         return (
                             <Marker
-                                key={site.id}
+                                key={siteKey}
                                 position={[site.lat, site.long]}
                                 icon={createMapPinIcon(site.color, containerCount)}
                                 eventHandlers={{ click: handleMarkerClick }}
@@ -298,7 +314,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     else {
                         return (
                             <Marker
-                                key={site.id}
+                                key={siteKey}
                                 position={[site.lat, site.long]}
                                 icon={createMapPinIcon(site.color, containerCount)}
                                 eventHandlers={{ click: handleMarkerClick }}

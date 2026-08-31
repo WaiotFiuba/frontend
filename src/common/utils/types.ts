@@ -42,4 +42,5 @@ export type BackendCluster = {
     latitude: number
     longitude: number
     total: number
+    avg_level?: number
 }

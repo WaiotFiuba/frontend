@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "test:container": "node test_target_container.js"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
