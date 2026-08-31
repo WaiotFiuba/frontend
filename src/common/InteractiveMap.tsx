@@ -4,6 +4,12 @@ import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaf
 import { Container, Site, labels } from "./utils/types"
 import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
+import { api } from '@/lib/api'
+
+interface ActiveSimulation {
+    status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
+    simulated_time: string | null
+}
 
 function MapViewportController({
     mapRef,
@@ -57,6 +63,7 @@ interface InteractiveMapProps {
 export default function InteractiveMap({ refreshTrigger = 0, containers: propContainers }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
+    const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const mapRef = useRef<LeafletMap | null>(null)
     const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
@@ -167,6 +174,45 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
         }
     }, [refreshTrigger, fetchForBounds, propContainers])
 
+    useEffect(() => {
+        let cancelled = false
+
+        const fetchActiveSimulation = async () => {
+            try {
+                const data = await api.get<ActiveSimulation>('/digital-twin/simulations/active')
+                if (!cancelled) {
+                    setActiveSimulation(data)
+                }
+            } catch {
+                if (!cancelled) {
+                    setActiveSimulation(null)
+                }
+            }
+        }
+
+        void fetchActiveSimulation()
+        const intervalId = window.setInterval(fetchActiveSimulation, 2000)
+
+        return () => {
+            cancelled = true
+            window.clearInterval(intervalId)
+        }
+    }, [])
+
+    const simulatedClock = useMemo(() => {
+        if (!activeSimulation?.simulated_time) {
+            return 'No active simulation'
+        }
+
+        return new Intl.DateTimeFormat('en-US', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(new Date(activeSimulation.simulated_time))
+    }, [activeSimulation?.simulated_time])
+
     // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
     // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
     const displayContainers = useMemo(() => {
@@ -236,7 +282,23 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
 
     return (
-        <div className="h-full w-full">
+        <div className="h-full w-full relative">
+            <div className="pointer-events-none absolute right-3 top-3 z-[1000]">
+                <div className="rounded-lg border border-slate-200 bg-white/95 px-3 py-2 text-sm shadow-md backdrop-blur">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Simulated Time
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                        {simulatedClock}
+                    </p>
+                    {activeSimulation?.status && (
+                        <p className="text-xs capitalize text-slate-500">
+                            {activeSimulation.status}
+                        </p>
+                    )}
+                </div>
+            </div>
+
             <MapContainer
                 center={cabaCenter}
                 zoom={13}
