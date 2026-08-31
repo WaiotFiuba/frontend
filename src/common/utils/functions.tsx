@@ -1,6 +1,6 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType, BackendContainer, BackendCluster } from "./types"
+import type { BackendCluster, BackendContainer, Container, ContainerType, Site } from "./types"
 import { api } from "../../lib/api"
 
 export type ContainerFetchZoomConfig = {
@@ -42,6 +42,7 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
                 long: container.long,
                 type: container.type,
                 color: container.color,
+                currentLevel: 0,
                 containers: [],
             }
         }
@@ -49,38 +50,24 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
         sitesMap[siteId].containers.push(container)
     })
 
-    const colorPriority: Record<string, number> = {
-        "#ef4444": 3,
-        "#f59e0b": 2,
-        "#10b981": 1,
-    }
+    return Object.values(sitesMap).map((site) => {
+        const totalLevel = site.containers.reduce((sum, c) => sum + c.currentLevel, 0)
+        const currentLevel = site.containers.length > 0
+            ? Math.round(totalLevel / site.containers.length)
+            : 0
 
-    Object.values(sitesMap).forEach((site) => {
-        const counts: Record<string, number> = {}
-        site.containers.forEach((c) => {
-            counts[c.color] = (counts[c.color] || 0) + 1
-        })
-
-        let majorityColor = site.containers[0]?.color || "#10b981"
-        let maxCount = 0
-
-        Object.entries(counts).forEach(([color, count]) => {
-            if (count > maxCount) {
-                maxCount = count
-                majorityColor = color
-            } else if (count === maxCount) {
-                const currentPri = colorPriority[color] || 0
-                const majorityPri = colorPriority[majorityColor] || 0
-                if (currentPri > majorityPri) {
-                    majorityColor = color
-                }
-            }
-        })
-
-        site.color = majorityColor
+        return {
+            ...site,
+            currentLevel,
+            color: colorForLevel(currentLevel),
+        }
     })
+}
 
-    return Object.values(sitesMap)
+export const colorForLevel = (level: number) => {
+    if (level >= 80) return "#ef4444"
+    if (level >= 50) return "#f59e0b"
+    return "#10b981"
 }
 
 // Devuelve contendeores en el area dada, o clusters si hay demasiados contenedores para mostrar
@@ -111,9 +98,6 @@ export const fetchContainersBBox = async (
             const clusters = data as BackendCluster[]
             return clusters.map((cl) => {
                 const avgLevel = cl.avg_level ?? 0
-                let color = "#10b981"
-                if (avgLevel >= 80) color = "#ef4444"
-                else if (avgLevel >= 50) color = "#f59e0b"
 
                 const clusterId = `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}`
                 return {
@@ -122,8 +106,9 @@ export const fetchContainersBBox = async (
                     lat: cl.latitude,
                     long: cl.longitude,
                     type: 'indiferenciado',
-                    color: color,
+                    color: colorForLevel(avgLevel),
                     description: `Cluster (${cl.total} cont.) (Nivel: ${avgLevel}%)`,
+                    currentLevel: avgLevel,
                 }
             })
         }
@@ -140,12 +125,6 @@ export const fetchContainersBBox = async (
 
             // Color basado en el nivel de llenado
             const level = c.current_level ?? 0
-            let color = "#10b981" // (<50%)
-            if (level >= 80) {
-                color = "#ef4444" // (>=80%)
-            } else if (level >= 50) {
-                color = "#f59e0b" // (50% - 79%)
-            }
 
             return {
                 id: String(c.id),
@@ -153,8 +132,9 @@ export const fetchContainersBBox = async (
                 lat: c.latitude,
                 long: c.longitude,
                 type: type,
-                color: color,
-                description: `${c.site_name || 'Contenedor'} - ${c.container_type?.name || 'Genérico'} (Nivel: ${level}%)`
+                color: colorForLevel(level),
+                description: `${c.site_name || 'Contenedor'} - ${c.container_type?.name || 'Genérico'} (Nivel: ${level}%)`,
+                currentLevel: level,
             } as Container
         })
     } catch (error) {

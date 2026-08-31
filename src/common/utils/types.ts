@@ -8,6 +8,7 @@ export interface Container {
     type: ContainerType
     color: string
     description: string
+    currentLevel: number
 }
 
 export interface Site {
@@ -16,6 +17,7 @@ export interface Site {
     long: number
     type: ContainerType
     color: string
+    currentLevel: number
     containers: Container[]
 }
 

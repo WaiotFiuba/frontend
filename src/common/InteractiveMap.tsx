@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
-import { Container, Site, labels } from "./utils/types"
-import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon } from "./utils/functions"
+import { labels } from "./utils/types"
+import type { Container, Site } from "./utils/types"
+import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -98,11 +99,8 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             const data = await promise
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
                 // Registrar cambios de nivel de llenado para los contenedores visualizados
-                const changedLogs: string[] = []
                 data.forEach((c) => {
-                    const match = c.description.match(/Nivel:\s*(\d+)%/)
-                    const currentLevel = match ? Number(match[1]) : 0
-                    prevContainersLevelMapRef.current.set(c.id, currentLevel)
+                    prevContainersLevelMapRef.current.set(c.id, c.currentLevel)
                 })
 
                 setContainers(data)
@@ -265,6 +263,9 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     long: avgLong,
                     type: 'indiferenciado',
                     color: '#6b7280',
+                    currentLevel: Math.round(
+                        cellContainers.reduce((sum, c) => sum + c.currentLevel, 0) / cellContainers.length
+                    ),
                     description: String(cellContainers.length),
                 })
             }
@@ -324,6 +325,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     const isCluster = site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-')
                     const clusterTotal = isCluster ? Number(site.containers[0].description) || 1 : 0
                     const containerCount = isCluster ? clusterTotal : site.containers.length
+                    const siteLevel = site.currentLevel
 
                     const handleMarkerClick = () => {
                         const map = mapRef.current
@@ -352,6 +354,21 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                                         <p className="text-xs">
                                             <strong>Total:</strong> {containerCount} contenedor{containerCount > 1 ? "es" : ""}
                                         </p>
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <strong>Nivel actual</strong>
+                                                <span className="font-bold">{siteLevel}%</span>
+                                            </div>
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                                                <div
+                                                    className="h-full rounded-full transition-all"
+                                                    style={{
+                                                        width: `${Math.min(100, Math.max(0, siteLevel))}%`,
+                                                        backgroundColor: colorForLevel(siteLevel),
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
                                         <p className="text-xs">
                                             <strong>Coordenadas:</strong> ({site.lat.toFixed(6)}, {site.long.toFixed(6)})
                                         </p>
