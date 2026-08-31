@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
+import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
 import { labels } from "./utils/types"
 import type { Container, Site } from "./utils/types"
@@ -65,6 +66,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
+    const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
     const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
@@ -385,6 +387,13 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                                                 ))}
                                             </div>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/map/sites/${site.id}`)}
+                                            className="mt-2 w-full rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
+                                        >
+                                            Ver detalle del sitio
+                                        </button>
                                     </div>
                                 </Popup>
                             </Marker>
