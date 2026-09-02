@@ -1,6 +1,6 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType, BackendContainer, BackendCluster } from "./types"
+import { Container, Site, ContainerType } from "./types"
 import { api } from "../../lib/api"
 
 export type ContainerFetchZoomConfig = {
@@ -42,6 +42,7 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
                 long: container.long,
                 type: container.type,
                 color: container.color,
+                avgLevel: container.level ?? 0,
                 containers: [],
             }
         }
@@ -49,48 +50,32 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
         sitesMap[siteId].containers.push(container)
     })
 
-    const colorPriority: Record<string, number> = {
-        "#ef4444": 3,
-        "#f59e0b": 2,
-        "#10b981": 1,
-    }
-
     Object.values(sitesMap).forEach((site) => {
-        const counts: Record<string, number> = {}
-        site.containers.forEach((c) => {
-            counts[c.color] = (counts[c.color] || 0) + 1
-        })
+        const totalLevel = site.containers.reduce((sum, c) => sum + (c.level ?? 0), 0)
+        const avgLevel = site.containers.length > 0 ? Math.round(totalLevel / site.containers.length) : 0
+        site.avgLevel = avgLevel
 
-        let majorityColor = site.containers[0]?.color || "#10b981"
-        let maxCount = 0
+        let color = "#10b981" // (<50%)
+        if (avgLevel >= 80) {
+            color = "#ef4444" // (>=80%)
+        } else if (avgLevel >= 50) {
+            color = "#f59e0b" // (50% - 79%)
+        }
 
-        Object.entries(counts).forEach(([color, count]) => {
-            if (count > maxCount) {
-                maxCount = count
-                majorityColor = color
-            } else if (count === maxCount) {
-                const currentPri = colorPriority[color] || 0
-                const majorityPri = colorPriority[majorityColor] || 0
-                if (currentPri > majorityPri) {
-                    majorityColor = color
-                }
-            }
-        })
-
-        site.color = majorityColor
+        site.color = color
     })
 
     return Object.values(sitesMap)
 }
 
-// Devuelve contendeores en el area dada, o clusters si hay demasiados contenedores para mostrar
+// Devuelve sitios/contenedores en el area dada, o clusters si hay demasiados para mostrar
 export const fetchContainersBBox = async (
     lat_min: number,
     lat_max: number,
     lng_min: number,
     lng_max: number,
     zoom: number,
-    limit = 500
+    limit = 2000
 ): Promise<Container[]> => {
     try {
         const params = new URLSearchParams({
@@ -102,63 +87,86 @@ export const fetchContainersBBox = async (
             limit: String(limit),
         })
 
-        const url = `/map/containers/bbox?${params.toString()}`
-        const data = await api.get<BackendContainer[] | BackendCluster[]>(url)
+        const url = `/map/sites/bbox?${params.toString()}`
+        const data = await api.get<any[]>(url)
 
-        // Determine if response is clusters (has total) or containers (has id)
-        if (Array.isArray(data) && data.length > 0 && (data[0] as BackendCluster).total != null) {
-            // clusters
-            const clusters = data as BackendCluster[]
-            return clusters.map((cl) => {
+        if (!Array.isArray(data) || data.length === 0) {
+            return []
+        }
+
+        // Si la respuesta es de tipo cluster (zoom bajo con count o total)
+        if (data[0].count != null || data[0].total != null) {
+            return data.map((cl, idx) => {
+                const count = cl.count ?? cl.total ?? 1
                 const avgLevel = cl.avg_level ?? 0
                 let color = "#10b981"
                 if (avgLevel >= 80) color = "#ef4444"
                 else if (avgLevel >= 50) color = "#f59e0b"
 
-                const clusterId = `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}`
+                const clusterId = cl.cluster_id || `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}_${idx}`
                 return {
                     id: clusterId,
                     siteId: clusterId,
                     lat: cl.latitude,
                     long: cl.longitude,
-                    type: 'indiferenciado',
+                    type: 'indiferenciado' as ContainerType,
                     color: color,
-                    description: `Cluster (${cl.total} cont.) (Nivel: ${avgLevel}%)`,
+                    level: avgLevel,
+                    description: String(count),
                 }
             })
         }
 
-        return (data as BackendContainer[]).map((c) => {
-            let type: ContainerType = "indiferenciado"
+        // Si la respuesta son Sitios completos (zoom alto con lista de containers completa)
+        const resultContainers: Container[] = []
 
-            const typeName = (c.container_type?.name || "").toLowerCase()
-            if (typeName.includes("seca") || typeName.includes("reciclaje")) {
-                type = "reciclaje"
-            } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
-                type = "organico"
+        data.forEach((s) => {
+            const avgLevel = s.current_level ?? 0
+            let color = "#10b981"
+            if (avgLevel >= 80) color = "#ef4444"
+            else if (avgLevel >= 50) color = "#f59e0b"
+
+            const siteContainers = s.containers && s.containers.length > 0 ? s.containers : []
+
+            if (siteContainers.length === 0) {
+                resultContainers.push({
+                    id: `site-${s.id}-c1`,
+                    siteId: String(s.id),
+                    lat: s.latitude,
+                    long: s.longitude,
+                    type: 'indiferenciado',
+                    color: color,
+                    level: avgLevel,
+                    description: `${s.name || s.address || 'Sitio'} (Nivel: ${avgLevel}%)`
+                })
+            } else {
+                siteContainers.forEach((c: any) => {
+                    let type: ContainerType = "indiferenciado"
+                    const typeName = (c.container_type || "").toLowerCase()
+                    if (typeName.includes("seca") || typeName.includes("reciclaje")) {
+                        type = "reciclaje"
+                    } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
+                        type = "organico"
+                    }
+
+                    const cLevel = c.current_level ?? avgLevel
+                    resultContainers.push({
+                        id: String(c.id),
+                        siteId: String(s.id),
+                        lat: s.latitude,
+                        long: s.longitude,
+                        type: type,
+                        color: color,
+                        level: cLevel,
+                        description: `${s.name || s.address || 'Sitio'} - ${c.container_type || 'Contenedor'} (Nivel: ${cLevel}%)`
+                    })
+                })
             }
-
-            // Color basado en el nivel de llenado
-            const level = c.current_level ?? 0
-            let color = "#10b981" // (<50%)
-            if (level >= 80) {
-                color = "#ef4444" // (>=80%)
-            } else if (level >= 50) {
-                color = "#f59e0b" // (50% - 79%)
-            }
-
-            return {
-                id: String(c.id),
-                siteId: String(c.site_id ?? c.id),
-                lat: c.latitude,
-                long: c.longitude,
-                type: type,
-                color: color,
-                description: `${c.site_name || 'Contenedor'} - ${c.container_type?.name || 'Genérico'} (Nivel: ${level}%)`
-            } as Container
         })
+
+        return resultContainers
     } catch (error) {
-        console.warn('Error obteniendo los contenedores:', error)
+        console.warn('Error obteniendo sitios/contenedores:', error)
         return []
     }
 }

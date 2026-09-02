@@ -73,12 +73,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [actionLoading, setActionLoading] = useState(false)
   const [neighborhoods, setNeighborhoods] = useState<string[]>([])
 
-  // Form states for NEW simulation
+  // Form states for simulation
   const [speedup, setSpeedup] = useState<number | string>(1)
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [frequencyMinutes, setFrequencyMinutes] = useState<number | string>(15)
   // const [periods, setPeriods] = useState<number | string>(96)
-  const [containerLimit, setContainerLimit] = useState<number | string>(100000)
   // const [isGlobal, setIsGlobal] = useState<boolean>(true)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
@@ -86,7 +85,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
   // Real elapsed stopwatch state
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
-  const isFirstRenderRef = useRef(true)
   // States for tracking intervals between new telemetry sets
   const [lastSetTime, setLastSetTime] = useState<number | null>(null)
   const [timeSinceLastSet, setTimeSinceLastSet] = useState<number>(0)
@@ -340,7 +338,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         global_demand_multiplier: globalDemandMultiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(globalDemandMultiplier)) || 0.1),
         scenario: {
           frequency_minutes: frequencyMinutes === '' ? 15 : Math.max(1, parseInt(String(frequencyMinutes)) || 1),
-          container_limit: containerLimit === '' ? 100000 : Math.max(1, parseInt(String(containerLimit)) || 1),
+          container_limit: null,
         },
         zone_overrides: zoneOverrides.map(zo => ({
           neighborhood: zo.neighborhood,

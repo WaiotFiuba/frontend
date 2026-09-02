@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { ACCESS_TOKEN_KEY, clearAuthTokens, setAuthTokens, setUnauthorizedHandler } from '../lib/auth';
 import { api } from '../lib/api';
 
@@ -59,6 +59,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const manualLogoutRef = useRef(false);
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null);
@@ -85,8 +87,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     if (accessToken) {
+      manualLogoutRef.current = false;
       fetchCurrentUser();
-    } else {
+    } else if (import.meta.env.MODE !== 'test' && !manualLogoutRef.current) {
       // Auto-register y auto-login por defecto
       const autoAuth = async () => {
         const defaultCreds = {
@@ -124,7 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al registrar usuario');
+      setError(err instanceof Error ? err.message : 'Error al registrarse');
       return false;
     } finally {
       setLoading(false);
@@ -132,6 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    manualLogoutRef.current = true;
     setUser(null);
     setAccessToken(null);
     setError(null);

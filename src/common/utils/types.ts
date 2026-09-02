@@ -7,6 +7,7 @@ export interface Container {
     long: number
     type: ContainerType
     color: string
+    level?: number
     description: string
 }
 
@@ -16,6 +17,8 @@ export interface Site {
     long: number
     type: ContainerType
     color: string
+    avgLevel?: number
+    containerCount?: number
     containers: Container[]
 }
 
@@ -23,6 +26,47 @@ export const labels: Record<ContainerType, string> = {
     reciclaje: "Reciclaje",
     organico: "Orgánico",
     indiferenciado: "Indiferenciado",
+}
+
+export type BackendSiteContainer = {
+    id: number
+    serie_id?: string | null
+    current_level: number
+    device_imei?: string | null
+    available?: boolean
+    container_type?: string | null
+    height_cm?: number | null
+    volume_m3?: number | null
+    last_reading?: string | null
+}
+
+export type BackendSite = {
+    id: number
+    name: string
+    address?: string | null
+    latitude: number
+    longitude: number
+    current_level: number
+    available?: boolean
+    load_side_category?: string | null
+    waste_type_id?: number | null
+    waste_type_name?: string | null
+    waste_type_color?: string | null
+    container_count: number
+    last_reading?: string | null
+    last_pickup?: string | null
+    updated_at: string
+    containers: BackendSiteContainer[]
+}
+
+export type BackendSiteCluster = {
+    cluster_id: string
+    latitude: number
+    longitude: number
+    count: number
+    avg_level: number
+    max_level: number
+    available_count: number
 }
 
 export type BackendContainer = {

@@ -91,7 +91,6 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             const data = await promise
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
                 // Registrar cambios de nivel de llenado para los contenedores visualizados
-                const changedLogs: string[] = []
                 data.forEach((c) => {
                     const match = c.description.match(/Nivel:\s*(\d+)%/)
                     const currentLevel = match ? Number(match[1]) : 0
@@ -232,11 +231,53 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
         return groupContainersBySite(displayContainers)
     }, [displayContainers])
 
+    // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
+    const fullContainersCount = useMemo(() => {
+        return containers.filter((c) => {
+            if (c.level !== undefined) {
+                return c.level >= 100
+            }
+            const match = c.description.match(/Nivel:\s*(\d+)%/)
+            return match ? Number(match[1]) >= 100 : false
+        }).length
+    }, [containers])
+
     // Centro del mapa en CABA
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
 
     return (
-        <div className="h-full w-full">
+        <div className="h-full w-full relative">
+            {/* Pestaña flotante a la izquierda: Contenedores al 100% */}
+            <div
+                className="absolute top-3 left-14 z-[1000] bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
+                title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
+            >
+                <div className="relative flex items-center justify-center">
+                    <span className="flex h-2.5 w-2.5 relative">
+                        {fullContainersCount > 0 && (
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        )}
+                        <span
+                            className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                                fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
+                            }`}
+                        ></span>
+                    </span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        Al 100%
+                    </span>
+                    <span
+                        className={`text-base font-extrabold leading-tight ${
+                            fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
+                        }`}
+                    >
+                        {fullContainersCount}
+                    </span>
+                </div>
+            </div>
+
             <MapContainer
                 center={cabaCenter}
                 zoom={13}
@@ -290,6 +331,14 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                                         <p className="text-xs">
                                             <strong>Total:</strong> {containerCount} contenedor{containerCount > 1 ? "es" : ""}
                                         </p>
+                                        {site.avgLevel !== undefined && (
+                                            <p className="text-xs">
+                                                <strong>Nivel promedio:</strong>{" "}
+                                                <span className="font-bold" style={{ color: site.color }}>
+                                                    {site.avgLevel}%
+                                                </span>
+                                            </p>
+                                        )}
                                         <p className="text-xs">
                                             <strong>Coordenadas:</strong> ({site.lat.toFixed(6)}, {site.long.toFixed(6)})
                                         </p>
