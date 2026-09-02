@@ -7,8 +7,9 @@ export interface Container {
     long: number
     type: ContainerType
     color: string
-    level?: number
     description: string
+    currentLevel: number
+    level?: number
 }
 
 export interface Site {
@@ -17,6 +18,7 @@ export interface Site {
     long: number
     type: ContainerType
     color: string
+    currentLevel: number
     avgLevel?: number
     containerCount?: number
     containers: Container[]
@@ -82,9 +84,26 @@ export type BackendContainer = {
         waste_types?: Array<{ name?: string; color?: string }>
     }
 }
+
 export type BackendCluster = {
     latitude: number
     longitude: number
     total: number
     avg_level?: number
+}
+
+export type BackendSiteHistoryPoint = {
+    timestamp: string
+    avg_level: number
+    max_level: number
+    min_level: number
+    measurement_count: number
+}
+
+export type BackendSiteHistory = {
+    site_id: number
+    simulation_id?: number | null
+    window_start?: string | null
+    window_end?: string | null
+    points: BackendSiteHistoryPoint[]
 }

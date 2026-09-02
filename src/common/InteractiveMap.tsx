@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
+import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
-import { Container, Site, labels } from "./utils/types"
-import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon } from "./utils/functions"
+import { labels } from "./utils/types"
+import type { Container, Site } from "./utils/types"
+import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
+import { api } from '@/lib/api'
+
+interface ActiveSimulation {
+    status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
+    simulated_time: string | null
+}
 
 function MapViewportController({
     mapRef,
@@ -57,6 +65,8 @@ interface InteractiveMapProps {
 export default function InteractiveMap({ refreshTrigger = 0, containers: propContainers }: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
+    const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
+    const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
     const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
@@ -92,9 +102,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
                 // Registrar cambios de nivel de llenado para los contenedores visualizados
                 data.forEach((c) => {
-                    const match = c.description.match(/Nivel:\s*(\d+)%/)
-                    const currentLevel = match ? Number(match[1]) : 0
-                    prevContainersLevelMapRef.current.set(c.id, currentLevel)
+                    prevContainersLevelMapRef.current.set(c.id, c.currentLevel)
                 })
 
                 setContainers(data)
@@ -166,6 +174,45 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
         }
     }, [refreshTrigger, fetchForBounds, propContainers])
 
+    useEffect(() => {
+        let cancelled = false
+
+        const fetchActiveSimulation = async () => {
+            try {
+                const data = await api.get<ActiveSimulation>('/digital-twin/simulations/active')
+                if (!cancelled) {
+                    setActiveSimulation(data)
+                }
+            } catch {
+                if (!cancelled) {
+                    setActiveSimulation(null)
+                }
+            }
+        }
+
+        void fetchActiveSimulation()
+        const intervalId = window.setInterval(fetchActiveSimulation, 2000)
+
+        return () => {
+            cancelled = true
+            window.clearInterval(intervalId)
+        }
+    }, [])
+
+    const simulatedClock = useMemo(() => {
+        if (!activeSimulation?.simulated_time) {
+            return 'No active simulation'
+        }
+
+        return new Intl.DateTimeFormat('en-US', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        }).format(new Date(activeSimulation.simulated_time))
+    }, [activeSimulation?.simulated_time])
+
     // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
     // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
     const displayContainers = useMemo(() => {
@@ -218,6 +265,9 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     long: avgLong,
                     type: 'indiferenciado',
                     color: '#6b7280',
+                    currentLevel: Math.round(
+                        cellContainers.reduce((sum, c) => sum + c.currentLevel, 0) / cellContainers.length
+                    ),
                     description: String(cellContainers.length),
                 })
             }
@@ -247,34 +297,46 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
 
     return (
         <div className="h-full w-full relative">
-            {/* Pestaña flotante a la izquierda: Contenedores al 100% */}
-            <div
-                className="absolute top-3 left-14 z-[1000] bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
-                title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
-            >
-                <div className="relative flex items-center justify-center">
-                    <span className="flex h-2.5 w-2.5 relative">
-                        {fullContainersCount > 0 && (
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        )}
+            <div className="absolute top-3 left-14 z-[1000] flex gap-3">
+                {/* Pestaña flotante: Contenedores al 100% */}
+                <div
+                    className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
+                    title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
+                >
+                    <div className="relative flex items-center justify-center">
+                        <span className="flex h-2.5 w-2.5 relative">
+                            {fullContainersCount > 0 && (
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            )}
+                            <span
+                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                                    fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
+                                }`}
+                            ></span>
+                        </span>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                            Al 100%
+                        </span>
                         <span
-                            className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                                fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
+                            className={`text-base font-extrabold leading-tight ${
+                                fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
                             }`}
-                        ></span>
-                    </span>
+                        >
+                            {fullContainersCount}
+                        </span>
+                    </div>
                 </div>
-                <div className="flex flex-col">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Al 100%
-                    </span>
-                    <span
-                        className={`text-base font-extrabold leading-tight ${
-                            fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
-                        }`}
-                    >
-                        {fullContainersCount}
-                    </span>
+
+                {/* Reloj de tiempo simulado */}
+                <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        Simulated Time
+                    </p>
+                    <p className="font-semibold text-slate-900 leading-tight">
+                        {simulatedClock}
+                    </p>
                 </div>
             </div>
 
@@ -303,6 +365,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     const isCluster = site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-')
                     const clusterTotal = isCluster ? Number(site.containers[0].description) || 1 : 0
                     const containerCount = isCluster ? clusterTotal : site.containers.length
+                    const siteLevel = site.currentLevel ?? site.avgLevel ?? 0
 
                     const handleMarkerClick = () => {
                         const map = mapRef.current
@@ -314,7 +377,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                             map.flyTo([site.lat, site.long], targetZoom, { animate: true })
                         }
                     }
-                    const siteKey = `${site.id}-${site.color}-${site.containers.map((c) => c.description).join('-')}`
+                    const siteKey = site.id
                     if (!isCluster) {
                         return (
                             <Marker
@@ -324,37 +387,77 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
-                                    <div className="p-2 space-y-2 max-w-xs">
-                                        <h3 className="font-bold text-sm border-b pb-1">
-                                            Sitio - {labels[site.type]}
-                                        </h3>
-                                        <p className="text-xs">
-                                            <strong>Total:</strong> {containerCount} contenedor{containerCount > 1 ? "es" : ""}
-                                        </p>
-                                        {site.avgLevel !== undefined && (
-                                            <p className="text-xs">
-                                                <strong>Nivel promedio:</strong>{" "}
-                                                <span className="font-bold" style={{ color: site.color }}>
-                                                    {site.avgLevel}%
-                                                </span>
-                                            </p>
-                                        )}
-                                        <p className="text-xs">
-                                            <strong>Coordenadas:</strong> ({site.lat.toFixed(6)}, {site.long.toFixed(6)})
-                                        </p>
-
-                                        <div className="border-t pt-1">
-                                            <p className="text-xs font-semibold mb-1">Contenedores:</p>
-                                            <div className="space-y-1 max-h-40 overflow-y-auto">
-                                                {site.containers.map((container) => (
-                                                    <div key={container.id} className="h-full p-1  text-xs rounded-md bg-gray-100">
-                                                        <p className="font-semibold">ID: {container.id}</p>
-                                                        <p className="font-semibold">Descripción: {container.description}</p>
-                                                        <p className="font-semibold">Tipo: {labels[container.type]}</p>
-                                                    </div>
-                                                ))}
+                                    <div className="p-2 space-y-2.5 max-w-xs min-w-[220px]">
+                                        <div className="border-b pb-1.5 flex items-center justify-between">
+                                            <div>
+                                                <h3 className="font-bold text-sm text-slate-900 leading-tight">
+                                                    Sitio #{site.id}
+                                                </h3>
+                                                <p className="text-[11px] text-slate-500 font-medium">
+                                                    {labels[site.type]} • {containerCount} cont.
+                                                </p>
                                             </div>
                                         </div>
+
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-slate-600 font-medium">Nivel promedio:</span>
+                                                <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel) }}>
+                                                    {siteLevel}%
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                                <div
+                                                    className="h-full rounded-full transition-all duration-300"
+                                                    style={{
+                                                        width: `${Math.min(100, Math.max(0, siteLevel))}%`,
+                                                        backgroundColor: colorForLevel(siteLevel),
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t pt-2">
+                                            <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                                Contenedores
+                                            </p>
+                                            <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                                                {site.containers.map((container) => {
+                                                    const cLevel = container.currentLevel ?? container.level ?? 0
+                                                    const cColor = colorForLevel(cLevel)
+                                                    return (
+                                                        <div
+                                                            key={container.id}
+                                                            className="px-2 py-1 text-xs rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between gap-2"
+                                                        >
+                                                            <div className="truncate">
+                                                                <span className="font-semibold text-slate-800">#{container.id}</span>
+                                                                <span className="text-slate-500 ml-1 text-[11px] truncate">
+                                                                    {container.description}
+                                                                </span>
+                                                            </div>
+                                                            <span
+                                                                className="font-bold text-[11px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                                                                style={{
+                                                                    color: cColor,
+                                                                    backgroundColor: `${cColor}18`,
+                                                                }}
+                                                            >
+                                                                {cLevel}%
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/map/sites/${site.id}`)}
+                                            className="mt-2 w-full rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-sm"
+                                        >
+                                            Ver detalle del sitio
+                                        </button>
                                     </div>
                                 </Popup>
                             </Marker>

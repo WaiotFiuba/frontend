@@ -28,6 +28,11 @@ export const getContainerFetchConfigByZoom = (zoom: number): ContainerFetchZoomC
     return { backendZoom: Math.max(0, normalizedZoom), boundsPadding: 0.25, limit: 200 }
 }
 
+export const colorForLevel = (level: number) => {
+    if (level >= 80) return "#ef4444"
+    if (level >= 50) return "#f59e0b"
+    return "#10b981"
+}
 
 export const groupContainersBySite = (containers: Container[]): Site[] => {
     const sitesMap: Record<string, Site> = {}
@@ -42,7 +47,8 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
                 long: container.long,
                 type: container.type,
                 color: container.color,
-                avgLevel: container.level ?? 0,
+                currentLevel: container.currentLevel ?? container.level ?? 0,
+                avgLevel: container.currentLevel ?? container.level ?? 0,
                 containers: [],
             }
         }
@@ -50,22 +56,23 @@ export const groupContainersBySite = (containers: Container[]): Site[] => {
         sitesMap[siteId].containers.push(container)
     })
 
-    Object.values(sitesMap).forEach((site) => {
-        const totalLevel = site.containers.reduce((sum, c) => sum + (c.level ?? 0), 0)
-        const avgLevel = site.containers.length > 0 ? Math.round(totalLevel / site.containers.length) : 0
-        site.avgLevel = avgLevel
+    return Object.values(sitesMap).map((site) => {
+        const totalLevel = site.containers.reduce(
+            (sum, c) => sum + (c.currentLevel ?? c.level ?? 0),
+            0
+        )
+        const currentLevel = site.containers.length > 0
+            ? Math.round(totalLevel / site.containers.length)
+            : 0
 
-        let color = "#10b981" // (<50%)
-        if (avgLevel >= 80) {
-            color = "#ef4444" // (>=80%)
-        } else if (avgLevel >= 50) {
-            color = "#f59e0b" // (50% - 79%)
+        return {
+            ...site,
+            currentLevel,
+            avgLevel: currentLevel,
+            containerCount: site.containers.length,
+            color: colorForLevel(currentLevel),
         }
-
-        site.color = color
     })
-
-    return Object.values(sitesMap)
 }
 
 // Devuelve sitios/contenedores en el area dada, o clusters si hay demasiados para mostrar
@@ -99,18 +106,16 @@ export const fetchContainersBBox = async (
             return data.map((cl, idx) => {
                 const count = cl.count ?? cl.total ?? 1
                 const avgLevel = cl.avg_level ?? 0
-                let color = "#10b981"
-                if (avgLevel >= 80) color = "#ef4444"
-                else if (avgLevel >= 50) color = "#f59e0b"
-
                 const clusterId = cl.cluster_id || `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}_${idx}`
+
                 return {
                     id: clusterId,
                     siteId: clusterId,
                     lat: cl.latitude,
                     long: cl.longitude,
                     type: 'indiferenciado' as ContainerType,
-                    color: color,
+                    color: colorForLevel(avgLevel),
+                    currentLevel: avgLevel,
                     level: avgLevel,
                     description: String(count),
                 }
@@ -122,10 +127,6 @@ export const fetchContainersBBox = async (
 
         data.forEach((s) => {
             const avgLevel = s.current_level ?? 0
-            let color = "#10b981"
-            if (avgLevel >= 80) color = "#ef4444"
-            else if (avgLevel >= 50) color = "#f59e0b"
-
             const siteContainers = s.containers && s.containers.length > 0 ? s.containers : []
 
             if (siteContainers.length === 0) {
@@ -135,7 +136,8 @@ export const fetchContainersBBox = async (
                     lat: s.latitude,
                     long: s.longitude,
                     type: 'indiferenciado',
-                    color: color,
+                    color: colorForLevel(avgLevel),
+                    currentLevel: avgLevel,
                     level: avgLevel,
                     description: `${s.name || s.address || 'Sitio'} (Nivel: ${avgLevel}%)`
                 })
@@ -156,9 +158,10 @@ export const fetchContainersBBox = async (
                         lat: s.latitude,
                         long: s.longitude,
                         type: type,
-                        color: color,
+                        color: colorForLevel(cLevel),
+                        currentLevel: cLevel,
                         level: cLevel,
-                        description: `${s.name || s.address || 'Sitio'} - ${c.container_type || 'Contenedor'} (Nivel: ${cLevel}%)`
+                        description: c.container_type || 'Contenedor',
                     })
                 })
             }
@@ -171,8 +174,7 @@ export const fetchContainersBBox = async (
     }
 }
 
-
-//PROVISIONAL HASTA ENCONTRAR UNA LIBRERIA DE ICONOS PERSONALIZABLE
+// PROVISIONAL HASTA ENCONTRAR UNA LIBRERIA DE ICONOS PERSONALIZABLE
 export const createMapPinIcon = (color: string, containerCount: number = 1) => {
     const size = containerCount >= 100 ? 92 : containerCount >= 25 ? 80 : containerCount > 1 ? 70 : 56
     const countFontSize = containerCount >= 100 ? 22 : containerCount >= 25 ? 19 : 16
