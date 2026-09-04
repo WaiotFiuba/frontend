@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
-import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from "react-leaflet"
+import { MapContainer, Marker, Popup, TileLayer, Polyline, useMapEvents } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site } from "./utils/types"
-import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel } from "./utils/functions"
+import type { Container, Site, RouteDetails } from "./utils/types"
+import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel, formatSimulatedTime } from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -66,42 +66,56 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
+    const [selectedRoute, setSelectedRoute] = useState<RouteDetails | null>(null)
+
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
-    const pendingRef = useRef<Map<string, Promise<Container[]>>>(new Map())
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
     const prevContainersLevelMapRef = useRef<Map<string, number>>(new Map())
+    const activeSimulationRef = useRef<ActiveSimulation | null>(null)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
+
         const requestId = ++latestRequestIdRef.current
         const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
 
-        const key = `${lat_min.toFixed(5)}_${lat_max.toFixed(5)}_${lng_min.toFixed(5)}_${lng_max.toFixed(5)}_${backendZoom}`
-        // Si ya hay una petición en curso para esa key, espera a que termine
-        const pending = pendingRef.current.get(key)
-        if (pending) {
-            try {
-                const data = await pending
-                if (mountedRef.current && requestId === latestRequestIdRef.current) {
-                    setContainers(data)
-                }
-            } catch (e) {
-                console.error('Error awaiting pending fetch', e)
-            }
-            return
-        }
-
-        // Petición en vivo al backend
-        const promise = fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
-        pendingRef.current.set(key, promise)
-
         try {
-            const data = await promise
+            const data = await fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
+                const backendTime = activeSimulationRef.current?.simulated_time ?? 'Sin simulación'
+                const frontSimTime = formatSimulatedTime(activeSimulationRef.current?.simulated_time)
+                const frontClock = new Date().toLocaleTimeString()
+
                 // Registrar cambios de nivel de llenado para los contenedores visualizados
                 data.forEach((c) => {
+                    const prevLevel = prevContainersLevelMapRef.current.get(c.id)
+                    const isTarget = c.id.includes('332') || String(c.siteId).includes('332') || c.description?.includes('DEGLIOUMINI')
+
+                    if (isTarget) {
+                        console.log(
+                            `%c[FRONTEND TELEMETRIA RECIBIDA - SITIO 332]\n` +
+                            `  • Contenedor: id=${c.id} (sitio=${c.siteId}, desc=${c.description})\n` +
+                            `  • Nivel actual: ${c.currentLevel}% | Nivel previo: ${prevLevel !== undefined ? prevLevel + '%' : 'inicial'}\n` +
+                            `  • Hora Backend (simulada): ${backendTime}\n` +
+                            `  • Hora Front (reloj simulado): ${frontSimTime}\n` +
+                            `  • Hora Front (reloj local navegador): ${frontClock}`,
+                            'color: #0284c7; font-weight: bold;'
+                        )
+                    }
+
+                    if (prevLevel !== undefined && prevLevel >= 50 && c.currentLevel <= 15) {
+                        console.log(
+                            `%c[FRONTEND VACIADO DETECTADO]\n` +
+                            `  • Contenedor: ${c.id} (${c.description ?? ''})\n` +
+                            `  • Nivel: ${prevLevel}% -> ${c.currentLevel}%\n` +
+                            `  • Hora Backend (simulada): ${backendTime}\n` +
+                            `  • Hora Front (reloj simulado): ${frontSimTime}\n` +
+                            `  • Hora Front (reloj local navegador): ${frontClock}`,
+                            'color: #16a34a; font-weight: bold; font-size: 13px;'
+                        )
+                    }
                     prevContainersLevelMapRef.current.set(c.id, c.currentLevel)
                 })
 
@@ -109,8 +123,6 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             }
         } catch (e) {
             console.error('Error al cargar contenedores:', e)
-        } finally {
-            pendingRef.current.delete(key)
         }
     }, [])
 
@@ -181,17 +193,19 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             try {
                 const data = await api.get<ActiveSimulation>('/digital-twin/simulations/active')
                 if (!cancelled) {
+                    activeSimulationRef.current = data
                     setActiveSimulation(data)
                 }
             } catch {
                 if (!cancelled) {
+                    activeSimulationRef.current = null
                     setActiveSimulation(null)
                 }
             }
         }
 
         void fetchActiveSimulation()
-        const intervalId = window.setInterval(fetchActiveSimulation, 2000)
+        const intervalId = window.setInterval(fetchActiveSimulation, 800)
 
         return () => {
             cancelled = true
@@ -199,19 +213,32 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
         }
     }, [])
 
-    const simulatedClock = useMemo(() => {
-        if (!activeSimulation?.simulated_time) {
-            return 'No active simulation'
-        }
 
-        return new Intl.DateTimeFormat('en-US', {
-            weekday: 'short',
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        }).format(new Date(activeSimulation.simulated_time))
-    }, [activeSimulation?.simulated_time])
+    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
+    useEffect(() => {
+        if (!mapRef.current || propContainers) return
+        const map = mapRef.current
+        const bounds = map.getBounds()
+        const sw = bounds.getSouthWest()
+        const ne = bounds.getNorthEast()
+        const zoom = map.getZoom()
+        const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
+        const latPadding = (ne.lat - sw.lat) * boundsPadding
+        const lngPadding = (ne.lng - sw.lng) * boundsPadding
+
+        void fetchForBounds(
+            sw.lat - latPadding,
+            ne.lat + latPadding,
+            sw.lng - lngPadding,
+            ne.lng + lngPadding,
+            zoom
+        )
+    }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds, propContainers])
+
+    const simulatedClock = useMemo(
+        () => formatSimulatedTime(activeSimulation?.simulated_time),
+        [activeSimulation?.simulated_time]
+    )
 
     // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
     // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
@@ -332,7 +359,7 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                 {/* Reloj de tiempo simulado */}
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Simulated Time
+                        Simulated Clock
                     </p>
                     <p className="font-semibold text-slate-900 leading-tight">
                         {simulatedClock}
@@ -360,6 +387,19 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     fetchForMap={fetchForMap}
                     onZoomChange={setZoom}
                 />
+
+                {/* Trazado de circuito seleccionado */}
+                {selectedRoute && selectedRoute.waypoints.length > 0 && (
+                    <Polyline
+                        positions={selectedRoute.waypoints}
+                        pathOptions={{
+                            color: "#2563eb",
+                            weight: 5,
+                            opacity: 0.85,
+                            dashArray: "8, 6",
+                        }}
+                    />
+                )}
 
                 {sites.map((site) => {
                     const isCluster = site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-')
@@ -475,6 +515,44 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                     }
                 })}
             </MapContainer>
+
+            {/* Panel flotante de métricas de optimización ATSP/DRPP */}
+            {selectedRoute && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '24px',
+                    left: '24px',
+                    zIndex: 1000,
+                    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
+                    maxWidth: '320px',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ fontWeight: 800, fontSize: '13px', color: '#60a5fa' }}>
+                            🗺️ Circuito #{selectedRoute.route_id} (OR-Tools)
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedRoute(null)}
+                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#cbd5e1' }}>
+                        <div><strong>Servicio:</strong> {selectedRoute.service_name}</div>
+                        <div><strong>Distancia Total:</strong> {((selectedRoute.total_distance_m || 0) / 1000).toFixed(2)} km</div>
+                        <div><strong>Recolección Efectiva:</strong> {((selectedRoute.collection_distance_m || 0) / 1000).toFixed(2)} km</div>
+                        <div><strong>Traslado (Deadheading):</strong> {((selectedRoute.deadheading_distance_m || 0) / 1000).toFixed(2)} km</div>
+                        <div><strong>Tramos Repetidos:</strong> {selectedRoute.repeated_segments_count || 0}</div>
+                    </div>
+                </div>
+            )}
 
         </div>
     )

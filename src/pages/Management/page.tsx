@@ -24,7 +24,7 @@ export default function Management() {
     try {
       const data = await api.get<ContainerStats>('/map/containers/stats')
       setStats(data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching stats:', err)
     }
   }, [])
@@ -33,7 +33,7 @@ export default function Management() {
     try {
       const data = await api.get<Array<{ id: number; name: string }>>('/map/containers/types')
       setContainerTypes(data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching container types:', err)
     }
   }, [])

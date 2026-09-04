@@ -51,9 +51,9 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
       setNewTypeId('')
 
       onContainerCreated()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      const errorMsg = err.response?.data?.detail || err.message || String(err)
+      const errorMsg = err instanceof Error ? err.message : String(err)
       onError('Error creating container: ' + errorMsg)
     } finally {
       setCreatingContainer(false)

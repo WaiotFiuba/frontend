@@ -28,6 +28,20 @@ export const getContainerFetchConfigByZoom = (zoom: number): ContainerFetchZoomC
     return { backendZoom: Math.max(0, normalizedZoom), boundsPadding: 0.25, limit: 200 }
 }
 
+export const formatSimulatedTime = (isoString?: string | null): string => {
+    if (!isoString) return 'Sin simulación activa'
+    const date = new Date(isoString)
+    if (isNaN(date.getTime())) return 'Sin simulación activa'
+    return date.toLocaleString('es-AR', {
+        timeZone: 'UTC',
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    })
+}
+
 export const colorForLevel = (level: number) => {
     if (level >= 80) return "#ef4444"
     if (level >= 50) return "#f59e0b"
@@ -95,7 +109,7 @@ export const fetchContainersBBox = async (
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
-        const data = await api.get<any[]>(url)
+        const data = await api.get<Array<Record<string, unknown>>>(url)
 
         if (!Array.isArray(data) || data.length === 0) {
             return []
@@ -104,15 +118,17 @@ export const fetchContainersBBox = async (
         // Si la respuesta es de tipo cluster (zoom bajo con count o total)
         if (data[0].count != null || data[0].total != null) {
             return data.map((cl, idx) => {
-                const count = cl.count ?? cl.total ?? 1
-                const avgLevel = cl.avg_level ?? 0
-                const clusterId = cl.cluster_id || `cluster-${cl.latitude.toFixed(4)}_${cl.longitude.toFixed(4)}_${idx}`
+                const count = (cl.count as number | undefined) ?? (cl.total as number | undefined) ?? 1
+                const avgLevel = (cl.avg_level as number | undefined) ?? 0
+                const lat = Number(cl.latitude ?? 0)
+                const lon = Number(cl.longitude ?? 0)
+                const clusterId = (cl.cluster_id as string | undefined) || `cluster-${lat.toFixed(4)}_${lon.toFixed(4)}_${idx}`
 
                 return {
                     id: clusterId,
                     siteId: clusterId,
-                    lat: cl.latitude,
-                    long: cl.longitude,
+                    lat: lat,
+                    long: lon,
                     type: 'indiferenciado' as ContainerType,
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
@@ -126,42 +142,44 @@ export const fetchContainersBBox = async (
         const resultContainers: Container[] = []
 
         data.forEach((s) => {
-            const avgLevel = s.current_level ?? 0
-            const siteContainers = s.containers && s.containers.length > 0 ? s.containers : []
+            const avgLevel = Number(s.current_level ?? 0)
+            const lat = Number(s.latitude ?? 0)
+            const lon = Number(s.longitude ?? 0)
+            const siteContainers = Array.isArray(s.containers) && s.containers.length > 0 ? (s.containers as Array<Record<string, unknown>>) : []
 
             if (siteContainers.length === 0) {
                 resultContainers.push({
                     id: `site-${s.id}-c1`,
                     siteId: String(s.id),
-                    lat: s.latitude,
-                    long: s.longitude,
+                    lat: lat,
+                    long: lon,
                     type: 'indiferenciado',
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
                     level: avgLevel,
-                    description: `${s.name || s.address || 'Sitio'} (Nivel: ${avgLevel}%)`
+                    description: `${(s.name as string) || (s.address as string) || 'Sitio'} (Nivel: ${avgLevel}%)`
                 })
             } else {
-                siteContainers.forEach((c: any) => {
+                siteContainers.forEach((c) => {
                     let type: ContainerType = "indiferenciado"
-                    const typeName = (c.container_type || "").toLowerCase()
+                    const typeName = String(c.container_type || "").toLowerCase()
                     if (typeName.includes("seca") || typeName.includes("reciclaje")) {
                         type = "reciclaje"
                     } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
                         type = "organico"
                     }
 
-                    const cLevel = c.current_level ?? avgLevel
+                    const cLevel = Number(c.current_level ?? avgLevel)
                     resultContainers.push({
                         id: String(c.id),
                         siteId: String(s.id),
-                        lat: s.latitude,
-                        long: s.longitude,
+                        lat: lat,
+                        long: lon,
                         type: type,
                         color: colorForLevel(cLevel),
                         currentLevel: cLevel,
                         level: cLevel,
-                        description: c.container_type || 'Contenedor',
+                        description: String(c.container_type || 'Contenedor'),
                     })
                 })
             }

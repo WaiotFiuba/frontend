@@ -51,3 +51,9 @@
     --radius: 0.5rem;
   }
 }
+
+/* Transición suave para desplazamiento continuo de camiones recolectores */
+.leaflet-marker-icon.custom-truck-marker {
+  transition: transform 0.95s linear !important;
+  will-change: transform;
+}

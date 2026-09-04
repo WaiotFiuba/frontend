@@ -8,6 +8,7 @@ import type { BackendSite, BackendSiteHistory, BackendSiteHistoryPoint } from '@
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Sin datos'
   return new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -18,6 +19,7 @@ const formatDateTime = (value?: string | null) => {
 
 const formatChartTime = (value: string) => (
   new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
@@ -25,6 +27,7 @@ const formatChartTime = (value: string) => (
 
 const formatChartDate = (value: string) => (
   new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
   }).format(new Date(value))
@@ -170,34 +173,54 @@ export default function SiteDetail() {
   useEffect(() => {
     let cancelled = false
 
-    const fetchSite = async () => {
+    const fetchSite = async (isBackground = false) => {
       if (!siteId) return
-      setLoading(true)
-      setError(null)
+      if (!isBackground) {
+        setLoading(true)
+        setError(null)
+      }
       try {
         const [siteData, historyData] = await Promise.all([
           api.get<BackendSite>(`/map/sites/${siteId}`),
           api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`),
         ])
         if (!cancelled) {
+          if (siteData && (String(siteId).includes('332') || siteData.address?.includes('DEGLIOUMINI'))) {
+            const frontClock = new Date().toLocaleTimeString()
+            console.log(
+              `%c[FRONTEND SITE DETAIL - SITIO 332]\n` +
+              `  • Nivel promedio: ${siteData.current_level}%\n` +
+              `  • Última lectura backend: ${siteData.last_reading ?? 'N/A'}\n` +
+              `  • Último vaciado backend: ${siteData.last_pickup ?? 'N/A'}\n` +
+              `  • Hora reloj local navegador: ${frontClock}\n` +
+              `  • Contenedores:`,
+              'color: #0284c7; font-weight: bold;',
+              siteData.containers
+            )
+          }
           setSite(siteData)
           setHistory(historyData)
         }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err.message || 'No se pudo cargar el sitio.')
+      } catch (err: unknown) {
+        if (!cancelled && !isBackground) {
+          const msg = err instanceof Error ? err.message : 'No se pudo cargar el sitio.'
+          setError(msg)
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && !isBackground) {
           setLoading(false)
         }
       }
     }
 
-    void fetchSite()
+    void fetchSite(false)
+    const intervalId = window.setInterval(() => {
+      void fetchSite(true)
+    }, 2000)
 
     return () => {
       cancelled = true
+      window.clearInterval(intervalId)
     }
   }, [siteId])
 

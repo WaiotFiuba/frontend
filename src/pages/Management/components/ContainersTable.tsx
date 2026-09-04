@@ -59,7 +59,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
       const data = await api.get<PaginatedContainers>(`/map/containers/?${params.toString()}`)
       setContainers(data.items)
       setTotalItems(data.total)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
       setError('Error loading containers.')
       setContainers([])

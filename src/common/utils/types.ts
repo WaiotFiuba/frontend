@@ -107,3 +107,17 @@ export type BackendSiteHistory = {
     window_end?: string | null
     points: BackendSiteHistoryPoint[]
 }
+
+export interface RouteDetails {
+    route_id: string
+    zone: number
+    service_name: string
+    site_ids: string[]
+    waypoints: [number, number][]
+    total_distance_m?: number
+    collection_distance_m?: number
+    deadheading_distance_m?: number
+    repeated_segments_count?: number
+    street_sequence?: string[]
+    segments_count: number
+}

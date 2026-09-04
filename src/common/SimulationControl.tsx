@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/common/ui/button'
 import { Play, Pause, Square, Plus, Trash2, RefreshCw, Activity } from 'lucide-react'
 import { api } from '@/lib/api'
+import { formatSimulatedTime } from './utils/functions'
 
 interface UpdateLog {
   id: number
@@ -27,7 +28,7 @@ interface SimulationZoneState {
 interface SimulationRead {
   id: number
   status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
-  scenario: Record<string, any>
+  scenario: Record<string, unknown>
   speedup: number
   global_demand_current: number
   global_demand_target: number
@@ -123,7 +124,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         }
         return data
       })
-    } catch (err: any) {
+    } catch {
       setActiveSim(null)
     } finally {
       if (showLoading) setLoading(false)
@@ -138,7 +139,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       } else {
         setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
       }
-    } catch (e) {
+    } catch {
       setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
     }
   }
@@ -173,7 +174,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
     if (!isRunning && !isStopping && !isPending) return
 
-    const frequencyMinutes = activeSim.scenario?.frequency_minutes ?? 60
+    const frequencyMinutes = Number(activeSim.scenario?.frequency_minutes ?? 60)
     const calculatedInterval = (frequencyMinutes / activeSim.speedup) * 1000
     const pollInterval = isRunning
       ? Math.max(1000, Math.min(calculatedInterval, 2000))
@@ -228,7 +229,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
     updateDisplay()
 
-    let intervalId: any = null
+    let intervalId: ReturnType<typeof setInterval> | null = null
     if (activeSim.status === 'running') {
       intervalId = setInterval(updateDisplay, 1000)
     }
@@ -351,9 +352,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       setTimeout(() => setSuccess(null), 5000)
       await fetchActiveSimulation(true)
       if (onSimulationStateChange) onSimulationStateChange()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError('Error starting simulation: ' + (err.message || String(err)))
+      const msg = err instanceof Error ? err.message : String(err)
+      setError('Error starting simulation: ' + msg)
     } finally {
       setActionLoading(false)
     }
@@ -378,9 +380,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         await fetchActiveSimulation(true)
       }
       if (onSimulationStateChange) onSimulationStateChange()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(`Error executing action ${action}: ` + (err.message || String(err)))
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(`Error executing action ${action}: ` + msg)
     } finally {
       setActionLoading(false)
     }
@@ -399,7 +402,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     setZoneOverrides(zoneOverrides.filter((_, i) => i !== index))
   }
 
-  const updateZoneOverride = (index: number, field: keyof ZoneOverride, value: any) => {
+  const updateZoneOverride = (index: number, field: keyof ZoneOverride, value: string | number) => {
     const updated = [...zoneOverrides]
     updated[index] = {
       ...updated[index],
@@ -486,15 +489,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Periods</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">
-                  {activeSim.current_period}/{activeSim.total_periods}
+                  {activeSim.current_period}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulated Clock</p>
                 <p className="text-sm font-bold text-indigo-700 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
-                  {activeSim.simulated_time
-                    ? new Date(activeSim.simulated_time).toLocaleTimeString()
-                    : 'Not started'}
+                  {formatSimulatedTime(activeSim.simulated_time)}
                 </p>
               </div>
               <div>

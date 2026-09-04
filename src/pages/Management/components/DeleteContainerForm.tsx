@@ -20,9 +20,10 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
     try {
       await api.delete(`/map/containers/${container.id}`)
       onConfirm()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError('Error deleting container: ' + (err.message || err))
+      const msg = err instanceof Error ? err.message : String(err)
+      setError('Error deleting container: ' + msg)
     } finally {
       setLoading(false)
     }
