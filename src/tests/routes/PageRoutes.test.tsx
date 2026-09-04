@@ -13,9 +13,13 @@ vi.mock('react-leaflet', () => ({
   TileLayer: () => <div data-testid="mock-tile" />,
   Marker: ({ children }: { children?: ReactNode }) => <div data-testid="mock-marker">{children}</div>,
   Popup: ({ children }: { children?: ReactNode }) => <div data-testid="mock-popup">{children}</div>,
+  CircleMarker: ({ children }: { children?: ReactNode }) => <div data-testid="mock-circle-marker">{children}</div>,
+  Polyline: ({ children }: { children?: ReactNode }) => <div data-testid="mock-polyline">{children}</div>,
+  useMap: () => ({ setView: vi.fn() }),
+  useMapEvents: () => ({}),
 }))
 
-vi.mock('@/components/InteractiveMap', () => ({
+vi.mock('@/common/InteractiveMap', () => ({
   default: () => <div data-testid="interactive-map-mock">Mocked map</div>,
 }))
 
