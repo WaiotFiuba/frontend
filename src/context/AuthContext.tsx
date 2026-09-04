@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { ACCESS_TOKEN_KEY, clearAuthTokens, setAuthTokens, setUnauthorizedHandler } from '../lib/auth';
 import { api } from '../lib/api';
 
@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(() => localStorage.getItem(ACCESS_TOKEN_KEY));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const loggedOutRef = useRef<boolean>(false);
 
   const login = async (name: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -86,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (accessToken) {
       fetchCurrentUser();
-    } else {
+    } else if (!loggedOutRef.current && import.meta.env.MODE !== 'test') {
       // Auto-register y auto-login por defecto
       const autoAuth = async () => {
         const defaultCreds = {
@@ -132,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    loggedOutRef.current = true;
     setUser(null);
     setAccessToken(null);
     setError(null);

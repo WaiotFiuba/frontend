@@ -77,8 +77,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [speedup, setSpeedup] = useState<number | string>(1)
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [frequencyMinutes, setFrequencyMinutes] = useState<number | string>(15)
-  // const [periods, setPeriods] = useState<number | string>(96)
-  const [containerLimit, setContainerLimit] = useState<number | string>(100000)
+  const [containerLimit] = useState<number | string>(100000)
   // const [isGlobal, setIsGlobal] = useState<boolean>(true)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
@@ -86,7 +85,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
   // Real elapsed stopwatch state
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
-  const isFirstRenderRef = useRef(true)
   // States for tracking intervals between new telemetry sets
   const [lastSetTime, setLastSetTime] = useState<number | null>(null)
   const [timeSinceLastSet, setTimeSinceLastSet] = useState<number>(0)
