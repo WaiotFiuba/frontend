@@ -219,8 +219,9 @@ export default function InteractiveMap({
         }
     }, [])
 
+    const simulatedTime = activeSimulation?.simulated_time
     const simulatedClock = useMemo(() => {
-        if (!activeSimulation?.simulated_time) {
+        if (!simulatedTime) {
             return 'No active simulation'
         }
 
@@ -230,8 +231,8 @@ export default function InteractiveMap({
             month: '2-digit',
             hour: '2-digit',
             minute: '2-digit',
-        }).format(new Date(activeSimulation.simulated_time))
-    }, [activeSimulation?.simulated_time])
+        }).format(new Date(simulatedTime))
+    }, [simulatedTime])
 
     // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
     // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.

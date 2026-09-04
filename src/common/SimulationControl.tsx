@@ -123,7 +123,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         }
         return data
       })
-    } catch (err: any) {
+    } catch {
       setActiveSim(null)
     } finally {
       if (showLoading) setLoading(false)
@@ -138,7 +138,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       } else {
         setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
       }
-    } catch (e) {
+    } catch {
       setNeighborhoods(CABA_FALLBACK_NEIGHBORHOODS)
     }
   }
