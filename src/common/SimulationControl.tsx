@@ -347,10 +347,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         })),
       }
 
-      await api.post<SimulationRead>('/digital-twin/simulations', payload)
+      const sim = await api.post<SimulationRead>('/digital-twin/simulations', payload)
+      setActiveSim(sim)
       setSuccess('Simulation created successfully. Generating synthetic data...')
       setTimeout(() => setSuccess(null), 5000)
-      await fetchActiveSimulation(true)
+      await fetchActiveSimulation(false)
       if (onSimulationStateChange) onSimulationStateChange()
     } catch (err: unknown) {
       console.error(err)
@@ -373,11 +374,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         setRealElapsedMs(0)
         setActiveSim(null)
       }
-      await api.post<SimulationRead>(`/digital-twin/simulations/active/${action}`)
+      const updated = await api.post<SimulationRead>(`/digital-twin/simulations/active/${action}`)
+      if (action !== 'stop') {
+        setActiveSim(updated)
+      }
       setSuccess(`Simulation ${action === 'pause' ? 'paused' : action === 'resume' ? 'resumed' : 'stopped'} successfully.`)
       setTimeout(() => setSuccess(null), 5000)
       if (action !== 'stop') {
-        await fetchActiveSimulation(true)
+        await fetchActiveSimulation(false)
       }
       if (onSimulationStateChange) onSimulationStateChange()
     } catch (err: unknown) {

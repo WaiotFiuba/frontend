@@ -93,7 +93,6 @@ export default function InteractiveMap({
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
-    const prevContainersLevelMapRef = useRef<Map<string, number>>(new Map())
     const activeSimulationRef = useRef<ActiveSimulation | null>(null)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
@@ -104,41 +103,6 @@ export default function InteractiveMap({
         try {
             const data = await fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
-                const backendTime = activeSimulationRef.current?.simulated_time ?? 'Sin simulación'
-                const frontSimTime = formatSimulatedTime(activeSimulationRef.current?.simulated_time)
-                const frontClock = new Date().toLocaleTimeString()
-
-                // Registrar cambios de nivel de llenado para los contenedores visualizados
-                data.forEach((c) => {
-                    const prevLevel = prevContainersLevelMapRef.current.get(c.id)
-                    const isTarget = c.id.includes('332') || String(c.siteId).includes('332') || c.description?.includes('DEGLIOUMINI')
-
-                    if (isTarget) {
-                        console.log(
-                            `%c[FRONTEND TELEMETRIA RECIBIDA - SITIO 332]\n` +
-                            `  • Contenedor: id=${c.id} (sitio=${c.siteId}, desc=${c.description})\n` +
-                            `  • Nivel actual: ${c.currentLevel}% | Nivel previo: ${prevLevel !== undefined ? prevLevel + '%' : 'inicial'}\n` +
-                            `  • Hora Backend (simulada): ${backendTime}\n` +
-                            `  • Hora Front (reloj simulado): ${frontSimTime}\n` +
-                            `  • Hora Front (reloj local navegador): ${frontClock}`,
-                            'color: #0284c7; font-weight: bold;'
-                        )
-                    }
-
-                    if (prevLevel !== undefined && prevLevel >= 50 && c.currentLevel <= 15) {
-                        console.log(
-                            `%c[FRONTEND VACIADO DETECTADO]\n` +
-                            `  • Contenedor: ${c.id} (${c.description ?? ''})\n` +
-                            `  • Nivel: ${prevLevel}% -> ${c.currentLevel}%\n` +
-                            `  • Hora Backend (simulada): ${backendTime}\n` +
-                            `  • Hora Front (reloj simulado): ${frontSimTime}\n` +
-                            `  • Hora Front (reloj local navegador): ${frontClock}`,
-                            'color: #16a34a; font-weight: bold; font-size: 13px;'
-                        )
-                    }
-                    prevContainersLevelMapRef.current.set(c.id, c.currentLevel)
-                })
-
                 setContainers(data)
             }
         } catch (e) {
