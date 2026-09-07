@@ -1,0 +1,638 @@
+import { useState, useEffect } from 'react'
+import 'leaflet/dist/leaflet.css'
+import { Button } from '@/common/ui/button'
+import { useNavigate } from 'react-router-dom'
+import InteractiveMap from '@/common/InteractiveMap'
+import { generateOptimizationPlan, fetchOptimizationMetrics } from './services/optimizationApi'
+import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
+import {
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  Cpu,
+  Download,
+  RotateCcw,
+  Scale,
+  Sliders,
+  Sparkles,
+  TrendingDown,
+  Zap,
+} from 'lucide-react'
+
+export default function Optimization() {
+  const navigate = useNavigate()
+
+  // Form states for parameters
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(2.0)
+  const [windowDays, setWindowDays] = useState<number | null>(null)
+  const [algorithm, setAlgorithm] = useState<'greedy' | 'lp'>('greedy')
+
+  // Execution states
+  const [generating, setGenerating] = useState<boolean>(false)
+  const [plan, setPlan] = useState<RedistributionPlan | null>(null)
+  const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
+  const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+    const loadMetrics = async () => {
+      setLoadingMetrics(true)
+      try {
+        const data = await fetchOptimizationMetrics(windowDays)
+        if (isMounted) setNetworkMetrics(data)
+      } catch (err) {
+        console.warn('Error al cargar métricas de red:', err)
+      } finally {
+        if (isMounted) setLoadingMetrics(false)
+      }
+    }
+    loadMetrics()
+    return () => {
+      isMounted = false
+    }
+  }, [windowDays])
+
+  const handleGeneratePlan = async () => {
+    setGenerating(true)
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    setHighlightedMoveId(null)
+
+    const config: OptimizationConfig = {
+      window_days: windowDays,
+      max_distance_km: maxDistanceKm,
+      min_utilization_donor: 0.35,
+      min_utilization_receiver: 0.65,
+      target_utilization: 0.5,
+      algorithm,
+    }
+
+    try {
+      const generated = await generateOptimizationPlan(config)
+      setPlan(generated)
+      if (generated.total_containers_moved > 0) {
+        setSuccessMsg(
+          `Plan generado: se optimizó la red con ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
+        )
+      } else {
+        setSuccessMsg('La red se encuentra actualmente balanceada con los parámetros seleccionados (0 movimientos necesarios).')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribución'
+      setErrorMsg(message)
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleExportCsv = () => {
+    if (!plan?.moves.length) return
+    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM']
+    const rows = plan.moves.map((m) => [
+      m.container_id,
+      `"${m.from_site_name.replace(/"/g, '""')}"`,
+      `"${m.to_site_name.replace(/"/g, '""')}"`,
+      m.distance_km,
+    ])
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `plan_redistribucion_${plan.id}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
+              Redistribución de Contenedores
+            </h1>
+            <p className="text-slate-600 mt-1">
+              Optimización y balanceo de carga entre sitios según demanda y uso histórico.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/map')}
+              className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-xs transition-all cursor-pointer"
+            >
+              Ver Mapa General
+            </Button>
+          </div>
+        </div>
+
+        {/* Parameters Panel */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <Sliders className="h-5 w-5 text-blue-600" />
+            <h2 className="font-bold text-slate-900 text-base">Parámetros de Redistribución</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+            {/* 1. Radio Máximo */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <label htmlFor="max-dist-input" className="font-semibold text-slate-700">
+                  Radio Máximo de Traslado
+                </label>
+                <span className="font-mono font-bold text-blue-700 px-2 py-0.5 rounded bg-blue-100">
+                  {maxDistanceKm.toFixed(1)} km
+                </span>
+              </div>
+              <input
+                id="max-dist-input"
+                type="range"
+                min="0.5"
+                max="5.0"
+                step="0.1"
+                value={maxDistanceKm}
+                onChange={(e) => setMaxDistanceKm(parseFloat(e.target.value))}
+                className="w-full accent-blue-600 cursor-pointer"
+              />
+              <span className="text-[11px] text-slate-500 block">
+                Distancia máxima entre sitios donantes y receptores.
+              </span>
+            </div>
+
+            {/* 2. Ventana Histórica */}
+            <div className="space-y-1.5">
+              <label htmlFor="window-days-select" className="text-xs font-semibold text-slate-700 block">
+                Ventana de Historial
+              </label>
+              <select
+                id="window-days-select"
+                value={windowDays ?? 'all'}
+                onChange={(e) =>
+                  setWindowDays(e.target.value === 'all' ? null : parseInt(e.target.value, 10))
+                }
+                className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              >
+                <option value="all">Todo el historial disponible</option>
+                <option value="7">Últimos 7 días</option>
+                <option value="15">Últimos 15 días</option>
+                <option value="30">Últimos 30 días</option>
+              </select>
+              <span className="text-[11px] text-slate-500 block">
+                Período para evaluar la saturación de cada sitio.
+              </span>
+            </div>
+
+            {/* 3. Algoritmo y Botón de Acción */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-700">Algoritmo</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAlgorithm('greedy')}
+                    className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
+                      algorithm === 'greedy'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Zap className="h-3 w-3" />
+                    Greedy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAlgorithm('lp')}
+                    className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
+                      algorithm === 'lp'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Cpu className="h-3 w-3" />
+                    Prog. Lineal
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleGeneratePlan}
+                disabled={generating}
+                className="w-full text-xs font-bold gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer h-9"
+              >
+                <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? 'Calculando Redistribución...' : 'Generar Redistribución'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Network Fill & Dispersion Metrics (Current vs Redistribution) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Scale className="h-5 w-5 text-indigo-600" />
+              <h2 className="font-bold text-slate-900 text-base">
+                {plan ? 'Comparativa de Balanceo de Red (Original vs Redistribución)' : 'Diagnóstico de Llenado y Dispersión de la Red'}
+              </h2>
+            </div>
+            {loadingMetrics && (
+              <span className="text-xs text-slate-400 animate-pulse font-medium">Actualizando métricas...</span>
+            )}
+          </div>
+
+          {!plan ? (
+            // Estado Actual previo a optimizar
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-blue-50/70 to-slate-50 p-4 rounded-xl border border-blue-100/70 space-y-1">
+                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-blue-600" />
+                  Promedio de Llenado Total
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-900">
+                    {(networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
+                  </span>
+                  <span className="text-[11px] text-slate-500">ocupación media</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, networkMetrics?.mean_fill_level ?? 0))}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-indigo-50/70 to-slate-50 p-4 rounded-xl border border-indigo-100/70 space-y-1">
+                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5 text-indigo-600" />
+                  Desvío Estándar (&sigma;)
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-indigo-900">
+                    &plusmn;{(networkMetrics?.std_fill_level ?? 0).toFixed(1)}%
+                  </span>
+                  <span className="text-[11px] text-slate-500">dispersión</span>
+                </div>
+                <span className="text-[11px] text-slate-500 block">
+                  Mide qué tan dispar es el llenado entre contenedores.
+                </span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1 flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-slate-600 block">Contenedores Monitoreados</span>
+                  <span className="text-2xl font-black text-slate-800">
+                    {networkMetrics?.total_containers ?? 0}
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    distribuidos en {networkMetrics?.total_sites ?? 0} sitios de la ciudad
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Generá un plan de redistribución para comparar el balanceo proyectado.
+                </span>
+              </div>
+            </div>
+          ) : (
+            // Comparativa tras generar el plan
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Promedio de Llenado */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      Promedio de Llenado de la Red
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      Masa conservada
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="bg-white p-3 rounded-lg border border-slate-100">
+                      <span className="text-[11px] text-slate-500 font-medium block">Original</span>
+                      <span className="text-xl font-black text-slate-800">
+                        {(plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-2xs">
+                      <span className="text-[11px] text-blue-600 font-semibold block">Redistribuido</span>
+                      <span className="text-xl font-black text-blue-700">
+                        {(plan.optimized_mean_fill ?? 0).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">
+                    El volumen global de residuos se conserva, repartiéndose de forma equitativa entre sitios.
+                  </p>
+                </div>
+
+                {/* 2. Desvío Estándar (Balanceo) */}
+                {(() => {
+                  const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
+                  const optStd = plan.optimized_std_fill ?? 0
+                  const diff = optStd - origStd
+                  const reductionPct = origStd > 0 ? Math.round((Math.abs(diff) / origStd) * 100) : 0
+                  const improved = diff < -0.1
+
+                  return (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Scale className="h-4 w-4 text-indigo-600" />
+                          Desvío Estándar (&sigma;) — Dispersión
+                        </span>
+                        {improved ? (
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <TrendingDown className="h-3 w-3" />
+                            -{reductionPct}% dispersión
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
+                            Sin variación
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-1">
+                        <div className="bg-white p-3 rounded-lg border border-slate-100">
+                          <span className="text-[11px] text-slate-500 font-medium block">Original</span>
+                          <span className="text-xl font-black text-slate-800">
+                            &plusmn;{origStd.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-2xs">
+                          <span className="text-[11px] text-emerald-600 font-semibold block">Redistribuido</span>
+                          <span className="text-xl font-black text-emerald-700">
+                            &plusmn;{optStd.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500">
+                        {improved
+                          ? `Al reducir el desvío estándar de ±${origStd.toFixed(1)}% a ±${optStd.toFixed(1)}%, los contenedores se homogenizan, previniendo desbordes en sitios críticos.`
+                          : 'La dispersión de la red se mantiene estable con los parámetros definidos.'}
+                      </p>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Visual Distribution Range Meter */}
+              {(() => {
+                const origMean = plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0
+                const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
+                const optMean = plan.optimized_mean_fill ?? 0
+                const optStd = plan.optimized_std_fill ?? 0
+
+                const origMin = Math.max(0, origMean - origStd)
+                const origMax = Math.min(100, origMean + origStd)
+                const optMin = Math.max(0, optMean - optStd)
+                const optMax = Math.min(100, optMean + optStd)
+
+                return (
+                  <div className="bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
+                    <div className="flex justify-between items-center text-[11px] text-slate-600 font-semibold">
+                      <span>Rango típico de ocupación (Banda de 1 desvío &mu; &plusmn; &sigma;)</span>
+                      <span className="font-mono text-[10px] text-slate-400">0% a 100%</span>
+                    </div>
+
+                    {/* Original bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-slate-500">
+                        <span>Original: {origMin.toFixed(0)}% a {origMax.toFixed(0)}%</span>
+                        <span>Dispersión amplia</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 rounded-full relative overflow-hidden">
+                        <div
+                          className="absolute h-full bg-slate-400/80 rounded-full"
+                          style={{
+                            left: `${origMin}%`,
+                            width: `${Math.max(2, origMax - origMin)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Optimized bar */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex justify-between text-[10px] text-emerald-700 font-semibold">
+                        <span>Redistribuido: {optMin.toFixed(0)}% a {optMax.toFixed(0)}%</span>
+                        <span>Banda concentrada y balanceada</span>
+                      </div>
+                      <div className="h-2 w-full bg-slate-200 rounded-full relative overflow-hidden">
+                        <div
+                          className="absolute h-full bg-emerald-500 rounded-full shadow-xs transition-all duration-700"
+                          style={{
+                            left: `${optMin}%`,
+                            width: `${Math.max(2, optMax - optMin)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+        </div>
+
+        {/* Feedback messages */}
+        {successMsg && (
+          <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-900 p-3.5 rounded-r-xl shadow-xs text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{successMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMsg(null)}
+              className="text-emerald-700 hover:text-emerald-900 font-bold text-sm cursor-pointer"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-900 p-3.5 rounded-r-xl shadow-xs text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorMsg(null)}
+              className="text-rose-700 hover:text-rose-900 font-bold text-sm cursor-pointer"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
+        {/* The Map (Exactly like the original interactive map, with move vectors on top) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center">
+          <InteractiveMap
+            redistributionMoves={plan?.moves}
+            highlightedMoveId={highlightedMoveId}
+          />
+        </div>
+
+        {/* Results Summary & Moves Table (only shown when plan has moves) */}
+        {plan && plan.moves.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Movimientos Recomendados ({plan.moves.length})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {plan.sites_donating} sitios donantes ceden contenedores a {plan.sites_receiving} sitios saturados.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportCsv}
+                  className="text-xs gap-1.5 border-slate-200 cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar CSV
+                </Button>
+                {highlightedMoveId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setHighlightedMoveId(null)}
+                    className="text-xs gap-1 text-slate-500 cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Limpiar selección
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick summary badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 font-semibold block">Contenedores</span>
+                <span className="text-xl font-extrabold text-blue-700">
+                  {plan.total_containers_moved}
+                </span>
+                <span className="text-[10px] text-slate-400 block">a reubicar</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 font-semibold block">Distancia Promedio</span>
+                <span className="text-xl font-extrabold text-indigo-700">
+                  {plan.avg_distance_km.toFixed(2)} km
+                </span>
+                <span className="text-[10px] text-slate-400 block">por traslado</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 font-semibold block">Sitios Donantes</span>
+                <span className="text-xl font-extrabold text-sky-700">{plan.sites_donating}</span>
+                <span className="text-[10px] text-slate-400 block">ceden exceso</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-[11px] text-slate-500 font-semibold block">Sitios Receptores</span>
+                <span className="text-xl font-extrabold text-rose-700">{plan.sites_receiving}</span>
+                <span className="text-[10px] text-slate-400 block">descongestionados</span>
+              </div>
+            </div>
+
+            {/* Moves List */}
+            <div className="overflow-x-auto border border-slate-100 rounded-xl max-h-96 overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-3">#</th>
+                    <th className="p-3">Contenedor</th>
+                    <th className="p-3">Sitio Donante (Origen)</th>
+                    <th className="p-3 text-center"></th>
+                    <th className="p-3">Sitio Receptor (Destino)</th>
+                    <th className="p-3 text-right">Distancia</th>
+                    <th className="p-3 text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {plan.moves.map((m, idx) => {
+                    const isSelected = highlightedMoveId === m.container_id
+                    return (
+                      <tr
+                        key={`move-${m.container_id}-${idx}`}
+                        className={`transition-colors hover:bg-slate-50/80 ${
+                          isSelected ? 'bg-blue-50/70 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="p-3">
+                          <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                            #{m.container_id}
+                          </span>
+                        </td>
+                        <td className="p-3 max-w-[260px]">
+                          <div className="font-medium text-slate-900 truncate" title={m.from_site_name}>
+                            {m.from_site_name}
+                          </div>
+                          <span className="text-[10px] text-sky-600 font-semibold">
+                            ID Sitio {m.from_site_id}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center text-slate-400">
+                          <ArrowRight className="h-4 w-4 inline text-indigo-500" />
+                        </td>
+                        <td className="p-3 max-w-[260px]">
+                          <div className="font-medium text-slate-900 truncate" title={m.to_site_name}>
+                            {m.to_site_name}
+                          </div>
+                          <span className="text-[10px] text-rose-600 font-semibold">
+                            ID Sitio {m.to_site_id}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-mono">
+                          <span className="text-slate-800 font-bold">{m.distance_km.toFixed(2)}</span>
+                          <span className="text-slate-400 text-[10px] ml-1">km</span>
+                          <div className="text-[10px] text-slate-400">
+                            {Math.round(m.distance_km * 1000)} m
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setHighlightedMoveId(isSelected ? null : m.container_id)
+                            }
+                            className={`text-[11px] font-semibold px-2 py-1 rounded transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {isSelected ? 'Seleccionado' : 'Ver en mapa'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

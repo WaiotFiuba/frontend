@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [accessToken, setAccessToken] = useState<string | null>(() => localStorage.getItem(ACCESS_TOKEN_KEY));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const manualLogoutRef = useRef<boolean>(false);
 
   const login = async (name: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -59,8 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const manualLogoutRef = useRef(false);
-
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null);
@@ -90,7 +89,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       manualLogoutRef.current = false;
       fetchCurrentUser();
     } else if (import.meta.env.MODE !== 'test' && !manualLogoutRef.current) {
-      // Auto-register y auto-login por defecto
+      // =========================================================================
+      // MODO AUTO-LOGIN DE DESARROLLO / PRUEBA
+      // Para activar el login real manual, comentar este bloque 'autoAuth()'
+      // =========================================================================
       const autoAuth = async () => {
         const defaultCreds = {
           name: 'prueba',
@@ -114,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
 
       void autoAuth();
+      // =========================================================================
     }
   }, [accessToken]);
 

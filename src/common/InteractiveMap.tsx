@@ -13,6 +13,19 @@ interface ActiveSimulation {
     simulated_time: string | null
 }
 
+export interface MapRedistributionMove {
+    container_id: number
+    from_site_id: number
+    from_site_name: string
+    to_site_id: number
+    to_site_name: string
+    distance_km: number
+    from_lat?: number
+    from_lng?: number
+    to_lat?: number
+    to_lng?: number
+}
+
 function MapViewportController({
     mapRef,
     debounceRef,
@@ -60,9 +73,16 @@ function MapViewportController({
 interface InteractiveMapProps {
     refreshTrigger?: number
     containers?: Container[]
+    redistributionMoves?: MapRedistributionMove[]
+    highlightedMoveId?: number | null
 }
 
-export default function InteractiveMap({ refreshTrigger = 0, containers: propContainers }: InteractiveMapProps) {
+export default function InteractiveMap({
+    refreshTrigger = 0,
+    containers: propContainers,
+    redistributionMoves,
+    highlightedMoveId,
+}: InteractiveMapProps) {
     const [containers, setContainers] = useState<Container[]>([])
     const [zoom, setZoom] = useState<number>(13)
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
@@ -212,7 +232,6 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
             window.clearInterval(intervalId)
         }
     }, [])
-
 
     // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
     useEffect(() => {
@@ -513,6 +532,42 @@ export default function InteractiveMap({ refreshTrigger = 0, containers: propCon
                             />
                         )
                     }
+                })}
+
+                {redistributionMoves && redistributionMoves.map((m) => {
+                    if (m.from_lat == null || m.from_lng == null || m.to_lat == null || m.to_lng == null) return null
+                    const isSelected = highlightedMoveId === m.container_id
+                    return (
+                        <Polyline
+                            key={`opt-move-${m.container_id}`}
+                            positions={[[m.from_lat, m.from_lng], [m.to_lat, m.to_lng]]}
+                            pathOptions={{
+                                color: isSelected ? '#2563eb' : '#4f46e5',
+                                weight: isSelected ? 5 : 3.5,
+                                dashArray: '6, 8',
+                                opacity: isSelected ? 1 : 0.85,
+                            }}
+                        >
+                            <Popup>
+                                <div className="p-2 space-y-1.5 min-w-[200px] text-xs">
+                                    <div className="font-bold text-indigo-700 border-b pb-1">
+                                        Traslado Contenedor #{m.container_id}
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 font-semibold">Origen: </span>
+                                        <span className="font-medium text-slate-800">{m.from_site_name}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-500 font-semibold">Destino: </span>
+                                        <span className="font-medium text-slate-800">{m.to_site_name}</span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-600 font-mono pt-1 border-t">
+                                        Distancia: <strong>{m.distance_km.toFixed(2)} km</strong> ({Math.round(m.distance_km * 1000)} m)
+                                    </div>
+                                </div>
+                            </Popup>
+                        </Polyline>
+                    )
                 })}
             </MapContainer>
 
