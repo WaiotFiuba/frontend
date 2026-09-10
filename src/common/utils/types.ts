@@ -108,6 +108,37 @@ export type BackendSiteHistory = {
     points: BackendSiteHistoryPoint[]
 }
 
+export type BackendSiteProjectionPoint = {
+    timestamp: string
+    predicted_level: number
+    lower_bound?: number | null
+    upper_bound?: number | null
+    reaches_critical: boolean
+    reaches_full: boolean
+    confidence: number
+    reason?: string | null
+}
+
+export type BackendSiteProjection = {
+    site_id: number
+    model_key: string
+    generated_at: string
+    current_level: number
+    horizon_hours: number
+    interval_minutes: number
+    critical_level: number
+    level_aggregation: "avg" | "max"
+    lookback_days: number
+    stop_at_full: boolean
+    confidence: number
+    reason?: string | null
+    critical_at?: string | null
+    time_to_critical_hours?: number | null
+    full_at?: string | null
+    time_to_full_hours?: number | null
+    points: BackendSiteProjectionPoint[]
+}
+
 export interface RouteDetails {
     route_id: string
     zone: number

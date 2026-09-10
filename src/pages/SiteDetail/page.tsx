@@ -3,7 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
 import { Button } from '@/common/ui/button'
 import { api } from '@/lib/api'
-import type { BackendSite, BackendSiteHistory, BackendSiteHistoryPoint } from '@/common/utils/types'
+import type {
+  BackendSite,
+  BackendSiteHistory,
+  BackendSiteHistoryPoint,
+  BackendSiteProjection,
+  BackendSiteProjectionPoint,
+} from '@/common/utils/types'
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Sin datos'
@@ -39,13 +45,25 @@ const levelColorClass = (level: number) => {
   return 'bg-emerald-500'
 }
 
-function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
+function LevelHistoryChart({
+  points,
+  projection,
+}: {
+  points: BackendSiteHistoryPoint[]
+  projection: BackendSiteProjection | null
+}) {
   const chart = useMemo(() => {
     const height = 260
     const padding = 42
     const msPerHour = 60 * 60 * 1000
-    const firstTime = new Date(points[0]?.timestamp ?? Date.now()).getTime()
-    const lastTime = new Date(points[points.length - 1]?.timestamp ?? Date.now()).getTime()
+    const projectionPoints = projection?.points ?? []
+    const timestamps = [
+      ...points.map((point) => new Date(point.timestamp).getTime()),
+      ...projectionPoints.map((point) => new Date(point.timestamp).getTime()),
+      ...(projection?.generated_at ? [new Date(projection.generated_at).getTime()] : []),
+    ].filter((value) => !Number.isNaN(value))
+    const firstTime = timestamps.length > 0 ? Math.min(...timestamps) : Date.now()
+    const lastTime = timestamps.length > 0 ? Math.max(...timestamps) : Date.now()
     const startHour = Math.floor(firstTime / msPerHour) * msPerHour
     const endHour = Math.ceil(lastTime / msPerHour) * msPerHour
     const hourCount = Math.max(1, Math.round((endHour - startHour) / msPerHour))
@@ -54,29 +72,47 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
     const innerWidth = width - padding * 2
     const innerHeight = height - padding * 2
 
-    if (points.length === 0) {
+    if (points.length === 0 && projectionPoints.length === 0) {
       return {
         width,
         height,
         line: '',
         area: '',
         coords: [] as Array<{ x: number; y: number; point: BackendSiteHistoryPoint }>,
+        projectionLine: '',
+        projectionCoords: [] as Array<{ x: number; y: number; point: BackendSiteProjectionPoint }>,
         xTicks: [] as Array<{ x: number; date: Date }>,
+        nowX: null as number | null,
+        criticalY: null as number | null,
       }
     }
 
     const timeRange = Math.max(msPerHour, endHour - startHour)
+    const xForTime = (value: string) => {
+      const pointTime = new Date(value).getTime()
+      return padding + ((pointTime - startHour) / timeRange) * innerWidth
+    }
+    const yForLevel = (level: number) => (
+      padding + innerHeight - (Math.max(0, Math.min(100, level)) / 100) * innerHeight
+    )
     const coords = points.map((point) => {
-      const pointTime = new Date(point.timestamp).getTime()
       const x = points.length === 1
         ? padding + innerWidth / 2
-        : padding + ((pointTime - startHour) / timeRange) * innerWidth
-      const y = padding + innerHeight - (Math.max(0, Math.min(100, point.avg_level)) / 100) * innerHeight
+        : xForTime(point.timestamp)
+      const y = yForLevel(point.avg_level)
       return { x, y, point }
     })
+    const projectionCoords = projectionPoints.map((point) => ({
+      x: xForTime(point.timestamp),
+      y: yForLevel(point.predicted_level),
+      point,
+    }))
 
     const line = coords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
-    const area = `${line} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
+    const area = coords.length > 0
+      ? `${line} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
+      : ''
+    const projectionLine = projectionCoords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
 
     const xTicks = Array.from({ length: hourCount + 1 }, (_, index) => {
       const tickTime = startHour + index * msPerHour
@@ -85,6 +121,8 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
         date: new Date(tickTime),
       }
     })
+    const nowX = projection?.generated_at ? xForTime(projection.generated_at) : null
+    const criticalY = projection ? yForLevel(projection.critical_level) : null
 
     return {
       width,
@@ -92,11 +130,15 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
       line,
       area,
       coords,
+      projectionLine,
+      projectionCoords,
       xTicks,
+      nowX,
+      criticalY,
     }
-  }, [points])
+  }, [points, projection])
 
-  if (points.length === 0) {
+  if (points.length === 0 && (!projection || projection.points.length === 0)) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
         Todavía no hay mediciones históricas para este sitio.
@@ -109,9 +151,34 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Histórico de nivel</h2>
-          <p className="text-sm text-slate-500">Promedio del sitio por tick simulado.</p>
+          <p className="text-sm text-slate-500">Histórico sólido y proyección punteada.</p>
         </div>
-        <span className="text-sm font-semibold text-slate-600">{points.length} puntos</span>
+        <div className="text-right text-sm">
+          <p className="font-semibold text-slate-600">{points.length} históricos</p>
+          {projection?.critical_at ? (
+            <p className="text-xs font-semibold text-red-600">
+              Umbral crítico: {formatDateTime(projection.critical_at)}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">Sin cruce crítico proyectado</p>
+          )}
+        </div>
+      </div>
+      <div className="mb-2 flex flex-wrap gap-3 text-xs font-semibold">
+        <span className="inline-flex items-center gap-1 text-emerald-700">
+          <span className="h-0.5 w-6 rounded bg-emerald-600" /> Histórico
+        </span>
+        <span className="inline-flex items-center gap-1 text-sky-700">
+          <span className="h-0.5 w-6 rounded border-t-2 border-dashed border-sky-600" /> Proyección
+        </span>
+        <span className="inline-flex items-center gap-1 text-red-700">
+          <span className="h-0.5 w-6 rounded bg-red-500" /> Umbral crítico
+        </span>
+        {projection && (
+          <span className="text-slate-500">
+            Confianza: {Math.round(projection.confidence * 100)}%
+          </span>
+        )}
       </div>
       <div className="overflow-x-auto pb-2">
       <svg
@@ -128,6 +195,14 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
             </g>
           )
         })}
+        {chart.criticalY != null && (
+          <g>
+            <line x1="42" x2={chart.width - 42} y1={chart.criticalY} y2={chart.criticalY} stroke="#ef4444" strokeWidth="2" />
+            <text x={chart.width - 38} y={chart.criticalY - 6} textAnchor="end" className="fill-red-600 text-[11px] font-bold">
+              {projection?.critical_level ?? 80}%
+            </text>
+          </g>
+        )}
         {chart.xTicks.map((tick) => (
           <g key={tick.date.toISOString()}>
             <line x1={tick.x} x2={tick.x} y1="42" y2="218" stroke="#cbd5e1" strokeDasharray="4 4" strokeWidth="1" />
@@ -149,11 +224,25 @@ function LevelHistoryChart({ points }: { points: BackendSiteHistoryPoint[] }) {
             </text>
           </g>
         ))}
-        <path d={chart.area} fill="#10b981" opacity="0.12" />
-        <path d={chart.line} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {chart.nowX != null && (
+          <g>
+            <line x1={chart.nowX} x2={chart.nowX} y1="36" y2="224" stroke="#0f172a" strokeDasharray="3 5" strokeWidth="1.5" />
+            <text x={chart.nowX + 6} y="38" className="fill-slate-700 text-[11px] font-bold">Ahora</text>
+          </g>
+        )}
+        {chart.area && <path d={chart.area} fill="#10b981" opacity="0.12" />}
+        {chart.line && <path d={chart.line} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+        {chart.projectionLine && (
+          <path d={chart.projectionLine} fill="none" stroke="#0284c7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 6" />
+        )}
         {chart.coords.map(({ x, y, point }) => (
           <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#059669" stroke="white" strokeWidth="2">
             <title>{`${formatDateTime(point.timestamp)} - Promedio ${Math.round(point.avg_level)}%`}</title>
+          </circle>
+        ))}
+        {chart.projectionCoords.map(({ x, y, point }) => (
+          <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#0284c7" stroke="white" strokeWidth="2">
+            <title>{`${formatDateTime(point.timestamp)} - Proyección ${Math.round(point.predicted_level)}%`}</title>
           </circle>
         ))}
       </svg>
@@ -167,6 +256,7 @@ export default function SiteDetail() {
   const navigate = useNavigate()
   const [site, setSite] = useState<BackendSite | null>(null)
   const [history, setHistory] = useState<BackendSiteHistory | null>(null)
+  const [projection, setProjection] = useState<BackendSiteProjection | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -180,9 +270,10 @@ export default function SiteDetail() {
         setError(null)
       }
       try {
-        const [siteData, historyData] = await Promise.all([
+        const [siteData, historyData, projectionData] = await Promise.all([
           api.get<BackendSite>(`/map/sites/${siteId}`),
           api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`),
+          api.get<BackendSiteProjection>(`/map/sites/${siteId}/projection?horizon_hours=24&interval_minutes=60`).catch(() => null),
         ])
         if (!cancelled) {
           if (siteData && (String(siteId).includes('332') || siteData.address?.includes('DEGLIOUMINI'))) {
@@ -200,6 +291,7 @@ export default function SiteDetail() {
           }
           setSite(siteData)
           setHistory(historyData)
+          setProjection(projectionData)
         }
       } catch (err: unknown) {
         if (!cancelled && !isBackground) {
@@ -284,7 +376,7 @@ export default function SiteDetail() {
           <InfoCard label="Disponible" value={site.available ? 'Sí' : 'No'} />
         </div>
 
-        <LevelHistoryChart points={historyPoints} />
+        <LevelHistoryChart points={historyPoints} projection={projection} />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-1">
