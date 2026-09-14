@@ -181,10 +181,9 @@ export default function InteractiveMap({
                     setActiveSimulation(data)
                 }
             } catch {
-                if (!cancelled) {
-                    activeSimulationRef.current = null
-                    setActiveSimulation(null)
-                }
+                // Mantener el ultimo estado conocido si falla un poll aislado.
+                // En hosting gratuito la API puede demorar o cortar una consulta sin
+                // que la simulacion haya terminado realmente.
             }
         }
 
