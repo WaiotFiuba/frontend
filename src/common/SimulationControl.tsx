@@ -81,6 +81,19 @@ const CABA_FALLBACK_NEIGHBORHOODS = [
 // Horarios de recolección por defecto: Solo Noche (21 a 05 hs)
 const DEFAULT_COLLECTION_HOURS = [21, 22, 23, 0, 1, 2, 3, 4, 5]
 
+// Días de recolección por defecto: Lunes a Viernes (0 a 4)
+const DEFAULT_COLLECTION_DAYS = [0, 1, 2, 3, 4]
+
+const WEEKDAYS = [
+  { id: 0, label: 'Lunes', short: 'Lun' },
+  { id: 1, label: 'Martes', short: 'Mar' },
+  { id: 2, label: 'Miércoles', short: 'Mié' },
+  { id: 3, label: 'Jueves', short: 'Jue' },
+  { id: 4, label: 'Viernes', short: 'Vie' },
+  { id: 5, label: 'Sábado', short: 'Sáb' },
+  { id: 6, label: 'Domingo', short: 'Dom' },
+]
+
 interface SimulationControlProps {
   onSimulationStateChange?: () => void
 }
@@ -117,14 +130,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [speedup, setSpeedup] = useState<number | string>(1000)
   const [frequencyMinutes] = useState<number>(60) // Fijo en 60 min (bloqueado)
 
-  // 2. Fechas & Períodos
+  // 2. Fechas
   const [startTime, setStartTime] = useState<string>(() => getNowRoundedHourArgentina(0))
   const [endTime, setEndTime] = useState<string>('') // Por defecto sin fecha de fin
   const [isEndUndefined, setIsEndUndefined] = useState<boolean>(true) // Por defecto sin determinar
-  const [periods, setPeriods] = useState<number | string>(168)
 
-  // 3. Franja Horaria de Recolección (usada por TruckFleetSimulator / TruckEngine)
+  // 3. Franja Horaria y Días de Recolección (usada por TruckFleetSimulator / TruckEngine)
   const [collectionHours, setCollectionHours] = useState<number[]>(DEFAULT_COLLECTION_HOURS)
+  const [collectionDays, setCollectionDays] = useState<number[]>(DEFAULT_COLLECTION_DAYS)
 
   // 4. Demanda Global y por Barrios
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
@@ -150,8 +163,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     setStartTime(getNowRoundedHourArgentina(0))
     setEndTime('')
     setIsEndUndefined(true)
-    setPeriods(168)
     setCollectionHours(DEFAULT_COLLECTION_HOURS)
+    setCollectionDays(DEFAULT_COLLECTION_DAYS)
     setGlobalDemandMultiplier(1.0)
     setZoneOverrides([])
   }
@@ -180,7 +193,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         return data
       })
     } catch {
-      setActiveSim((prev) => prev)
+      setActiveSim((prev) => {
+        if (prev && ['running', 'stopping', 'pending', 'paused'].includes(prev.status)) {
+          setSuccess('La simulación ha finalizado correctamente.')
+          setTimeout(() => setSuccess(null), 6000)
+          if (onSimulationStateChange) onSimulationStateChange()
+        }
+        return null
+      })
     } finally {
       if (showLoading) setLoading(false)
     }
@@ -227,9 +247,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         } else {
           setEndTime('')
           setIsEndUndefined(true)
-        }
-        if (sc.periods !== undefined) {
-          setPeriods(sc.periods)
         }
         if (Array.isArray(sc.collection_hours)) {
           setCollectionHours(sc.collection_hours)
@@ -418,6 +435,18 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     }
   }
 
+  const toggleCollectionDay = (dayId: number) => {
+    if (!!activeSim) return
+    setCollectionDays((prev) =>
+      prev.includes(dayId) ? prev.filter((d) => d !== dayId) : [...prev, dayId].sort((a, b) => a - b)
+    )
+  }
+
+  const formatIsoTimestamp = (dtStr: string): string => {
+    if (!dtStr) return dtStr
+    return dtStr.length === 16 ? `${dtStr}:00` : dtStr
+  }
+
   const handleStartSimulation = async (e: React.FormEvent) => {
     e.preventDefault()
     setActionLoading(true)
@@ -429,13 +458,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         speedup: speedup === '' ? 1000.0 : Math.max(1.0, parseFloat(String(speedup)) || 1000.0),
         global_demand_multiplier:
           globalDemandMultiplier === '' ? 1.0 : Math.max(0.1, parseFloat(String(globalDemandMultiplier)) || 0.1),
-        start_time: startTime ? new Date(startTime).toISOString() : undefined,
+        start_time: startTime ? formatIsoTimestamp(startTime) : undefined,
         scenario: {
-          start: startTime ? new Date(startTime).toISOString() : undefined,
-          end: !isEndUndefined && endTime ? new Date(endTime).toISOString() : null,
-          periods: periods === '' ? 168 : Math.max(1, parseInt(String(periods), 10) || 168),
+          start: startTime ? formatIsoTimestamp(startTime) : undefined,
+          end: !isEndUndefined && endTime ? formatIsoTimestamp(endTime) : null,
           frequency_minutes: 60, // Fixed to 60 as requested
           collection_hours: collectionHours,
+          collection_days: collectionDays,
+          no_collection_days: [0, 1, 2, 3, 4, 5, 6].filter((d) => !collectionDays.includes(d)),
         },
         zone_overrides: zoneOverrides.map((zo) => ({
           neighborhood: zo.neighborhood,
@@ -596,7 +626,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Períodos (Ticks)</p>
-                <p className="text-lg font-bold text-slate-800 mt-0.5">{activeSim.current_period}</p>
+                <p className="text-lg font-bold text-slate-800 mt-0.5">
+                  {activeSim.current_period}
+                  {activeSim.total_periods > 0 ? ` / ${activeSim.total_periods}` : ' / ∞'}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reloj Simulado</p>
@@ -840,7 +873,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       }`}
                       title="Haga click para desbloquear e introducir fecha de fin"
                     >
-                      <span>(Sin definir - Simulación continua)</span>
+                      <span>Sin definir</span>
                       <span className="text-[10px] text-indigo-600 font-semibold">Definir fecha</span>
                     </div>
                   ) : (
@@ -864,23 +897,6 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   </p>
                 </div>
               </div>
-
-              {isEndUndefined && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-600 uppercase">Períodos por Defecto</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={periods}
-                      onChange={(e) => setPeriods(e.target.value)}
-                      disabled={!!activeSim}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                    />
-                    <p className="text-[10px] text-slate-400">168 = 7 días de 24 horas cada uno.</p>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* SECCIÓN 2: Franja Horaria de Recolección (TruckEngine) */}
@@ -963,6 +979,32 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       <span>{String(hour).padStart(2, '0')}:00</span>
                       <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
                         {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Selector interactivo de Días de la Semana (directamente debajo de las horas) */}
+              <div className="grid grid-cols-7 gap-1.5 pt-2 border-t border-slate-200/70">
+                {WEEKDAYS.map((day) => {
+                  const isSelected = collectionDays.includes(day.id)
+                  return (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => toggleCollectionDay(day.id)}
+                      disabled={!!activeSim}
+                      className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                        isSelected
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
+                      } disabled:opacity-60 disabled:cursor-not-allowed`}
+                    >
+                      <span className="hidden sm:inline">{day.label}</span>
+                      <span className="sm:hidden">{day.short}</span>
+                      <span className={`text-[9px] ${isSelected ? 'text-indigo-200 font-semibold' : 'text-slate-400'}`}>
+                        {isSelected ? 'Activo' : 'Sin recolección'}
                       </span>
                     </button>
                   )
