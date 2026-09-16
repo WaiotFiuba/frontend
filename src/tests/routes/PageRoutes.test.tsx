@@ -75,9 +75,9 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
   })
 
-  it('redirects /management to login when there is no token', () => {
+  it('redirects /configurations to login when there is no token', () => {
     render(
-      <MemoryRouter initialEntries={['/management']}>
+      <MemoryRouter initialEntries={['/configurations']}>
         <PageRoutes />
       </MemoryRouter>
     )
@@ -85,15 +85,15 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
   })
 
-  it('allows /management when auth bypass is enabled in development', () => {
-    vi.stubEnv('VITE_AUTH_DEV_BYPASS', 'true')
+  it('renders Configurations page at /configurations when authenticated', () => {
+    authState.accessToken = 'token-123'
 
     render(
-      <MemoryRouter initialEntries={['/management']}>
+      <MemoryRouter initialEntries={['/configurations']}>
         <PageRoutes />
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Container Management/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Configurations/i })).toBeInTheDocument()
   })
 })

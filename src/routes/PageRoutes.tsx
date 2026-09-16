@@ -6,6 +6,7 @@ import About from '../pages/About/page'
 import Map from '../pages/Map/page'
 import SiteDetail from '../pages/SiteDetail/page'
 import Management from '../pages/Management/page'
+import Configurations from '../pages/Configurations/page'
 import Optimization from '../pages/Optimization/page'
 import RutaProtegida from '../common/RutaProtegida'
 import { MainLayout } from '../layout/MainLayout'
@@ -24,6 +25,7 @@ export default function PageRoutes() {
                 <Route path='/optimization' element={<Optimization />} />
                 <Route path='/about' element={<About />} />
                 <Route path='/management' element={<RutaProtegida><Management /></RutaProtegida>} />
+                <Route path='/configurations' element={<RutaProtegida><Configurations /></RutaProtegida>} />
                 <Route path='/login' element={<Login />} />
                 <Route path='/register' element={<Register />} />
             </Route>

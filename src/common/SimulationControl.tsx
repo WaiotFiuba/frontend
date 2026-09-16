@@ -16,6 +16,8 @@ import {
   Zap,
   Clock,
   MapPin,
+  FolderOpen,
+  X,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { formatSimulatedTime } from './utils/functions'
@@ -158,6 +160,65 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  // Load Config Modal state
+  const [showLoadModal, setShowLoadModal] = useState(false)
+  const [savedConfigs, setSavedConfigs] = useState<
+    { id: number; name: string; description: string | null; config: Record<string, any> }[]
+  >([])
+  const [loadingConfigs, setLoadingConfigs] = useState(false)
+
+  const applyConfig = (c: Record<string, any>, name: string) => {
+    if (c.speedup !== undefined) setSpeedup(c.speedup)
+    if (c.global_demand_multiplier !== undefined) setGlobalDemandMultiplier(c.global_demand_multiplier)
+    if (Array.isArray(c.zone_overrides)) {
+      setZoneOverrides(
+        c.zone_overrides.map((zo: any) => ({
+          neighborhood: zo.neighborhood,
+          multiplier: zo.multiplier,
+        }))
+      )
+    } else {
+      setZoneOverrides([])
+    }
+
+    const sc = c.scenario || {}
+    if (sc.start && typeof sc.start === 'string') {
+      setStartTime(sc.start.slice(0, 16))
+    }
+    if (sc.end && typeof sc.end === 'string') {
+      setEndTime(sc.end.slice(0, 16))
+      setIsEndUndefined(false)
+    } else {
+      setEndTime('')
+      setIsEndUndefined(true)
+    }
+    if (Array.isArray(sc.collection_hours)) {
+      setCollectionHours(sc.collection_hours)
+    }
+    if (Array.isArray(sc.collection_days)) {
+      setCollectionDays(sc.collection_days)
+    }
+
+    setSuccess(`Configuración "${name}" cargada con éxito.`)
+    setTimeout(() => setSuccess(null), 5000)
+    setShowLoadModal(false)
+  }
+
+  const handleOpenLoadModal = async () => {
+    setShowLoadModal(true)
+    setLoadingConfigs(true)
+    try {
+      const data = await api.get<
+        { id: number; name: string; description: string | null; config: Record<string, any> }[]
+      >('/digital-twin/configurations')
+      setSavedConfigs(data || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingConfigs(false)
+    }
+  }
+
   const resetToDefaults = () => {
     setSpeedup(1000)
     setStartTime(getNowRoundedHourArgentina(0))
@@ -222,6 +283,20 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   useEffect(() => {
     fetchActiveSimulation(true)
     fetchNeighborhoods()
+
+    const pendingJson = sessionStorage.getItem('waiot_pending_load_config')
+    const pendingName = sessionStorage.getItem('waiot_pending_load_config_name') || 'Guardada'
+    if (pendingJson) {
+      try {
+        const parsed = JSON.parse(pendingJson)
+        applyConfig(parsed, pendingName)
+      } catch (err) {
+        console.error('Error al parsear config de sessionStorage', err)
+      } finally {
+        sessionStorage.removeItem('waiot_pending_load_config')
+        sessionStorage.removeItem('waiot_pending_load_config_name')
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -768,18 +843,32 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Zap className="h-4 w-4 text-indigo-600" /> Parámetros del Escenario de Simulación
             </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={resetToDefaults}
-              disabled={!!activeSim}
-              className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 h-8 px-2"
-              title="Restablecer valores por defecto"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Restablecer Valores
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleOpenLoadModal}
+                disabled={!!activeSim}
+                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
+                title="Cargar una configuración guardada en su cuenta"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Load Config
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={resetToDefaults}
+                disabled={!!activeSim}
+                className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 h-8 px-2 cursor-pointer"
+                title="Restablecer valores por defecto"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Restablecer Valores
+              </Button>
+            </div>
           </div>
 
           <form onSubmit={handleStartSimulation} className="space-y-6">
@@ -1139,6 +1228,93 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           </div>
         )}
       </CardContent>
+
+      {/* MODAL: Load Configuration */}
+      {showLoadModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <FolderOpen className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Load Configuration</h3>
+                  <p className="text-xs text-slate-500">Seleccione una configuración guardada para cargar en los campos</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowLoadModal(false)}
+                className="h-8 w-8 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+              <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800 flex items-start gap-2">
+                <span className="font-bold shrink-0">Tip:</span>
+                <span>
+                  Aquí solo se listan los nombres de sus configuraciones. Si desea inspeccionar el contenido completo o crear nuevas variantes, visite la pestaña <strong>Configurations</strong> en la barra superior.
+                </span>
+              </div>
+
+              {loadingConfigs ? (
+                <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <RefreshCw className="h-6 w-6 animate-spin text-indigo-600" />
+                  <span className="text-xs font-semibold">Buscando configuraciones guardadas...</span>
+                </div>
+              ) : savedConfigs.length === 0 ? (
+                <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center space-y-2 bg-slate-50/50">
+                  <FolderOpen className="h-8 w-8 text-slate-300 mx-auto" />
+                  <p className="text-sm font-bold text-slate-600">No posee configuraciones guardadas</p>
+                  <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                    Puede crear y guardar configuraciones con nombre desde la pestaña <strong>Configurations</strong>.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {savedConfigs.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => applyConfig(item.config, item.name)}
+                      className="p-3.5 border border-slate-200/80 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center justify-between group shadow-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">
+                          {item.name}
+                        </h4>
+                        {item.description && (
+                          <p className="text-xs text-slate-500 line-clamp-1">{item.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="!bg-indigo-600 group-hover:!bg-indigo-700 !text-white text-xs font-bold px-3 h-8 shadow-xs shrink-0 cursor-pointer"
+                      >
+                        Cargar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLoadModal(false)}
+                className="text-xs font-semibold cursor-pointer"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
