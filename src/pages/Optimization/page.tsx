@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { Button } from '@/common/ui/button'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchOptimizationMetrics } from './services/optimizationApi'
+import { generateOptimizationPlan, fetchOptimizationMetrics, fetchActiveWhatIfPlan } from './services/optimizationApi'
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
 import {
   Activity,
@@ -37,21 +37,39 @@ export default function Optimization() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let isMounted = true
-    const loadMetrics = async () => {
+    const loadInitialData = async () => {
       setLoadingMetrics(true)
       try {
-        const data = await fetchOptimizationMetrics(windowDays)
-        if (isMounted) setNetworkMetrics(data)
+        const [metricsData, activePlan] = await Promise.allSettled([
+          fetchOptimizationMetrics(windowDays),
+          fetchActiveWhatIfPlan(),
+        ])
+        if (isMounted) {
+          if (metricsData.status === 'fulfilled') {
+            setNetworkMetrics(metricsData.value)
+          }
+          if (activePlan.status === 'fulfilled' && activePlan.value) {
+            setPlan(activePlan.value)
+            if (activePlan.value.config?.max_distance_km) {
+              setMaxDistanceKm(activePlan.value.config.max_distance_km)
+            }
+            if (activePlan.value.config?.algorithm) {
+              setAlgorithm(activePlan.value.config.algorithm as 'greedy' | 'lp')
+            }
+          }
+        }
       } catch (err) {
-        console.warn('Error al cargar métricas de red:', err)
+        console.warn('Error al cargar datos iniciales de optimización:', err)
       } finally {
         if (isMounted) setLoadingMetrics(false)
       }
     }
-    loadMetrics()
+    loadInitialData()
     return () => {
       isMounted = false
     }
@@ -75,12 +93,13 @@ export default function Optimization() {
     try {
       const generated = await generateOptimizationPlan(config)
       setPlan(generated)
+      setRefreshTrigger((prev) => prev + 1)
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
-          `Plan generado: se optimizó la red con ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
+          `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
         )
       } else {
-        setSuccessMsg('La red se encuentra actualmente balanceada con los parámetros seleccionados (0 movimientos necesarios).')
+        setSuccessMsg('La red se encuentra balanceada con los parámetros seleccionados (0 movimientos necesarios).')
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribución'
@@ -480,13 +499,30 @@ export default function Optimization() {
           </div>
         )}
 
-        {/* The Map (Exactly like the original interactive map, with move vectors on top) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center">
+        {/* The Map (with smooth focus and transfer vectors) */}
+        <div
+          ref={mapContainerRef}
+          className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative"
+        >
           <InteractiveMap
+            refreshTrigger={refreshTrigger}
             redistributionMoves={plan?.moves}
             highlightedMoveId={highlightedMoveId}
+            isPlayground
           />
         </div>
+
+        {/* Baseline distribution info notice */}
+        {plan && plan.moves.length === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
+            <p className="text-xs font-semibold text-slate-700">
+              🌱 Distribución What-If base activa (réplica 1:1 de la red física).
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Ajustá los parámetros deseados arriba y presioná <strong>&ldquo;Generar Redistribución&rdquo;</strong> para reubicar contenedores en el playground.
+            </p>
+          </div>
+        )}
 
         {/* Results Summary & Moves Table (only shown when plan has moves) */}
         {plan && plan.moves.length > 0 && (
@@ -612,12 +648,19 @@ export default function Optimization() {
                         <td className="p-3 text-center">
                           <button
                             type="button"
-                            onClick={() =>
-                              setHighlightedMoveId(isSelected ? null : m.container_id)
-                            }
+                            onClick={() => {
+                              const nextId = isSelected ? null : m.container_id
+                              setHighlightedMoveId(nextId)
+                              if (nextId != null) {
+                                mapContainerRef.current?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'center',
+                                })
+                              }
+                            }}
                             className={`text-[11px] font-semibold px-2 py-1 rounded transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-blue-600 text-white shadow-xs'
                                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                           >

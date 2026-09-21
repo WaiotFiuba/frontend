@@ -48,56 +48,16 @@ export const colorForLevel = (level: number) => {
     return "#10b981"
 }
 
-export const groupContainersBySite = (containers: Container[]): Site[] => {
-    const sitesMap: Record<string, Site> = {}
-
-    containers.forEach((container) => {
-        const { siteId } = container
-
-        if (!sitesMap[siteId]) {
-            sitesMap[siteId] = {
-                id: siteId,
-                lat: container.lat,
-                long: container.long,
-                type: container.type,
-                color: container.color,
-                currentLevel: container.currentLevel ?? container.level ?? 0,
-                avgLevel: container.currentLevel ?? container.level ?? 0,
-                containers: [],
-            }
-        }
-
-        sitesMap[siteId].containers.push(container)
-    })
-
-    return Object.values(sitesMap).map((site) => {
-        const totalLevel = site.containers.reduce(
-            (sum, c) => sum + (c.currentLevel ?? c.level ?? 0),
-            0
-        )
-        const currentLevel = site.containers.length > 0
-            ? Math.round(totalLevel / site.containers.length)
-            : 0
-
-        return {
-            ...site,
-            currentLevel,
-            avgLevel: currentLevel,
-            containerCount: site.containers.length,
-            color: colorForLevel(currentLevel),
-        }
-    })
-}
-
-// Devuelve sitios/contenedores en el area dada, o clusters si hay demasiados para mostrar
-export const fetchContainersBBox = async (
+// Devuelve sitios directos en el area dada, o clusters si hay demasiados para mostrar
+export const fetchSitesBBox = async (
     lat_min: number,
     lat_max: number,
     lng_min: number,
     lng_max: number,
     zoom: number,
-    limit = 2000
-): Promise<Container[]> => {
+    limit = 2000,
+    distribution: 'real' | 'whatif' = 'real'
+): Promise<Site[]> => {
     try {
         const params = new URLSearchParams({
             lat_min: String(lat_min),
@@ -106,6 +66,7 @@ export const fetchContainersBBox = async (
             lng_max: String(lng_max),
             zoom: String(zoom),
             limit: String(limit),
+            distribution: distribution,
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
@@ -126,68 +87,71 @@ export const fetchContainersBBox = async (
 
                 return {
                     id: clusterId,
-                    siteId: clusterId,
+                    name: `Cluster (${count} sitios)`,
+                    address: null,
                     lat: lat,
                     long: lon,
                     type: 'indiferenciado' as ContainerType,
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
-                    level: avgLevel,
-                    description: String(count),
+                    avgLevel: avgLevel,
+                    containerCount: count,
+                    containers: [],
+                    isCluster: true,
                 }
             })
         }
 
         // Si la respuesta son Sitios completos (zoom alto con lista de containers completa)
-        const resultContainers: Container[] = []
-
-        data.forEach((s) => {
+        return data.map((s) => {
             const avgLevel = Number(s.current_level ?? 0)
             const lat = Number(s.latitude ?? 0)
             const lon = Number(s.longitude ?? 0)
-            const siteContainers = Array.isArray(s.containers) && s.containers.length > 0 ? (s.containers as Array<Record<string, unknown>>) : []
+            const siteContainers = Array.isArray(s.containers) ? (s.containers as Array<Record<string, unknown>>) : []
 
-            if (siteContainers.length === 0) {
-                resultContainers.push({
-                    id: `site-${s.id}-c1`,
+            const containers: Container[] = siteContainers.map((c) => {
+                let type: ContainerType = "indiferenciado"
+                const typeName = String(c.container_type || "").toLowerCase()
+                if (typeName.includes("seca") || typeName.includes("reciclaje")) {
+                    type = "reciclaje"
+                } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
+                    type = "organico"
+                }
+
+                const cLevel = Number(c.current_level ?? avgLevel)
+                return {
+                    id: String(c.id),
                     siteId: String(s.id),
                     lat: lat,
                     long: lon,
-                    type: 'indiferenciado',
-                    color: colorForLevel(avgLevel),
-                    currentLevel: avgLevel,
-                    level: avgLevel,
-                    description: `${(s.name as string) || (s.address as string) || 'Sitio'} (Nivel: ${avgLevel}%)`
-                })
-            } else {
-                siteContainers.forEach((c) => {
-                    let type: ContainerType = "indiferenciado"
-                    const typeName = String(c.container_type || "").toLowerCase()
-                    if (typeName.includes("seca") || typeName.includes("reciclaje")) {
-                        type = "reciclaje"
-                    } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
-                        type = "organico"
-                    }
+                    type: type,
+                    color: colorForLevel(cLevel),
+                    currentLevel: cLevel,
+                    level: cLevel,
+                    description: String(c.container_type || 'Contenedor'),
+                }
+            })
 
-                    const cLevel = Number(c.current_level ?? avgLevel)
-                    resultContainers.push({
-                        id: String(c.id),
-                        siteId: String(s.id),
-                        lat: lat,
-                        long: lon,
-                        type: type,
-                        color: colorForLevel(cLevel),
-                        currentLevel: cLevel,
-                        level: cLevel,
-                        description: String(c.container_type || 'Contenedor'),
-                    })
-                })
+            const siteName = (s.name as string) || (s.address as string) || `Sitio #${s.id}`
+            const siteAddress = (s.address as string) || null
+
+            return {
+                id: String(s.id),
+                name: siteName,
+                address: siteAddress,
+                lat: lat,
+                long: lon,
+                type: containers.length > 0 ? containers[0].type : 'indiferenciado',
+                color: colorForLevel(avgLevel),
+                currentLevel: avgLevel,
+                avgLevel: avgLevel,
+                containerCount: (s.container_count as number | undefined) ?? siteContainers.length,
+                containers: containers,
+                isCluster: false,
             }
         })
-
-        return resultContainers
     } catch (error) {
-        console.warn('Error obteniendo sitios/contenedores:', error)
+        console.warn('Error obteniendo sitios:', error)
         return []
     }
 }

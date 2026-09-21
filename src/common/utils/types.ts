@@ -14,6 +14,8 @@ export interface Container {
 
 export interface Site {
     id: string
+    name?: string
+    address?: string | null
     lat: number
     long: number
     type: ContainerType
@@ -22,6 +24,7 @@ export interface Site {
     avgLevel?: number
     containerCount?: number
     containers: Container[]
+    isCluster?: boolean
 }
 
 export const labels: Record<ContainerType, string> = {
