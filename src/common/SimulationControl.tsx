@@ -125,7 +125,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         return data
       })
     } catch {
-      setActiveSim(null)
+      // En hosting gratuito pueden aparecer timeouts/cold starts breves.
+      // Si ya habia una simulacion visible, conservamos ese ultimo estado para
+      // no apagar/reiniciar la UI por un fallo transitorio de polling.
+      setActiveSim((prev) => prev)
     } finally {
       if (showLoading) setLoading(false)
     }
