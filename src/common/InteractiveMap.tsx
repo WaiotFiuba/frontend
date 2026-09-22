@@ -4,7 +4,15 @@ import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
 import type { Container, Site, ContainerType } from "./utils/types"
-import { fetchSitesBBox, getContainerFetchConfigByZoom, createMapPinIcon, colorForLevel, formatSimulatedTime } from "./utils/functions"
+import {
+    fetchSitesBBox,
+    getContainerFetchConfigByZoom,
+    createMapPinIcon,
+    createArrowIcon,
+    calculateBearing,
+    colorForLevel,
+    formatSimulatedTime,
+} from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -44,10 +52,10 @@ function MapViewportController({
         },
         zoomend: () => {
             mapRef.current = map
-            fetchForMap(map)
             if (onZoomChange) {
                 onZoomChange(map.getZoom())
             }
+            fetchForMap(map)
         },
     })
 
@@ -80,7 +88,7 @@ function MapMoveFocusController({
     const map = useMap()
 
     useEffect(() => {
-        if (!highlightedMoveId || !redistributionMoves) return
+        if (!highlightedMoveId || !redistributionMoves || redistributionMoves.length === 0) return
 
         const move = redistributionMoves.find((m) => m.container_id === highlightedMoveId)
         if (
@@ -103,6 +111,8 @@ function MapMoveFocusController({
     return null
 }
 
+
+
 function MovePolylineItem({
     move,
     isSelected,
@@ -110,6 +120,22 @@ function MovePolylineItem({
     move: MapRedistributionMove
     isSelected: boolean
 }) {
+    const bearing = useMemo(() => {
+        if (
+            move.from_lat == null ||
+            move.from_lng == null ||
+            move.to_lat == null ||
+            move.to_lng == null
+        ) {
+            return 0
+        }
+        return calculateBearing(move.from_lat, move.from_lng, move.to_lat, move.to_lng)
+    }, [move.from_lat, move.from_lng, move.to_lat, move.to_lng])
+
+    const arrowIcon = useMemo(() => {
+        return createArrowIcon(bearing, isSelected)
+    }, [bearing, isSelected])
+
     return (
         <>
             <Polyline
@@ -120,6 +146,13 @@ function MovePolylineItem({
                     dashArray: isSelected ? undefined : '6, 8',
                     opacity: isSelected ? 1 : 0.85,
                 }}
+            />
+
+            <Marker
+                position={[move.to_lat!, move.to_lng!]}
+                icon={arrowIcon}
+                interactive={false}
+                zIndexOffset={isSelected ? 300 : 150}
             />
 
             {isSelected && (

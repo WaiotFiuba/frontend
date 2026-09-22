@@ -201,3 +201,50 @@ export const createMapPinIcon = (color: string, containerCount: number = 1) => {
 
     return L.divIcon({ html: iconHtml, iconSize: [size, size], iconAnchor: [size / 2, size], popupAnchor: [0, -size / 1.2], className: "bg-transparent border-none", })
 }
+
+export const calculateBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    if (lat1 === lat2 && lng1 === lng2) return 0
+    const dLng = (lng2 - lng1) * (Math.PI / 180)
+    const lat1Rad = lat1 * (Math.PI / 180)
+    const lat2Rad = lat2 * (Math.PI / 180)
+    const y = Math.sin(dLng) * Math.cos(lat2Rad)
+    const x =
+        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng)
+    const brng = Math.atan2(y, x) * (180 / Math.PI)
+    return (brng + 360) % 360
+}
+
+export const createArrowIcon = (bearing: number, isSelected: boolean) => {
+    const color = isSelected ? '#2563eb' : '#4f46e5'
+    const size = isSelected ? 24 : 18
+    const half = size / 2
+    const path = isSelected
+        ? 'M 12 0 L 21 20 L 12 15 L 3 20 Z'
+        : 'M 9 0 L 16 15 L 9 11.5 L 2 15 Z'
+
+    const html = `
+        <svg
+            width="${size}"
+            height="${size}"
+            viewBox="0 0 ${size} ${size}"
+            style="overflow: visible; display: block; transform: rotate(${bearing}deg); transform-origin: ${half}px 0px;"
+        >
+            <path
+                d="${path}"
+                fill="${color}"
+                stroke="#ffffff"
+                stroke-width="${isSelected ? 2 : 1.5}"
+                stroke-linejoin="round"
+                filter="drop-shadow(0 1px 2px rgba(0,0,0,0.3))"
+            />
+        </svg>
+    `
+
+    return L.divIcon({
+        html,
+        className: 'bg-transparent border-none pointer-events-none',
+        iconSize: [size, size],
+        iconAnchor: [half, 0],
+    })
+}
