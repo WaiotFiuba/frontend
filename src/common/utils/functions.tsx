@@ -1,7 +1,43 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType } from "./types"
+import { Container, Site, ContainerType, ZoneProfileCollection, ZoneType } from "./types"
 import { api } from "../../lib/api"
+
+// Colores por tipo de zona para la capa de perfiles de zona del mapa.
+// Solo los zone_type que realmente aparecen clasificados en
+// land_use_by_radio.csv (ninguno de los 3.820 radios cae en "residential"
+// genérico: ese nombre solo existe como fallback interno de
+// ZoneClassifier.get_profile() por nombre directo, no por clasificación real).
+export const ZONE_TYPE_COLORS: Record<string, string> = {
+    residential_multifamily: "#2563eb",
+    residential_singlefamily: "#38bdf8",
+    commercial: "#f59e0b",
+    office: "#a855f7",
+    industrial: "#ef4444",
+    mixed: "#10b981",
+}
+
+export const ZONE_TYPE_LABELS: Record<string, string> = {
+    residential_multifamily: "Residencial multifamiliar",
+    residential_singlefamily: "Residencial unifamiliar",
+    commercial: "Comercial",
+    office: "Oficinas",
+    industrial: "Industrial",
+    mixed: "Mixta",
+}
+
+export const colorForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_COLORS[zoneType] ?? "#94a3b8"
+
+export const labelForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_LABELS[zoneType] ?? zoneType
+
+// Trae los polígonos de radio censal con su perfil de zona. Es un dataset
+// estático (no cambia durante la sesión), así que el llamador lo pide una
+// sola vez al activar la capa y lo cachea.
+export const fetchZoneProfiles = async (): Promise<ZoneProfileCollection> => {
+    return api.get<ZoneProfileCollection>("/map/zone-profiles/radios")
+}
 
 export type ContainerFetchZoomConfig = {
     backendZoom: number

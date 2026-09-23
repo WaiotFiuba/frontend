@@ -5,6 +5,10 @@ import { MapContainer, Marker, Popup, TileLayer, Polyline, useMapEvents } from "
 import { labels } from "./utils/types"
 import type { Container, Site, RouteDetails } from "./utils/types"
 import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel, formatSimulatedTime } from "./utils/functions"
+import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
+import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
+import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
+import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -87,6 +91,7 @@ export default function InteractiveMap({
     const [zoom, setZoom] = useState<number>(13)
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute, setSelectedRoute] = useState<RouteDetails | null>(null)
+    const zoneProfiles = useZoneProfiles()
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -347,7 +352,15 @@ export default function InteractiveMap({
                         {simulatedClock}
                     </p>
                 </div>
+
+                <ZoneProfilesControls
+                    visible={zoneProfiles.visible}
+                    loading={zoneProfiles.loading}
+                    onToggle={zoneProfiles.toggle}
+                />
             </div>
+
+            <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
                 center={cabaCenter}
@@ -368,6 +381,13 @@ export default function InteractiveMap({
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
                     onZoomChange={setZoom}
+                />
+
+                {/* Capa de perfiles de zona (radios censales), activable por el usuario */}
+                <ZoneProfilesLayer
+                    data={zoneProfiles.data}
+                    visible={zoneProfiles.visible}
+                    selectedZoneRef={zoneProfiles.selectedZoneRef}
                 />
 
                 {/* Trazado de circuito seleccionado */}
