@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { Button } from '@/common/ui/button'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchOptimizationMetrics } from './services/optimizationApi'
+import { generateOptimizationPlan, fetchOptimizationMetrics, fetchActiveWhatIfPlan } from './services/optimizationApi'
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
 import {
   Activity,
@@ -24,10 +24,15 @@ import {
 export default function Optimization() {
   const navigate = useNavigate()
 
-  // Form states for parameters
-  const [maxDistanceKm, setMaxDistanceKm] = useState<number>(2.0)
-  const [windowDays, setWindowDays] = useState<number | null>(null)
-  const [algorithm, setAlgorithm] = useState<'greedy' | 'lp'>('greedy')
+  // Configuración de parámetros unificada
+  const [config, setConfig] = useState<OptimizationConfig>({
+    max_distance_km: 2.0,
+    window_days: null,
+    algorithm: 'greedy',
+    min_utilization_donor: 0.35,
+    min_utilization_receiver: 0.65,
+    target_utilization: 0.5,
+  })
 
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
@@ -37,25 +42,40 @@ export default function Optimization() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let isMounted = true
-    const loadMetrics = async () => {
+    const loadInitialData = async () => {
       setLoadingMetrics(true)
       try {
-        const data = await fetchOptimizationMetrics(windowDays)
-        if (isMounted) setNetworkMetrics(data)
+        const [metricsData, activePlan] = await Promise.allSettled([
+          fetchOptimizationMetrics(config.window_days),
+          fetchActiveWhatIfPlan(),
+        ])
+        if (isMounted) {
+          if (metricsData.status === 'fulfilled') {
+            setNetworkMetrics(metricsData.value)
+          }
+          if (activePlan.status === 'fulfilled' && activePlan.value) {
+            setPlan(activePlan.value)
+            if (activePlan.value.config) {
+              setConfig((prev) => ({ ...prev, ...activePlan.value.config }))
+            }
+          }
+        }
       } catch (err) {
-        console.warn('Error al cargar métricas de red:', err)
+        console.warn('Error al cargar datos iniciales de optimización:', err)
       } finally {
         if (isMounted) setLoadingMetrics(false)
       }
     }
-    loadMetrics()
+    loadInitialData()
     return () => {
       isMounted = false
     }
-  }, [windowDays])
+  }, [config.window_days])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -63,24 +83,16 @@ export default function Optimization() {
     setSuccessMsg(null)
     setHighlightedMoveId(null)
 
-    const config: OptimizationConfig = {
-      window_days: windowDays,
-      max_distance_km: maxDistanceKm,
-      min_utilization_donor: 0.35,
-      min_utilization_receiver: 0.65,
-      target_utilization: 0.5,
-      algorithm,
-    }
-
     try {
       const generated = await generateOptimizationPlan(config)
       setPlan(generated)
+      setRefreshTrigger((prev) => prev + 1)
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
-          `Plan generado: se optimizó la red con ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
+          `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
         )
       } else {
-        setSuccessMsg('La red se encuentra actualmente balanceada con los parámetros seleccionados (0 movimientos necesarios).')
+        setSuccessMsg('La red se encuentra balanceada con los parámetros seleccionados (0 movimientos necesarios).')
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribución'
@@ -108,6 +120,10 @@ export default function Optimization() {
     link.click()
     URL.revokeObjectURL(url)
   }
+
+  const donorPct = Math.round(config.min_utilization_donor * 100)
+  const targetPct = Math.round(config.target_utilization * 100)
+  const receiverPct = Math.round(config.min_utilization_receiver * 100)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
@@ -148,7 +164,7 @@ export default function Optimization() {
                   Radio Máximo de Traslado
                 </label>
                 <span className="font-mono font-bold text-blue-700 px-2 py-0.5 rounded bg-blue-100">
-                  {maxDistanceKm.toFixed(1)} km
+                  {config.max_distance_km.toFixed(1)} km
                 </span>
               </div>
               <input
@@ -157,8 +173,8 @@ export default function Optimization() {
                 min="0.5"
                 max="5.0"
                 step="0.1"
-                value={maxDistanceKm}
-                onChange={(e) => setMaxDistanceKm(parseFloat(e.target.value))}
+                value={config.max_distance_km}
+                onChange={(e) => setConfig({ ...config, max_distance_km: parseFloat(e.target.value) })}
                 className="w-full accent-blue-600 cursor-pointer"
               />
               <span className="text-[11px] text-slate-500 block">
@@ -173,9 +189,12 @@ export default function Optimization() {
               </label>
               <select
                 id="window-days-select"
-                value={windowDays ?? 'all'}
+                value={config.window_days ?? 'all'}
                 onChange={(e) =>
-                  setWindowDays(e.target.value === 'all' ? null : parseInt(e.target.value, 10))
+                  setConfig({
+                    ...config,
+                    window_days: e.target.value === 'all' ? null : parseInt(e.target.value, 10),
+                  })
                 }
                 className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               >
@@ -196,9 +215,9 @@ export default function Optimization() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setAlgorithm('greedy')}
+                    onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
                     className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
-                      algorithm === 'greedy'
+                      config.algorithm === 'greedy'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
@@ -208,9 +227,9 @@ export default function Optimization() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAlgorithm('lp')}
+                    onClick={() => setConfig({ ...config, algorithm: 'lp' })}
                     className={`px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
-                      algorithm === 'lp'
+                      config.algorithm === 'lp'
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
@@ -229,6 +248,101 @@ export default function Optimization() {
                 <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
                 {generating ? 'Calculando Redistribución...' : 'Generar Redistribución'}
               </Button>
+            </div>
+          </div>
+
+          {/* Segunda fila: Umbrales de Score de Utilización */}
+          <div className="pt-3 border-t border-slate-100 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <span className="text-xs font-bold text-slate-700">
+                Umbrales de Score de Utilización del Sitio
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Score basado en demanda y saturación histórica del sitio (no es el % de llenado puntual)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* 4. Score Donante (Subutilización) */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="donor-threshold-input" className="font-semibold text-slate-700">
+                    Score Donante (Subutilizado)
+                  </label>
+                  <span className="font-mono font-bold text-emerald-700 px-2 py-0.5 rounded bg-emerald-100">
+                    {donorPct}%
+                  </span>
+                </div>
+                <input
+                  id="donor-threshold-input"
+                  type="range"
+                  min="10"
+                  max={targetPct - 5}
+                  step="5"
+                  value={donorPct}
+                  onChange={(e) =>
+                    setConfig({ ...config, min_utilization_donor: Number(e.target.value) / 100 })
+                  }
+                  className="w-full accent-emerald-600 cursor-pointer"
+                />
+                <span className="text-[11px] text-slate-500 block">
+                  Sitios con score menor a este valor pueden ceder contenedores.
+                </span>
+              </div>
+
+              {/* 5. Score Objetivo (Ideal) */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="target-utilization-input" className="font-semibold text-slate-700">
+                    Score Objetivo (Ideal)
+                  </label>
+                  <span className="font-mono font-bold text-blue-700 px-2 py-0.5 rounded bg-blue-100">
+                    {targetPct}%
+                  </span>
+                </div>
+                <input
+                  id="target-utilization-input"
+                  type="range"
+                  min={donorPct + 5}
+                  max={receiverPct - 5}
+                  step="5"
+                  value={targetPct}
+                  onChange={(e) =>
+                    setConfig({ ...config, target_utilization: Number(e.target.value) / 100 })
+                  }
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+                <span className="text-[11px] text-slate-500 block">
+                  Score óptimo hacia el cual se busca balancear la red.
+                </span>
+              </div>
+
+              {/* 6. Score Receptor (Sobreutilización) */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <label htmlFor="receiver-threshold-input" className="font-semibold text-slate-700">
+                    Score Receptor (Sobredemandado)
+                  </label>
+                  <span className="font-mono font-bold text-red-700 px-2 py-0.5 rounded bg-red-100">
+                    {receiverPct}%
+                  </span>
+                </div>
+                <input
+                  id="receiver-threshold-input"
+                  type="range"
+                  min={targetPct + 5}
+                  max="90"
+                  step="5"
+                  value={receiverPct}
+                  onChange={(e) =>
+                    setConfig({ ...config, min_utilization_receiver: Number(e.target.value) / 100 })
+                  }
+                  className="w-full accent-red-600 cursor-pointer"
+                />
+                <span className="text-[11px] text-slate-500 block">
+                  Sitios con score mayor a este valor requieren recibir contenedores.
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -480,13 +594,30 @@ export default function Optimization() {
           </div>
         )}
 
-        {/* The Map (Exactly like the original interactive map, with move vectors on top) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center">
+        {/* The Map (with smooth focus and transfer vectors) */}
+        <div
+          ref={mapContainerRef}
+          className="bg-white rounded-2xl border border-slate-200 shadow-lg h-[70vh] w-full overflow-hidden flex items-center justify-center relative"
+        >
           <InteractiveMap
+            refreshTrigger={refreshTrigger}
             redistributionMoves={plan?.moves}
             highlightedMoveId={highlightedMoveId}
+            isPlayground
           />
         </div>
+
+        {/* Baseline distribution info notice */}
+        {plan && plan.moves.length === 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
+            <p className="text-xs font-semibold text-slate-700">
+              🌱 Distribución What-If base activa (réplica 1:1 de la red física).
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Ajustá los parámetros deseados arriba y presioná <strong>&ldquo;Generar Redistribución&rdquo;</strong> para reubicar contenedores en el playground.
+            </p>
+          </div>
+        )}
 
         {/* Results Summary & Moves Table (only shown when plan has moves) */}
         {plan && plan.moves.length > 0 && (
@@ -612,12 +743,19 @@ export default function Optimization() {
                         <td className="p-3 text-center">
                           <button
                             type="button"
-                            onClick={() =>
-                              setHighlightedMoveId(isSelected ? null : m.container_id)
-                            }
+                            onClick={() => {
+                              const nextId = isSelected ? null : m.container_id
+                              setHighlightedMoveId(nextId)
+                              if (nextId != null) {
+                                mapContainerRef.current?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'center',
+                                })
+                              }
+                            }}
                             className={`text-[11px] font-semibold px-2 py-1 rounded transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-blue-600 text-white shadow-xs'
                                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                             }`}
                           >
