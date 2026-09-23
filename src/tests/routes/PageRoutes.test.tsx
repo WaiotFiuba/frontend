@@ -75,6 +75,18 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
   })
 
+  it('renders Forecast Evaluation page at /forecast-evaluation when authenticated', () => {
+    authState.accessToken = 'token-123'
+
+    render(
+      <MemoryRouter initialEntries={['/forecast-evaluation']}>
+        <PageRoutes />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('heading', { name: /Evaluación del Forecaster/i })).toBeInTheDocument()
+  })
+
   it('redirects /management to login when there is no token', () => {
     render(
       <MemoryRouter initialEntries={['/management']}>
