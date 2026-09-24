@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
-import { MapContainer, Marker, Popup, TileLayer, Polyline, useMapEvents } from "react-leaflet"
+import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site, RouteDetails } from "./utils/types"
-import { fetchContainersBBox, getContainerFetchConfigByZoom, groupContainersBySite, createMapPinIcon, colorForLevel, formatSimulatedTime } from "./utils/functions"
+import type { Container, Site, ContainerType } from "./utils/types"
+import {
+    fetchSitesBBox,
+    getContainerFetchConfigByZoom,
+    createMapPinIcon,
+    createArrowIcon,
+    calculateBearing,
+    colorForLevel,
+    formatSimulatedTime,
+} from "./utils/functions"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -44,10 +52,10 @@ function MapViewportController({
         },
         zoomend: () => {
             mapRef.current = map
-            fetchForMap(map)
             if (onZoomChange) {
                 onZoomChange(map.getZoom())
             }
+            fetchForMap(map)
         },
     })
 
@@ -70,30 +78,132 @@ function MapViewportController({
     return null
 }
 
+function MapMoveFocusController({
+    highlightedMoveId,
+    redistributionMoves,
+}: {
+    highlightedMoveId?: number | null
+    redistributionMoves?: MapRedistributionMove[]
+}) {
+    const map = useMap()
+
+    useEffect(() => {
+        if (!highlightedMoveId || !redistributionMoves || redistributionMoves.length === 0) return
+
+        const move = redistributionMoves.find((m) => m.container_id === highlightedMoveId)
+        if (
+            move &&
+            move.from_lat != null &&
+            move.from_lng != null &&
+            move.to_lat != null &&
+            move.to_lng != null
+        ) {
+            map.fitBounds(
+                [
+                    [move.from_lat, move.from_lng],
+                    [move.to_lat, move.to_lng],
+                ],
+                { padding: [80, 80], maxZoom: 16, animate: true }
+            )
+        }
+    }, [highlightedMoveId, redistributionMoves, map])
+
+    return null
+}
+
+
+
+function MovePolylineItem({
+    move,
+    isSelected,
+}: {
+    move: MapRedistributionMove
+    isSelected: boolean
+}) {
+    const bearing = useMemo(() => {
+        if (
+            move.from_lat == null ||
+            move.from_lng == null ||
+            move.to_lat == null ||
+            move.to_lng == null
+        ) {
+            return 0
+        }
+        return calculateBearing(move.from_lat, move.from_lng, move.to_lat, move.to_lng)
+    }, [move.from_lat, move.from_lng, move.to_lat, move.to_lng])
+
+    const arrowIcon = useMemo(() => {
+        return createArrowIcon(bearing, isSelected)
+    }, [bearing, isSelected])
+
+    return (
+        <>
+            <Polyline
+                positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
+                pathOptions={{
+                    color: isSelected ? '#2563eb' : '#4f46e5',
+                    weight: isSelected ? 6 : 3.5,
+                    dashArray: isSelected ? undefined : '6, 8',
+                    opacity: isSelected ? 1 : 0.85,
+                }}
+            />
+
+            <Marker
+                position={[move.to_lat!, move.to_lng!]}
+                icon={arrowIcon}
+                interactive={false}
+                zIndexOffset={isSelected ? 300 : 150}
+            />
+
+            {isSelected && (
+                <>
+                    <CircleMarker
+                        center={[move.from_lat!, move.from_lng!]}
+                        radius={7}
+                        pathOptions={{
+                            color: '#1d4ed8',
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.9,
+                            weight: 3,
+                        }}
+                    />
+                    <CircleMarker
+                        center={[move.to_lat!, move.to_lng!]}
+                        radius={7}
+                        pathOptions={{
+                            color: '#047857',
+                            fillColor: '#10b981',
+                            fillOpacity: 0.9,
+                            weight: 3,
+                        }}
+                    />
+                </>
+            )}
+        </>
+    )
+}
+
 interface InteractiveMapProps {
     refreshTrigger?: number
-    containers?: Container[]
     redistributionMoves?: MapRedistributionMove[]
     highlightedMoveId?: number | null
+    isPlayground?: boolean
 }
 
 export default function InteractiveMap({
     refreshTrigger = 0,
-    containers: propContainers,
     redistributionMoves,
     highlightedMoveId,
+    isPlayground = false,
 }: InteractiveMapProps) {
-    const [containers, setContainers] = useState<Container[]>([])
-    const [zoom, setZoom] = useState<number>(13)
+    const [sites, setSites] = useState<Site[]>([])
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
-    const [selectedRoute, setSelectedRoute] = useState<RouteDetails | null>(null)
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
-    const activeSimulationRef = useRef<ActiveSimulation | null>(null)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
@@ -101,14 +211,15 @@ export default function InteractiveMap({
         const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
 
         try {
-            const data = await fetchContainersBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit)
+            const distribution = isPlayground ? 'whatif' : 'real'
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution)
             if (mountedRef.current && requestId === latestRequestIdRef.current) {
-                setContainers(data)
+                setSites(data)
             }
         } catch (e) {
-            console.error('Error al cargar contenedores:', e)
+            console.error('Error al cargar sitios:', e)
         }
-    }, [])
+    }, [isPlayground])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -135,9 +246,6 @@ export default function InteractiveMap({
     }, [fetchForBounds])
 
     useEffect(() => {
-        if (propContainers) {
-            return
-        }
         mountedRef.current = true
 
         if (mapRef.current) {
@@ -168,7 +276,7 @@ export default function InteractiveMap({
                 window.clearTimeout(currentDebounce)
             }
         }
-    }, [refreshTrigger, fetchForBounds, propContainers])
+    }, [refreshTrigger, fetchForBounds])
 
     useEffect(() => {
         let cancelled = false
@@ -177,7 +285,6 @@ export default function InteractiveMap({
             try {
                 const data = await api.get<ActiveSimulation>('/digital-twin/simulations/active')
                 if (!cancelled) {
-                    activeSimulationRef.current = data
                     setActiveSimulation(data)
                 }
             } catch {
@@ -198,7 +305,7 @@ export default function InteractiveMap({
 
     // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
     useEffect(() => {
-        if (!mapRef.current || propContainers) return
+        if (!mapRef.current) return
         const map = mapRef.current
         const bounds = map.getBounds()
         const sw = bounds.getSouthWest()
@@ -215,91 +322,24 @@ export default function InteractiveMap({
             ne.lng + lngPadding,
             zoom
         )
-    }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds, propContainers])
+    }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds])
 
     const simulatedClock = useMemo(
         () => formatSimulatedTime(activeSimulation?.simulated_time),
         [activeSimulation?.simulated_time]
     )
 
-    // Agrupamiento del lado del cliente cuando se pasan contenedores estáticos (propContainers)
-    // Emula el ST_SnapToGrid de la base de datos con los mismos niveles de cuadrícula por zoom.
-    const displayContainers = useMemo(() => {
-        if (!propContainers) {
-            return containers
-        }
-
-        const getGridSize = (z: number): number | null => {
-            if (z < 11) return 0.15
-            if (z < 13) return 0.05
-            if (z < 15) return 0.015
-            if (z < 17) return 0.003
-            return null
-        }
-
-        const gridSize = getGridSize(zoom)
-        if (gridSize === null) {
-            return propContainers
-        }
-
-        const groups: Record<string, Container[]> = {}
-        propContainers.forEach((c) => {
-            const snapLat = Math.round(c.lat / gridSize)
-            const snapLong = Math.round(c.long / gridSize)
-            const cellKey = `${snapLat}_${snapLong}`
-            if (!groups[cellKey]) {
-                groups[cellKey] = []
-            }
-            groups[cellKey].push(c)
-        })
-
-        const clustered: Container[] = []
-        Object.entries(groups).forEach(([cellKey, cellContainers]) => {
-            if (cellContainers.length === 1) {
-                clustered.push(cellContainers[0])
-            } else {
-                let sumLat = 0
-                let sumLong = 0
-                cellContainers.forEach((c) => {
-                    sumLat += c.lat
-                    sumLong += c.long
-                })
-                const avgLat = sumLat / cellContainers.length
-                const avgLong = sumLong / cellContainers.length
-
-                clustered.push({
-                    id: `cluster-${cellKey}`,
-                    siteId: `cluster-${cellKey}`,
-                    lat: avgLat,
-                    long: avgLong,
-                    type: 'indiferenciado',
-                    color: '#6b7280',
-                    currentLevel: Math.round(
-                        cellContainers.reduce((sum, c) => sum + c.currentLevel, 0) / cellContainers.length
-                    ),
-                    description: String(cellContainers.length),
-                })
-            }
-        })
-
-        return clustered
-    }, [propContainers, containers, zoom])
-
-    // Calcular sitios agrupados. Se recalcula automáticamente cuando cambian los contenedores
-    const sites: Site[] = useMemo(() => {
-        return groupContainersBySite(displayContainers)
-    }, [displayContainers])
+    // Sitios a desplegar: usa propContainers si fueron provistos, sino los sitios del backend directamente
+    const displaySites = useMemo(() => {
+        return sites
+    }, [sites])
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
-        return containers.filter((c) => {
-            if (c.level !== undefined) {
-                return c.level >= 100
-            }
-            const match = c.description.match(/Nivel:\s*(\d+)%/)
-            return match ? Number(match[1]) >= 100 : false
-        }).length
-    }, [containers])
+        return displaySites.reduce((acc, s) => {
+            return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
+        }, 0)
+    }, [displaySites])
 
     // Centro del mapa en CABA
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
@@ -318,9 +358,8 @@ export default function InteractiveMap({
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             )}
                             <span
-                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                                    fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
-                                }`}
+                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
+                                    }`}
                             ></span>
                         </span>
                     </div>
@@ -329,9 +368,8 @@ export default function InteractiveMap({
                             Al 100%
                         </span>
                         <span
-                            className={`text-base font-extrabold leading-tight ${
-                                fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
-                            }`}
+                            className={`text-base font-extrabold leading-tight ${fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
+                                }`}
                         >
                             {fullContainersCount}
                         </span>
@@ -367,25 +405,16 @@ export default function InteractiveMap({
                     mapRef={mapRef}
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
-                    onZoomChange={setZoom}
                 />
 
-                {/* Trazado de circuito seleccionado */}
-                {selectedRoute && selectedRoute.waypoints.length > 0 && (
-                    <Polyline
-                        positions={selectedRoute.waypoints}
-                        pathOptions={{
-                            color: "#2563eb",
-                            weight: 5,
-                            opacity: 0.85,
-                            dashArray: "8, 6",
-                        }}
-                    />
-                )}
+                <MapMoveFocusController
+                    highlightedMoveId={highlightedMoveId}
+                    redistributionMoves={redistributionMoves}
+                />
 
-                {sites.map((site) => {
-                    const isCluster = site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-')
-                    const clusterTotal = isCluster ? Number(site.containers[0].description) || 1 : 0
+                {displaySites.map((site) => {
+                    const isCluster = site.isCluster ?? (site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-'))
+                    const clusterTotal = isCluster ? site.containerCount ?? (Number(site.containers[0]?.description) || 1) : 0
                     const containerCount = isCluster ? clusterTotal : site.containers.length
                     const siteLevel = site.currentLevel ?? site.avgLevel ?? 0
 
@@ -413,10 +442,15 @@ export default function InteractiveMap({
                                         <div className="border-b pb-1.5 flex items-center justify-between">
                                             <div>
                                                 <h3 className="font-bold text-sm text-slate-900 leading-tight">
-                                                    Sitio #{site.id}
+                                                    {site.name || `Sitio #${site.id}`}
                                                 </h3>
-                                                <p className="text-[11px] text-slate-500 font-medium">
-                                                    {labels[site.type]} • {containerCount} cont.
+                                                {site.address && site.address !== site.name && (
+                                                    <p className="text-[11px] text-slate-500 font-medium">
+                                                        {site.address}
+                                                    </p>
+                                                )}
+                                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                                                    Sitio #{site.id} • {labels[site.type as ContainerType] || labels.indiferenciado} • {containerCount} cont.
                                                 </p>
                                             </div>
                                         </div>
@@ -444,7 +478,7 @@ export default function InteractiveMap({
                                                 Contenedores
                                             </p>
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
-                                                {site.containers.map((container) => {
+                                                {site.containers.map((container: Container) => {
                                                     const cLevel = container.currentLevel ?? container.level ?? 0
                                                     const cColor = colorForLevel(cLevel)
                                                     return (
@@ -501,77 +535,14 @@ export default function InteractiveMap({
                     if (m.from_lat == null || m.from_lng == null || m.to_lat == null || m.to_lng == null) return null
                     const isSelected = highlightedMoveId === m.container_id
                     return (
-                        <Polyline
+                        <MovePolylineItem
                             key={`opt-move-${m.container_id}`}
-                            positions={[[m.from_lat, m.from_lng], [m.to_lat, m.to_lng]]}
-                            pathOptions={{
-                                color: isSelected ? '#2563eb' : '#4f46e5',
-                                weight: isSelected ? 5 : 3.5,
-                                dashArray: '6, 8',
-                                opacity: isSelected ? 1 : 0.85,
-                            }}
-                        >
-                            <Popup>
-                                <div className="p-2 space-y-1.5 min-w-[200px] text-xs">
-                                    <div className="font-bold text-indigo-700 border-b pb-1">
-                                        Traslado Contenedor #{m.container_id}
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500 font-semibold">Origen: </span>
-                                        <span className="font-medium text-slate-800">{m.from_site_name}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-slate-500 font-semibold">Destino: </span>
-                                        <span className="font-medium text-slate-800">{m.to_site_name}</span>
-                                    </div>
-                                    <div className="text-[11px] text-slate-600 font-mono pt-1 border-t">
-                                        Distancia: <strong>{m.distance_km.toFixed(2)} km</strong> ({Math.round(m.distance_km * 1000)} m)
-                                    </div>
-                                </div>
-                            </Popup>
-                        </Polyline>
+                            move={m}
+                            isSelected={isSelected}
+                        />
                     )
                 })}
             </MapContainer>
-
-            {/* Panel flotante de métricas de optimización ATSP/DRPP */}
-            {selectedRoute && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: '24px',
-                    left: '24px',
-                    zIndex: 1000,
-                    backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                    backdropFilter: 'blur(8px)',
-                    color: 'white',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4)',
-                    maxWidth: '320px',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ fontWeight: 800, fontSize: '13px', color: '#60a5fa' }}>
-                            🗺️ Circuito #{selectedRoute.route_id} (OR-Tools)
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setSelectedRoute(null)}
-                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}
-                        >
-                            ✕
-                        </button>
-                    </div>
-                    <div style={{ fontSize: '11px', lineHeight: '1.6', color: '#cbd5e1' }}>
-                        <div><strong>Servicio:</strong> {selectedRoute.service_name}</div>
-                        <div><strong>Distancia Total:</strong> {((selectedRoute.total_distance_m || 0) / 1000).toFixed(2)} km</div>
-                        <div><strong>Recolección Efectiva:</strong> {((selectedRoute.collection_distance_m || 0) / 1000).toFixed(2)} km</div>
-                        <div><strong>Traslado (Deadheading):</strong> {((selectedRoute.deadheading_distance_m || 0) / 1000).toFixed(2)} km</div>
-                        <div><strong>Tramos Repetidos:</strong> {selectedRoute.repeated_segments_count || 0}</div>
-                    </div>
-                </div>
-            )}
-
         </div>
     )
 }
