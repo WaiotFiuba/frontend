@@ -703,7 +703,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Períodos (Ticks)</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">
                   {activeSim.current_period}
-                  {activeSim.total_periods > 0 ? ` / ${activeSim.total_periods}` : ' / ∞'}
+                  {activeSim.total_periods > 0 ? ` / ${activeSim.total_periods}` : ''}
                 </p>
               </div>
               <div>

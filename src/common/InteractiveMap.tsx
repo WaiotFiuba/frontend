@@ -210,6 +210,7 @@ export default function InteractiveMap({
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
+    const latestAppliedIdRef = useRef<number>(0)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
@@ -219,7 +220,8 @@ export default function InteractiveMap({
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
             const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution)
-            if (mountedRef.current && requestId === latestRequestIdRef.current) {
+            if (mountedRef.current && requestId > latestAppliedIdRef.current) {
+                latestAppliedIdRef.current = requestId
                 setSites(data)
             }
         } catch (e) {
