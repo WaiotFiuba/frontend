@@ -33,6 +33,39 @@ export const labels: Record<ContainerType, string> = {
     indiferenciado: "Indiferenciado",
 }
 
+export type ZoneType =
+    | "residential_multifamily"
+    | "residential_singlefamily"
+    | "residential"
+    | "commercial"
+    | "office"
+    | "industrial"
+    | "mixed"
+    | string
+
+export interface ZoneProfileProperties {
+    radio_code: string
+    barrio: string
+    department_name: string
+    population: number
+    zone_type: ZoneType
+    demand_multiplier: number
+    weekend_factor: number
+    hour_weights: Record<string, number>
+    weekday_factors: Record<string, number>
+}
+
+export interface ZoneProfileFeature {
+    type: "Feature"
+    geometry: GeoJSON.Geometry
+    properties: ZoneProfileProperties
+}
+
+export interface ZoneProfileCollection {
+    type: "FeatureCollection"
+    features: ZoneProfileFeature[]
+}
+
 export type BackendSiteContainer = {
     id: number
     serie_id?: string | null

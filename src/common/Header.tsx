@@ -39,6 +39,9 @@ export default function Header({ className }: { className?: string }) {
                         <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Management
                         </button>
+                        <button onClick={() => navigate('/configurations')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                            Configurations
+                        </button>
                         <button onClick={() => navigate('/about')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             About
                         </button>

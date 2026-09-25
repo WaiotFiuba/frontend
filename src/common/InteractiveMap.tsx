@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site, ContainerType } from "./utils/types"
+import type { Container, Site, ContainerType, RouteDetails } from "./utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -13,6 +13,10 @@ import {
     colorForLevel,
     formatSimulatedTime,
 } from "./utils/functions"
+import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
+import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
+import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
+import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -198,6 +202,8 @@ export default function InteractiveMap({
 }: InteractiveMapProps) {
     const [sites, setSites] = useState<Site[]>([])
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
+    const [selectedRoute] = useState<RouteDetails | null>(null)
+    const zoneProfiles = useZoneProfiles()
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -385,7 +391,15 @@ export default function InteractiveMap({
                         {simulatedClock}
                     </p>
                 </div>
+
+                <ZoneProfilesControls
+                    visible={zoneProfiles.visible}
+                    loading={zoneProfiles.loading}
+                    onToggle={zoneProfiles.toggle}
+                />
             </div>
+
+            <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
                 center={cabaCenter}
@@ -411,6 +425,26 @@ export default function InteractiveMap({
                     highlightedMoveId={highlightedMoveId}
                     redistributionMoves={redistributionMoves}
                 />
+
+                {/* Capa de perfiles de zona (radios censales), activable por el usuario */}
+                <ZoneProfilesLayer
+                    data={zoneProfiles.data}
+                    visible={zoneProfiles.visible}
+                    selectedZoneRef={zoneProfiles.selectedZoneRef}
+                />
+
+                {/* Trazado de circuito seleccionado */}
+                {selectedRoute && selectedRoute.waypoints.length > 0 && (
+                    <Polyline
+                        positions={selectedRoute.waypoints}
+                        pathOptions={{
+                            color: "#2563eb",
+                            weight: 5,
+                            opacity: 0.85,
+                            dashArray: "8, 6",
+                        }}
+                    />
+                )}
 
                 {displaySites.map((site) => {
                     const isCluster = site.isCluster ?? (site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-'))
