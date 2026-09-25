@@ -155,6 +155,12 @@ export const api = {
       method: 'POST',
       body: prepareBody(body),
     }),
+  put: <T>(path: string, body?: ApiBody, options?: ApiOptions) =>
+    request<T>(path, {
+      ...options,
+      method: 'PUT',
+      body: prepareBody(body),
+    }),
   patch: <T>(path: string, body?: ApiBody, options?: ApiOptions) =>
     request<T>(path, {
       ...options,

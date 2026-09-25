@@ -1,7 +1,43 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType } from "./types"
+import { Container, Site, ContainerType, ZoneProfileCollection, ZoneType } from "./types"
 import { api } from "../../lib/api"
+
+// Colores por tipo de zona para la capa de perfiles de zona del mapa.
+// Solo los zone_type que realmente aparecen clasificados en
+// land_use_by_radio.csv (ninguno de los 3.820 radios cae en "residential"
+// genérico: ese nombre solo existe como fallback interno de
+// ZoneClassifier.get_profile() por nombre directo, no por clasificación real).
+export const ZONE_TYPE_COLORS: Record<string, string> = {
+    residential_multifamily: "#2563eb",
+    residential_singlefamily: "#38bdf8",
+    commercial: "#f59e0b",
+    office: "#a855f7",
+    industrial: "#ef4444",
+    mixed: "#10b981",
+}
+
+export const ZONE_TYPE_LABELS: Record<string, string> = {
+    residential_multifamily: "Residencial multifamiliar",
+    residential_singlefamily: "Residencial unifamiliar",
+    commercial: "Comercial",
+    office: "Oficinas",
+    industrial: "Industrial",
+    mixed: "Mixta",
+}
+
+export const colorForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_COLORS[zoneType] ?? "#94a3b8"
+
+export const labelForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_LABELS[zoneType] ?? zoneType
+
+// Trae los polígonos de radio censal con su perfil de zona. Es un dataset
+// estático (no cambia durante la sesión), así que el llamador lo pide una
+// sola vez al activar la capa y lo cachea.
+export const fetchZoneProfiles = async (): Promise<ZoneProfileCollection> => {
+    return api.get<ZoneProfileCollection>("/map/zone-profiles/radios")
+}
 
 export type ContainerFetchZoomConfig = {
     backendZoom: number
@@ -48,56 +84,16 @@ export const colorForLevel = (level: number) => {
     return "#10b981"
 }
 
-export const groupContainersBySite = (containers: Container[]): Site[] => {
-    const sitesMap: Record<string, Site> = {}
-
-    containers.forEach((container) => {
-        const { siteId } = container
-
-        if (!sitesMap[siteId]) {
-            sitesMap[siteId] = {
-                id: siteId,
-                lat: container.lat,
-                long: container.long,
-                type: container.type,
-                color: container.color,
-                currentLevel: container.currentLevel ?? container.level ?? 0,
-                avgLevel: container.currentLevel ?? container.level ?? 0,
-                containers: [],
-            }
-        }
-
-        sitesMap[siteId].containers.push(container)
-    })
-
-    return Object.values(sitesMap).map((site) => {
-        const totalLevel = site.containers.reduce(
-            (sum, c) => sum + (c.currentLevel ?? c.level ?? 0),
-            0
-        )
-        const currentLevel = site.containers.length > 0
-            ? Math.round(totalLevel / site.containers.length)
-            : 0
-
-        return {
-            ...site,
-            currentLevel,
-            avgLevel: currentLevel,
-            containerCount: site.containers.length,
-            color: colorForLevel(currentLevel),
-        }
-    })
-}
-
-// Devuelve sitios/contenedores en el area dada, o clusters si hay demasiados para mostrar
-export const fetchContainersBBox = async (
+// Devuelve sitios directos en el area dada, o clusters si hay demasiados para mostrar
+export const fetchSitesBBox = async (
     lat_min: number,
     lat_max: number,
     lng_min: number,
     lng_max: number,
     zoom: number,
-    limit = 2000
-): Promise<Container[]> => {
+    limit = 2000,
+    distribution: 'real' | 'whatif' = 'real'
+): Promise<Site[]> => {
     try {
         const params = new URLSearchParams({
             lat_min: String(lat_min),
@@ -106,6 +102,7 @@ export const fetchContainersBBox = async (
             lng_max: String(lng_max),
             zoom: String(zoom),
             limit: String(limit),
+            distribution: distribution,
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
@@ -126,68 +123,71 @@ export const fetchContainersBBox = async (
 
                 return {
                     id: clusterId,
-                    siteId: clusterId,
+                    name: `Cluster (${count} sitios)`,
+                    address: null,
                     lat: lat,
                     long: lon,
                     type: 'indiferenciado' as ContainerType,
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
-                    level: avgLevel,
-                    description: String(count),
+                    avgLevel: avgLevel,
+                    containerCount: count,
+                    containers: [],
+                    isCluster: true,
                 }
             })
         }
 
         // Si la respuesta son Sitios completos (zoom alto con lista de containers completa)
-        const resultContainers: Container[] = []
-
-        data.forEach((s) => {
+        return data.map((s) => {
             const avgLevel = Number(s.current_level ?? 0)
             const lat = Number(s.latitude ?? 0)
             const lon = Number(s.longitude ?? 0)
-            const siteContainers = Array.isArray(s.containers) && s.containers.length > 0 ? (s.containers as Array<Record<string, unknown>>) : []
+            const siteContainers = Array.isArray(s.containers) ? (s.containers as Array<Record<string, unknown>>) : []
 
-            if (siteContainers.length === 0) {
-                resultContainers.push({
-                    id: `site-${s.id}-c1`,
+            const containers: Container[] = siteContainers.map((c) => {
+                let type: ContainerType = "indiferenciado"
+                const typeName = String(c.container_type || "").toLowerCase()
+                if (typeName.includes("seca") || typeName.includes("reciclaje")) {
+                    type = "reciclaje"
+                } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
+                    type = "organico"
+                }
+
+                const cLevel = Number(c.current_level ?? avgLevel)
+                return {
+                    id: String(c.id),
                     siteId: String(s.id),
                     lat: lat,
                     long: lon,
-                    type: 'indiferenciado',
-                    color: colorForLevel(avgLevel),
-                    currentLevel: avgLevel,
-                    level: avgLevel,
-                    description: `${(s.name as string) || (s.address as string) || 'Sitio'} (Nivel: ${avgLevel}%)`
-                })
-            } else {
-                siteContainers.forEach((c) => {
-                    let type: ContainerType = "indiferenciado"
-                    const typeName = String(c.container_type || "").toLowerCase()
-                    if (typeName.includes("seca") || typeName.includes("reciclaje")) {
-                        type = "reciclaje"
-                    } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
-                        type = "organico"
-                    }
+                    type: type,
+                    color: colorForLevel(cLevel),
+                    currentLevel: cLevel,
+                    level: cLevel,
+                    description: String(c.container_type || 'Contenedor'),
+                }
+            })
 
-                    const cLevel = Number(c.current_level ?? avgLevel)
-                    resultContainers.push({
-                        id: String(c.id),
-                        siteId: String(s.id),
-                        lat: lat,
-                        long: lon,
-                        type: type,
-                        color: colorForLevel(cLevel),
-                        currentLevel: cLevel,
-                        level: cLevel,
-                        description: String(c.container_type || 'Contenedor'),
-                    })
-                })
+            const siteName = (s.name as string) || (s.address as string) || `Sitio #${s.id}`
+            const siteAddress = (s.address as string) || null
+
+            return {
+                id: String(s.id),
+                name: siteName,
+                address: siteAddress,
+                lat: lat,
+                long: lon,
+                type: containers.length > 0 ? containers[0].type : 'indiferenciado',
+                color: colorForLevel(avgLevel),
+                currentLevel: avgLevel,
+                avgLevel: avgLevel,
+                containerCount: (s.container_count as number | undefined) ?? siteContainers.length,
+                containers: containers,
+                isCluster: false,
             }
         })
-
-        return resultContainers
     } catch (error) {
-        console.warn('Error obteniendo sitios/contenedores:', error)
+        console.warn('Error obteniendo sitios:', error)
         return []
     }
 }
@@ -236,4 +236,51 @@ export const createMapPinIcon = (color: string, containerCount: number = 1) => {
     )
 
     return L.divIcon({ html: iconHtml, iconSize: [size, size], iconAnchor: [size / 2, size], popupAnchor: [0, -size / 1.2], className: "bg-transparent border-none", })
+}
+
+export const calculateBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    if (lat1 === lat2 && lng1 === lng2) return 0
+    const dLng = (lng2 - lng1) * (Math.PI / 180)
+    const lat1Rad = lat1 * (Math.PI / 180)
+    const lat2Rad = lat2 * (Math.PI / 180)
+    const y = Math.sin(dLng) * Math.cos(lat2Rad)
+    const x =
+        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLng)
+    const brng = Math.atan2(y, x) * (180 / Math.PI)
+    return (brng + 360) % 360
+}
+
+export const createArrowIcon = (bearing: number, isSelected: boolean) => {
+    const color = isSelected ? '#2563eb' : '#4f46e5'
+    const size = isSelected ? 24 : 18
+    const half = size / 2
+    const path = isSelected
+        ? 'M 12 0 L 21 20 L 12 15 L 3 20 Z'
+        : 'M 9 0 L 16 15 L 9 11.5 L 2 15 Z'
+
+    const html = `
+        <svg
+            width="${size}"
+            height="${size}"
+            viewBox="0 0 ${size} ${size}"
+            style="overflow: visible; display: block; transform: rotate(${bearing}deg); transform-origin: ${half}px 0px;"
+        >
+            <path
+                d="${path}"
+                fill="${color}"
+                stroke="#ffffff"
+                stroke-width="${isSelected ? 2 : 1.5}"
+                stroke-linejoin="round"
+                filter="drop-shadow(0 1px 2px rgba(0,0,0,0.3))"
+            />
+        </svg>
+    `
+
+    return L.divIcon({
+        html,
+        className: 'bg-transparent border-none pointer-events-none',
+        iconSize: [size, size],
+        iconAnchor: [half, 0],
+    })
 }

@@ -42,3 +42,8 @@ export async function fetchWhatIfComparison(
 ): Promise<WhatIfComparisonResponse> {
   return await api.get<WhatIfComparisonResponse>(`/map/optimization/plan/${planId}/comparison`)
 }
+
+export async function fetchActiveWhatIfPlan(): Promise<RedistributionPlan> {
+  return await api.get<RedistributionPlan>('/map/optimization/plan/active')
+}
+
