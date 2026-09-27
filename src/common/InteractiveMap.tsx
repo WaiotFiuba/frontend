@@ -387,7 +387,7 @@ export default function InteractiveMap({
                 {/* Reloj de tiempo simulado */}
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Simulated Clock
+                        Reloj de Simulación
                     </p>
                     <p className="font-semibold text-slate-900 leading-tight">
                         {simulatedClock}
