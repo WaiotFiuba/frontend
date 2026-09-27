@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site, ContainerType } from "./utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "./utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -13,6 +13,10 @@ import {
     colorForLevel,
     formatSimulatedTime,
 } from "./utils/functions"
+import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
+import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
+import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
+import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 
@@ -197,13 +201,17 @@ export default function InteractiveMap({
     isPlayground = false,
 }: InteractiveMapProps) {
     const [sites, setSites] = useState<Site[]>([])
+    const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
+    const [selectedRoute] = useState<RouteDetails | null>(null)
+    const zoneProfiles = useZoneProfiles()
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
     const debounceRef = useRef<number | null>(null)
     const mountedRef = useRef(true)
     const latestRequestIdRef = useRef<number>(0)
+    const latestAppliedIdRef = useRef<number>(0)
 
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
@@ -212,14 +220,15 @@ export default function InteractiveMap({
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
-            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution)
-            if (mountedRef.current && requestId === latestRequestIdRef.current) {
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter)
+            if (mountedRef.current && requestId > latestAppliedIdRef.current) {
+                latestAppliedIdRef.current = requestId
                 setSites(data)
             }
         } catch (e) {
             console.error('Error al cargar sitios:', e)
         }
-    }, [isPlayground])
+    }, [isPlayground, wasteFilter])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -379,13 +388,42 @@ export default function InteractiveMap({
                 {/* Reloj de tiempo simulado */}
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Simulated Clock
+                        Reloj de Simulación
                     </p>
                     <p className="font-semibold text-slate-900 leading-tight">
                         {simulatedClock}
                     </p>
                 </div>
+
+                <ZoneProfilesControls
+                    visible={zoneProfiles.visible}
+                    loading={zoneProfiles.loading}
+                    onToggle={zoneProfiles.toggle}
+                />
+
+                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-md backdrop-blur flex items-center gap-1">
+                    {[
+                        ['all', 'Todos'],
+                        ['organico', 'Húmedos'],
+                        ['reciclaje', 'Reciclables'],
+                    ].map(([value, label]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setWasteFilter(value as MapWasteFilter)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                                wasteFilter === value
+                                    ? 'bg-slate-900 text-white shadow-sm'
+                                    : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </div>
+
+            <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
                 center={cabaCenter}
@@ -412,6 +450,26 @@ export default function InteractiveMap({
                     redistributionMoves={redistributionMoves}
                 />
 
+                {/* Capa de perfiles de zona (radios censales), activable por el usuario */}
+                <ZoneProfilesLayer
+                    data={zoneProfiles.data}
+                    visible={zoneProfiles.visible}
+                    selectedZoneRef={zoneProfiles.selectedZoneRef}
+                />
+
+                {/* Trazado de circuito seleccionado */}
+                {selectedRoute && selectedRoute.waypoints.length > 0 && (
+                    <Polyline
+                        positions={selectedRoute.waypoints}
+                        pathOptions={{
+                            color: "#2563eb",
+                            weight: 5,
+                            opacity: 0.85,
+                            dashArray: "8, 6",
+                        }}
+                    />
+                )}
+
                 {displaySites.map((site) => {
                     const isCluster = site.isCluster ?? (site.containers.length === 1 && String(site.containers[0].id).startsWith('cluster-'))
                     const clusterTotal = isCluster ? site.containerCount ?? (Number(site.containers[0]?.description) || 1) : 0
@@ -434,7 +492,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
@@ -524,7 +582,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )

@@ -1,7 +1,43 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType } from "./types"
+import { Container, Site, ContainerType, MapWasteFilter, ZoneProfileCollection, ZoneType } from "./types"
 import { api } from "../../lib/api"
+
+// Colores por tipo de zona para la capa de perfiles de zona del mapa.
+// Solo los zone_type que realmente aparecen clasificados en
+// land_use_by_radio.csv (ninguno de los 3.820 radios cae en "residential"
+// genérico: ese nombre solo existe como fallback interno de
+// ZoneClassifier.get_profile() por nombre directo, no por clasificación real).
+export const ZONE_TYPE_COLORS: Record<string, string> = {
+    residential_multifamily: "#2563eb",
+    residential_singlefamily: "#38bdf8",
+    commercial: "#f59e0b",
+    office: "#a855f7",
+    industrial: "#ef4444",
+    mixed: "#10b981",
+}
+
+export const ZONE_TYPE_LABELS: Record<string, string> = {
+    residential_multifamily: "Residencial multifamiliar",
+    residential_singlefamily: "Residencial unifamiliar",
+    commercial: "Comercial",
+    office: "Oficinas",
+    industrial: "Industrial",
+    mixed: "Mixta",
+}
+
+export const colorForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_COLORS[zoneType] ?? "#94a3b8"
+
+export const labelForZoneType = (zoneType: ZoneType): string =>
+    ZONE_TYPE_LABELS[zoneType] ?? zoneType
+
+// Trae los polígonos de radio censal con su perfil de zona. Es un dataset
+// estático (no cambia durante la sesión), así que el llamador lo pide una
+// sola vez al activar la capa y lo cachea.
+export const fetchZoneProfiles = async (): Promise<ZoneProfileCollection> => {
+    return api.get<ZoneProfileCollection>("/map/zone-profiles/radios")
+}
 
 export type ContainerFetchZoomConfig = {
     backendZoom: number
@@ -48,6 +84,17 @@ export const colorForLevel = (level: number) => {
     return "#10b981"
 }
 
+export const containerTypeForWaste = (rawType?: string | null, rawWaste?: string | null): ContainerType => {
+    const value = `${rawType ?? ""} ${rawWaste ?? ""}`.toLowerCase()
+    if (value.includes("seca") || value.includes("recicl") || value.includes("verde")) {
+        return "reciclaje"
+    }
+    if (value.includes("humeda") || value.includes("húmeda") || value.includes("hÃºmeda") || value.includes("organico")) {
+        return "organico"
+    }
+    return "indiferenciado"
+}
+
 // Devuelve sitios directos en el area dada, o clusters si hay demasiados para mostrar
 export const fetchSitesBBox = async (
     lat_min: number,
@@ -56,7 +103,8 @@ export const fetchSitesBBox = async (
     lng_max: number,
     zoom: number,
     limit = 2000,
-    distribution: 'real' | 'whatif' = 'real'
+    distribution: 'real' | 'whatif' = 'real',
+    wasteFilter: MapWasteFilter = 'all'
 ): Promise<Site[]> => {
     try {
         const params = new URLSearchParams({
@@ -67,6 +115,7 @@ export const fetchSitesBBox = async (
             zoom: String(zoom),
             limit: String(limit),
             distribution: distribution,
+            waste_filter: wasteFilter === 'reciclaje' ? 'reciclable' : wasteFilter === 'organico' ? 'humedo' : 'all',
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
@@ -84,6 +133,7 @@ export const fetchSitesBBox = async (
                 const lat = Number(cl.latitude ?? 0)
                 const lon = Number(cl.longitude ?? 0)
                 const clusterId = (cl.cluster_id as string | undefined) || `cluster-${lat.toFixed(4)}_${lon.toFixed(4)}_${idx}`
+                const clusterType = wasteFilter === 'all' ? 'indiferenciado' : wasteFilter
 
                 return {
                     id: clusterId,
@@ -91,7 +141,7 @@ export const fetchSitesBBox = async (
                     address: null,
                     lat: lat,
                     long: lon,
-                    type: 'indiferenciado' as ContainerType,
+                    type: clusterType as ContainerType,
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
                     avgLevel: avgLevel,
@@ -156,11 +206,22 @@ export const fetchSitesBBox = async (
     }
 }
 
+const pinTypeAccent = (type: ContainerType) => {
+    if (type === "reciclaje") {
+        return { color: "#047857", label: "R" }
+    }
+    if (type === "organico") {
+        return { color: "#111827", label: "H" }
+    }
+    return { color: "#64748b", label: "" }
+}
+
 // PROVISIONAL HASTA ENCONTRAR UNA LIBRERIA DE ICONOS PERSONALIZABLE
-export const createMapPinIcon = (color: string, containerCount: number = 1) => {
+export const createMapPinIcon = (color: string, containerCount: number = 1, type: ContainerType = "indiferenciado") => {
     const size = containerCount >= 100 ? 92 : containerCount >= 25 ? 80 : containerCount > 1 ? 70 : 56
-    const countFontSize = containerCount >= 100 ? 22 : containerCount >= 25 ? 19 : 16
+    const countFontSize = containerCount >= 100 ? 22 : containerCount >= 25 ? 19 : containerCount > 1 ? 16 : 15
     const countY = containerCount >= 100 ? 28 : containerCount >= 25 ? 28 : 27
+    const accent = pinTypeAccent(type)
 
     const iconHtml = renderToStaticMarkup(
         <svg
@@ -174,26 +235,41 @@ export const createMapPinIcon = (color: string, containerCount: number = 1) => {
             <path
                 d="M32 4C21.4 4 12.8 12.6 12.8 23.2C12.8 37.6 32 60 32 60C32 60 51.2 37.6 51.2 23.2C51.2 12.6 42.6 4 32 4Z"
                 fill={color}
-                stroke="white"
-                strokeWidth="1.5"
+                stroke={accent.color}
+                strokeWidth="4.25"
                 filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
             />
+            <path
+                d="M22 45C25.3 50.5 29.5 56.1 32 60C34.5 56.1 38.7 50.5 42 45Z"
+                fill={accent.color}
+                opacity="1"
+            />
             <circle cx="32" cy="23" r="11" fill="rgba(17, 24, 39, 0.30)" />
-            <circle cx="32" cy="23" r="6" fill="white" opacity={containerCount > 1 ? 0.0 : 1.0} />
-            {containerCount > 1 && (
+            <text
+                x="32"
+                y={countY}
+                textAnchor="middle"
+                fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                fontSize={countFontSize}
+                fontWeight="800"
+                fill="white"
+                stroke="rgba(17, 24, 39, 0.75)"
+                strokeWidth="1.25"
+                paintOrder="stroke"
+            >
+                {containerCount}
+            </text>
+            {accent.label && (
                 <text
                     x="32"
-                    y={countY}
+                    y="54"
                     textAnchor="middle"
                     fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-                    fontSize={countFontSize}
-                    fontWeight="800"
+                    fontSize="9"
+                    fontWeight="900"
                     fill="white"
-                    stroke="rgba(17, 24, 39, 0.75)"
-                    strokeWidth="1.25"
-                    paintOrder="stroke"
                 >
-                    {containerCount}
+                    {accent.label}
                 </text>
             )}
         </svg>

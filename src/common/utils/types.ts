@@ -1,4 +1,5 @@
 export type ContainerType = "reciclaje" | "organico" | "indiferenciado"
+export type MapWasteFilter = "all" | "organico" | "reciclaje"
 
 export interface Container {
     id: string
@@ -8,6 +9,7 @@ export interface Container {
     type: ContainerType
     color: string
     description: string
+    wasteTypeName?: string | null
     currentLevel: number
     level?: number
 }
@@ -20,6 +22,7 @@ export interface Site {
     long: number
     type: ContainerType
     color: string
+    wasteTypeName?: string | null
     currentLevel: number
     avgLevel?: number
     containerCount?: number
@@ -33,6 +36,39 @@ export const labels: Record<ContainerType, string> = {
     indiferenciado: "Indiferenciado",
 }
 
+export type ZoneType =
+    | "residential_multifamily"
+    | "residential_singlefamily"
+    | "residential"
+    | "commercial"
+    | "office"
+    | "industrial"
+    | "mixed"
+    | string
+
+export interface ZoneProfileProperties {
+    radio_code: string
+    barrio: string
+    department_name: string
+    population: number
+    zone_type: ZoneType
+    demand_multiplier: number
+    weekend_factor: number
+    hour_weights: Record<string, number>
+    weekday_factors: Record<string, number>
+}
+
+export interface ZoneProfileFeature {
+    type: "Feature"
+    geometry: GeoJSON.Geometry
+    properties: ZoneProfileProperties
+}
+
+export interface ZoneProfileCollection {
+    type: "FeatureCollection"
+    features: ZoneProfileFeature[]
+}
+
 export type BackendSiteContainer = {
     id: number
     serie_id?: string | null
@@ -40,6 +76,7 @@ export type BackendSiteContainer = {
     device_imei?: string | null
     available?: boolean
     container_type?: string | null
+    waste_type_name?: string | null
     height_cm?: number | null
     volume_m3?: number | null
     last_reading?: string | null
