@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site, ContainerType, RouteDetails } from "./utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "./utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -201,6 +201,7 @@ export default function InteractiveMap({
     isPlayground = false,
 }: InteractiveMapProps) {
     const [sites, setSites] = useState<Site[]>([])
+    const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
     const zoneProfiles = useZoneProfiles()
@@ -219,7 +220,7 @@ export default function InteractiveMap({
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
-            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution)
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter)
             if (mountedRef.current && requestId > latestAppliedIdRef.current) {
                 latestAppliedIdRef.current = requestId
                 setSites(data)
@@ -227,7 +228,7 @@ export default function InteractiveMap({
         } catch (e) {
             console.error('Error al cargar sitios:', e)
         }
-    }, [isPlayground])
+    }, [isPlayground, wasteFilter])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -399,6 +400,27 @@ export default function InteractiveMap({
                     loading={zoneProfiles.loading}
                     onToggle={zoneProfiles.toggle}
                 />
+
+                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-md backdrop-blur flex items-center gap-1">
+                    {[
+                        ['all', 'Todos'],
+                        ['organico', 'Húmedos'],
+                        ['reciclaje', 'Reciclables'],
+                    ].map(([value, label]) => (
+                        <button
+                            key={value}
+                            type="button"
+                            onClick={() => setWasteFilter(value as MapWasteFilter)}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                                wasteFilter === value
+                                    ? 'bg-slate-900 text-white shadow-sm'
+                                    : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />

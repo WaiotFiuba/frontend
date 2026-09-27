@@ -1,6 +1,6 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
-import { Container, Site, ContainerType, ZoneProfileCollection, ZoneType } from "./types"
+import { Container, Site, ContainerType, MapWasteFilter, ZoneProfileCollection, ZoneType } from "./types"
 import { api } from "../../lib/api"
 
 // Colores por tipo de zona para la capa de perfiles de zona del mapa.
@@ -103,7 +103,8 @@ export const fetchSitesBBox = async (
     lng_max: number,
     zoom: number,
     limit = 2000,
-    distribution: 'real' | 'whatif' = 'real'
+    distribution: 'real' | 'whatif' = 'real',
+    wasteFilter: MapWasteFilter = 'all'
 ): Promise<Site[]> => {
     try {
         const params = new URLSearchParams({
@@ -114,6 +115,7 @@ export const fetchSitesBBox = async (
             zoom: String(zoom),
             limit: String(limit),
             distribution: distribution,
+            waste_filter: wasteFilter === 'reciclaje' ? 'reciclable' : wasteFilter === 'organico' ? 'humedo' : 'all',
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
@@ -131,6 +133,7 @@ export const fetchSitesBBox = async (
                 const lat = Number(cl.latitude ?? 0)
                 const lon = Number(cl.longitude ?? 0)
                 const clusterId = (cl.cluster_id as string | undefined) || `cluster-${lat.toFixed(4)}_${lon.toFixed(4)}_${idx}`
+                const clusterType = wasteFilter === 'all' ? 'indiferenciado' : wasteFilter
 
                 return {
                     id: clusterId,
@@ -138,7 +141,7 @@ export const fetchSitesBBox = async (
                     address: null,
                     lat: lat,
                     long: lon,
-                    type: 'indiferenciado' as ContainerType,
+                    type: clusterType as ContainerType,
                     color: colorForLevel(avgLevel),
                     currentLevel: avgLevel,
                     avgLevel: avgLevel,

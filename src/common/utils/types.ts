@@ -1,4 +1,5 @@
 export type ContainerType = "reciclaje" | "organico" | "indiferenciado"
+export type MapWasteFilter = "all" | "organico" | "reciclaje"
 
 export interface Container {
     id: string
