@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   AlertCircle,
@@ -66,6 +66,12 @@ interface EvaluationReport {
   site_metrics: SiteMetric[]
   best_predicted_sites: SiteMetric[]
   worst_predicted_sites: SiteMetric[]
+}
+
+interface ModelOption {
+  key: string
+  name: string
+  status?: string
 }
 
 const formatNumber = (value: number | null | undefined, suffix = '') => {
@@ -371,6 +377,11 @@ const buildReportHtml = (report: EvaluationReport) => {
 }
 
 export default function ForecastEvaluation() {
+  const [selectedModel, setSelectedModel] = useState<string>('baseline_operational')
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([
+    { key: 'baseline_operational', name: 'Baseline operativo' },
+    { key: 'chronos_2_small', name: 'Chronos-2 Small' },
+  ])
   const [siteSampleSize, setSiteSampleSize] = useState(20)
   const [horizonHours, setHorizonHours] = useState(24)
   const [criticalLevel, setCriticalLevel] = useState(80)
@@ -380,6 +391,19 @@ export default function ForecastEvaluation() {
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null)
   const [report, setReport] = useState<EvaluationReport | null>(null)
+
+  useEffect(() => {
+    api.get<{ default_model_key: string; models: ModelOption[] }>(
+      '/map/site-projections/models'
+    ).then((res) => {
+      if (res?.models && res.models.length > 0) {
+        setAvailableModels(res.models)
+        if (res.default_model_key) {
+          setSelectedModel(res.default_model_key)
+        }
+      }
+    }).catch(() => { })
+  }, [])
 
   const comparedPoints = useMemo(
     () => Number(report?.summary?.compared_points ?? evaluation?.summary?.compared_points ?? 0),
@@ -397,7 +421,7 @@ export default function ForecastEvaluation() {
     try {
       const payload = {
         site_sample_size: siteSampleSize,
-        model_key: 'baseline_operational',
+        model_key: selectedModel,
         horizon_hours: horizonHours,
         critical_level: criticalLevel,
         level_aggregation: levelAggregation,
@@ -475,7 +499,7 @@ export default function ForecastEvaluation() {
         <form onSubmit={handleRunEvaluation}>
           <Panel
             title="Parámetros de Evaluación"
-            description="Configuración del backtesting temporal del modelo baseline_operational"
+            description={`Configuración del backtesting temporal para el modelo ${availableModels.find((m) => m.key === selectedModel)?.name || selectedModel}`}
             icon={FileText}
             actions={
               <Button
@@ -568,13 +592,17 @@ export default function ForecastEvaluation() {
 
               <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
                 <span className="text-xs font-semibold text-slate-700 block">Modelo</span>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-white p-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">baseline_operational</p>
-                    <p className="text-[10px] text-slate-500">Incrementos históricos por bucket temporal</p>
-                  </div>
-                </div>
+                <select
+                  value={selectedModel}
+                  onChange={(event) => setSelectedModel(event.target.value)}
+                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {availableModels.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </Panel>
