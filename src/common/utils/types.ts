@@ -8,6 +8,7 @@ export interface Container {
     type: ContainerType
     color: string
     description: string
+    wasteTypeName?: string | null
     currentLevel: number
     level?: number
 }
@@ -20,6 +21,7 @@ export interface Site {
     long: number
     type: ContainerType
     color: string
+    wasteTypeName?: string | null
     currentLevel: number
     avgLevel?: number
     containerCount?: number
@@ -73,6 +75,7 @@ export type BackendSiteContainer = {
     device_imei?: string | null
     available?: boolean
     container_type?: string | null
+    waste_type_name?: string | null
     height_cm?: number | null
     volume_m3?: number | null
     last_reading?: string | null

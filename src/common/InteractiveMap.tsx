@@ -470,7 +470,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
@@ -560,7 +560,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )
