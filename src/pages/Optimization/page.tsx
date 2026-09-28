@@ -32,6 +32,7 @@ export default function Optimization() {
     min_utilization_donor: 0.35,
     min_utilization_receiver: 0.65,
     target_utilization: 0.5,
+    apply_capacity_constraints: true,
   })
 
   // Execution states
@@ -238,6 +239,28 @@ export default function Optimization() {
                     Prog. Lineal
                   </button>
                 </div>
+              </div>
+
+              {/* Control de Capacidad Máxima Vial */}
+              <div className="flex items-center justify-between text-xs pt-1 pb-1">
+                <label
+                  htmlFor="capacity-constraints-checkbox"
+                  className="font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer select-none"
+                >
+                  <input
+                    id="capacity-constraints-checkbox"
+                    type="checkbox"
+                    checked={config.apply_capacity_constraints ?? true}
+                    onChange={(e) =>
+                      setConfig({ ...config, apply_capacity_constraints: e.target.checked })
+                    }
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span>Respetar capacidad máxima</span>
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadística'}
+                </span>
               </div>
 
               <Button

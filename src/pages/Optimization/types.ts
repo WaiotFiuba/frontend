@@ -7,6 +7,7 @@ export interface OptimizationConfig {
   min_utilization_receiver: number
   target_utilization: number
   algorithm: 'greedy' | 'lp'
+  apply_capacity_constraints?: boolean
 }
 
 export interface SiteUtilizationMetric {
@@ -15,6 +16,8 @@ export interface SiteUtilizationMetric {
   latitude: number
   longitude: number
   container_count: number
+  max_containers?: number
+  puede_ingresar?: boolean
   waste_type_id: number | null
   waste_type_name: string | null
   container_type_id: number | null

@@ -26,6 +26,8 @@ export interface Site {
     currentLevel: number
     avgLevel?: number
     containerCount?: number
+    max_containers?: number
+    puede_ingresar?: boolean
     containers: Container[]
     isCluster?: boolean
 }
