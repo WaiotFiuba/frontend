@@ -115,6 +115,35 @@ function MapMoveFocusController({
     return null
 }
 
+interface MapConfigResponse {
+    city_name: string
+    center: { lat: number; lng: number }
+    default_zoom: number
+    bounds: [[number, number], [number, number]] | null
+}
+
+function MapConfigController({
+    config,
+}: {
+    config: MapConfigResponse | null
+}) {
+    const map = useMap()
+    const appliedRef = useRef(false)
+
+    useEffect(() => {
+        if (!config || appliedRef.current) return
+        appliedRef.current = true
+
+        if (config.bounds) {
+            map.fitBounds(config.bounds, { padding: [40, 40], maxZoom: 16 })
+        } else if (config.center) {
+            map.setView([config.center.lat, config.center.lng], config.default_zoom || 13)
+        }
+    }, [config, map])
+
+    return null
+}
+
 
 
 function MovePolylineItem({
@@ -350,8 +379,31 @@ export default function InteractiveMap({
         }, 0)
     }, [displaySites])
 
-    // Centro del mapa en CABA
-    const cabaCenter: [number, number] = [-34.6037, -58.3816]
+    const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
+
+    useEffect(() => {
+        let cancelled = false
+        api.get<MapConfigResponse>('/map/config')
+            .then((data) => {
+                if (!cancelled && data) {
+                    setMapConfig(data)
+                }
+            })
+            .catch((err) => {
+                console.error('Failed to load map config:', err)
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    // Centro inicial de fallback si no cargó la configuración
+    const defaultCenter: [number, number] = useMemo(() => {
+        if (mapConfig?.center) {
+            return [mapConfig.center.lat, mapConfig.center.lng]
+        }
+        return [-34.6037, -58.3816]
+    }, [mapConfig])
 
     return (
         <div className="h-full w-full relative">
@@ -426,8 +478,8 @@ export default function InteractiveMap({
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
-                center={cabaCenter}
-                zoom={13}
+                center={defaultCenter}
+                zoom={mapConfig?.default_zoom || 13}
                 className="h-full w-full relative"
                 maxZoom={21}
                 minZoom={10}
@@ -438,6 +490,8 @@ export default function InteractiveMap({
                     maxNativeZoom={19}
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
+
+                <MapConfigController config={mapConfig} />
 
                 <MapViewportController
                     mapRef={mapRef}
