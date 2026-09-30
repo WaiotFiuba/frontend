@@ -303,8 +303,6 @@ export default function InteractiveMap({
                 ne.lng + lngPadding,
                 currentZoom
             )
-        } else {
-            void fetchForBounds(-90, 90, -180, 180, 5)
         }
 
         return () => {
@@ -380,6 +378,7 @@ export default function InteractiveMap({
     }, [displaySites])
 
     const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
+    const [configLoading, setConfigLoading] = useState(true)
 
     useEffect(() => {
         let cancelled = false
@@ -391,19 +390,35 @@ export default function InteractiveMap({
             })
             .catch((err) => {
                 console.error('Failed to load map config:', err)
+                if (!cancelled) {
+                    setMapConfig({
+                        city_name: 'Default',
+                        center: { lat: -34.6037, lng: -58.3816 },
+                        default_zoom: 13,
+                        bounds: null,
+                    })
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setConfigLoading(false)
+                }
             })
         return () => {
             cancelled = true
         }
     }, [])
 
-    // Centro inicial de fallback si no cargó la configuración
-    const defaultCenter: [number, number] = useMemo(() => {
-        if (mapConfig?.center) {
-            return [mapConfig.center.lat, mapConfig.center.lng]
-        }
-        return [-34.6037, -58.3816]
-    }, [mapConfig])
+    if (configLoading || !mapConfig) {
+        return (
+            <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cargando mapa...</span>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="h-full w-full relative">
@@ -478,8 +493,8 @@ export default function InteractiveMap({
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
-                center={defaultCenter}
-                zoom={mapConfig?.default_zoom || 13}
+                center={[mapConfig.center.lat, mapConfig.center.lng]}
+                zoom={mapConfig.default_zoom || 13}
                 className="h-full w-full relative"
                 maxZoom={21}
                 minZoom={10}
