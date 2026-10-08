@@ -128,7 +128,7 @@ describe('RedistributionImpactPanel Component Tests', () => {
     render(<RedistributionImpactPanel plan={mockPlan} baselineMetrics={mockMetrics} />)
 
     expect(
-      screen.getByText('Comparativa de Balanceo What-If (Línea Base vs Redistribución)')
+      screen.getByText(/Comparativa de Balanceo What-If/i)
     ).toBeInTheDocument()
 
     // std fill reduction

@@ -138,7 +138,7 @@ export function NetworkKpiPanel({
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 {meanFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">llenado medio</span>
+              <span className="text-slate-500">llenado actual</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
@@ -154,7 +154,7 @@ export function NetworkKpiPanel({
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 &plusmn;{stdFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">dispersión</span>
+              <span className="text-slate-500">dispersión actual</span>
             </div>
           </div>
           <span className="text-[11px] font-semibold text-blue-600 hover:underline">
@@ -177,16 +177,18 @@ export function NetworkKpiPanel({
               tooltip="Total de contenedores físicos y sitios georreferenciados bajo monitoreo activo en la ciudad."
             />
 
-            {/* 2. Llenado Promedio */}
+            {/* 2. Llenado Actual */}
             <KpiCard
-              title="Llenado Promedio"
+              title="Llenado Actual"
               value={`${meanFill.toFixed(1)}%`}
-              subvalue="ocupación media"
+              subvalue="telemetría en tiempo real"
               icon={Activity}
               iconColor="text-blue-600"
               progressPct={meanFill}
               progressColor="bg-blue-600"
-              tooltip="Promedio ponderado del nivel de llenado de todos los contenedores de la red."
+              badgeText="Tiempo Real"
+              badgeVariant="info"
+              tooltip="Nivel medio de ocupación de la red medido en este instante exacto a partir de los sensores de los contenedores."
             />
 
             {/* 3. Sitios Críticos (>85%) */}
@@ -210,16 +212,16 @@ export function NetworkKpiPanel({
               tooltip="Sitios con saturación superior al 85%, receptores prioritarios en redistribución o requiriendo recolección urgente."
             />
 
-            {/* 4. Dispersión de Red */}
+            {/* 4. Dispersión Actual */}
             <KpiCard
-              title="Dispersión de Red (σ)"
+              title="Dispersión Actual (σ)"
               value={`±${stdFill.toFixed(1)}%`}
-              subvalue="desvío estándar"
+              subvalue="desvío estándar actual"
               icon={Scale}
               iconColor="text-indigo-600"
-              badgeText="Heterogeneidad"
+              badgeText="En vivo"
               badgeVariant="neutral"
-              tooltip="Desvío estándar del llenado entre contenedores. Una cifra elevada refleja desbalance operativo entre zonas colapsadas y ociosas."
+              tooltip="Desvío estándar del llenado entre sitios en este momento puntual. Refleja el desbalance operativo instantáneo de la red."
             />
           </div>
 
