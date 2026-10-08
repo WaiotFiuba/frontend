@@ -13,6 +13,17 @@ export async function fetchOptimizationMetrics(
   return await api.get<OptimizationMetricsResponse>(`/map/optimization/metrics${query}`)
 }
 
+export async function fetchNetworkKpis(
+  whatif = false,
+  planId?: number
+): Promise<OptimizationMetricsResponse> {
+  const params = new URLSearchParams()
+  if (whatif) params.append('whatif', 'true')
+  if (planId != null) params.append('plan_id', String(planId))
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return await api.get<OptimizationMetricsResponse>(`/map/kpis${query}`)
+}
+
 export async function generateOptimizationPlan(
   config: OptimizationConfig
 ): Promise<RedistributionPlan> {
