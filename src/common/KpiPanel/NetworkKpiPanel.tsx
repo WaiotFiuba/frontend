@@ -22,7 +22,6 @@ export function NetworkKpiPanel({
   collapsible = true,
   defaultCollapsed = false,
   whatif = false,
-  planId,
 }: NetworkKpiPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
@@ -34,7 +33,6 @@ export function NetworkKpiPanel({
     externalMetrics,
     refreshTrigger,
     whatif,
-    planId,
   })
 
   const isLoading = externalLoading ?? internalLoading
@@ -75,6 +73,7 @@ export function NetworkKpiPanel({
   const meanFill = metrics.mean_fill_level ?? 0
   const stdFill = metrics.std_fill_level ?? 0
   const totalContainers = metrics.total_containers ?? metrics.total_sites
+  const isWhatIf = Boolean(whatif || metrics.is_whatif)
 
   return (
     <div
@@ -87,11 +86,20 @@ export function NetworkKpiPanel({
             <Activity className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-              Métricas Operativas de la Red
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                {isWhatIf ? 'Métricas de la Red (What-If)' : 'Métricas Operativas de la Red'}
+              </h2>
+              {isWhatIf && (
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                  Simulación What-If
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-slate-500">
-              Diagnóstico de capacidad y balance de contenedores en tiempo real
+              {isWhatIf
+                ? 'Diagnóstico proyectado de capacidad y balance bajo redistribución What-If'
+                : 'Diagnóstico de capacidad y balance de contenedores en tiempo real'}
             </p>
           </div>
         </div>

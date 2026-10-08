@@ -40,6 +40,7 @@ export default function Optimization() {
   const [generating, setGenerating] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
+  const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -52,18 +53,22 @@ export default function Optimization() {
     const loadInitialData = async () => {
       setLoadingMetrics(true)
       try {
-        const [metricsData, activePlan] = await Promise.allSettled([
-          fetchNetworkKpis(),
+        const [whatifRes, baselineRes, activePlanRes] = await Promise.allSettled([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
           fetchActiveWhatIfPlan(),
         ])
         if (isMounted) {
-          if (metricsData.status === 'fulfilled') {
-            setNetworkMetrics(metricsData.value)
+          if (whatifRes.status === 'fulfilled') {
+            setNetworkMetrics(whatifRes.value)
           }
-          if (activePlan.status === 'fulfilled' && activePlan.value) {
-            setPlan(activePlan.value)
-            if (activePlan.value.config) {
-              setConfig((prev) => ({ ...prev, ...activePlan.value.config }))
+          if (baselineRes.status === 'fulfilled') {
+            setBaselineMetrics(baselineRes.value)
+          }
+          if (activePlanRes.status === 'fulfilled' && activePlanRes.value) {
+            setPlan(activePlanRes.value)
+            if (activePlanRes.value.config) {
+              setConfig((prev) => ({ ...prev, ...activePlanRes.value.config }))
             }
           }
         }
@@ -89,6 +94,12 @@ export default function Optimization() {
       const generated = await generateOptimizationPlan(config)
       setPlan(generated)
       setRefreshTrigger((prev) => prev + 1)
+      try {
+        const updatedWhatif = await fetchNetworkKpis(true)
+        setNetworkMetrics(updatedWhatif)
+      } catch (kpiErr) {
+        console.warn('Error al actualizar KPIs What-If tras generar plan:', kpiErr)
+      }
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
           `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
@@ -371,18 +382,19 @@ export default function Optimization() {
           </div>
         </div>
 
-        {/* 1. Panel de Métricas Operativas de la Red (Idéntico al del mapa) */}
+        {/* 1. Panel de Métricas de la Red (What-If en Playground de Simulación) */}
         <NetworkKpiPanel
           metrics={networkMetrics}
           loading={loadingMetrics}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
+          whatif={true}
         />
 
         {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}
         <RedistributionImpactPanel
           plan={plan}
-          baselineMetrics={networkMetrics}
+          baselineMetrics={baselineMetrics}
           loading={generating}
         />
 

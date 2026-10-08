@@ -14,6 +14,8 @@ export interface NetworkMetricsData {
   idle_count: number
   window_start?: string | null
   window_end?: string | null
+  is_whatif?: boolean
+  plan_id?: number | null
 }
 
 export interface NetworkKpiPanelProps {
@@ -26,7 +28,6 @@ export interface NetworkKpiPanelProps {
   collapsible?: boolean
   defaultCollapsed?: boolean
   whatif?: boolean
-  planId?: number
 }
 
 export interface KpiCardProps {

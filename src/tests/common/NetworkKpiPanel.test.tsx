@@ -113,6 +113,16 @@ describe('NetworkKpiPanel Component Tests', () => {
       expect(handleSelectCategory).toHaveBeenCalledWith('critical')
     }
   })
+
+  it('renders What-If badge and title when whatif prop is true', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
+
+    expect(screen.getByText('Métricas de la Red (What-If)')).toBeInTheDocument()
+    expect(screen.getByText('Simulación What-If')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Diagnóstico proyectado de capacidad y balance bajo redistribución What-If/i)
+    ).toBeInTheDocument()
+  })
 })
 
 describe('RedistributionImpactPanel Component Tests', () => {

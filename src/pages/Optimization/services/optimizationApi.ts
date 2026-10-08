@@ -14,13 +14,9 @@ export async function fetchOptimizationMetrics(
 }
 
 export async function fetchNetworkKpis(
-  whatif = false,
-  planId?: number
+  whatif = false
 ): Promise<OptimizationMetricsResponse> {
-  const params = new URLSearchParams()
-  if (whatif) params.append('whatif', 'true')
-  if (planId != null) params.append('plan_id', String(planId))
-  const query = params.toString() ? `?${params.toString()}` : ''
+  const query = whatif ? '?whatif=true' : ''
   return await api.get<OptimizationMetricsResponse>(`/map/kpis${query}`)
 }
 

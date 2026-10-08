@@ -7,7 +7,6 @@ interface UseNetworkKpisOptions {
   refreshTrigger?: number
   enabled?: boolean
   whatif?: boolean
-  planId?: number
 }
 
 export function useNetworkKpis({
@@ -15,7 +14,6 @@ export function useNetworkKpis({
   refreshTrigger = 0,
   enabled = true,
   whatif = false,
-  planId,
 }: UseNetworkKpisOptions = {}) {
   const [data, setData] = useState<NetworkMetricsData | null>(externalMetrics ?? null)
   const [loading, setLoading] = useState<boolean>(!externalMetrics && enabled)
@@ -28,11 +26,7 @@ export function useNetworkKpis({
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams()
-      if (whatif) params.append('whatif', 'true')
-      if (planId != null) params.append('plan_id', String(planId))
-      const query = params.toString() ? `?${params.toString()}` : ''
-
+      const query = whatif ? '?whatif=true' : ''
       const result = await api.get<NetworkMetricsData>(`/map/kpis${query}`)
       if (isMountedRef.current) {
         setData(result)
@@ -47,7 +41,7 @@ export function useNetworkKpis({
         setLoading(false)
       }
     }
-  }, [enabled, externalMetrics, whatif, planId])
+  }, [enabled, externalMetrics, whatif])
 
   // Sincronizar si llegan metrics por props externas
   useEffect(() => {
