@@ -88,11 +88,11 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Latitude (CABA) *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Latitude *</label>
               <input type="number" step="any" required placeholder="Ex: -34.6037" value={newLat} onChange={(e) => setNewLat(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Longitude (CABA) *</label>
+              <label className="text-xs font-bold text-slate-500 uppercase">Longitude *</label>
               <input type="number" step="any" required placeholder="Ex: -58.3816" value={newLng} onChange={(e) => setNewLng(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
           </div>
