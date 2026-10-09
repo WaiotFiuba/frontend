@@ -127,6 +127,35 @@ function MapMoveFocusController({
     return null
 }
 
+interface MapConfigResponse {
+    city_name: string
+    center: { lat: number; lng: number }
+    default_zoom: number
+    bounds: [[number, number], [number, number]] | null
+}
+
+function MapConfigController({
+    config,
+}: {
+    config: MapConfigResponse | null
+}) {
+    const map = useMap()
+    const appliedRef = useRef(false)
+
+    useEffect(() => {
+        if (!config || appliedRef.current) return
+        appliedRef.current = true
+
+        if (config.bounds) {
+            map.fitBounds(config.bounds, { padding: [40, 40], maxZoom: 16 })
+        } else if (config.center) {
+            map.setView([config.center.lat, config.center.lng], config.default_zoom || 13)
+        }
+    }, [config, map])
+
+    return null
+}
+
 
 
 function MovePolylineItem({
@@ -300,8 +329,6 @@ export default function InteractiveMap({
                 ne.lng + lngPadding,
                 currentZoom
             )
-        } else {
-            void fetchForBounds(-90, 90, -180, 180, 5)
         }
 
         return () => {
@@ -415,8 +442,48 @@ export default function InteractiveMap({
         }, 0)
     }, [sites])
 
-    // Centro del mapa en CABA
-    const cabaCenter: [number, number] = [-34.6037, -58.3816]
+    const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
+    const [configLoading, setConfigLoading] = useState(true)
+
+    useEffect(() => {
+        let cancelled = false
+        api.get<MapConfigResponse>('/map/config')
+            .then((data) => {
+                if (!cancelled && data) {
+                    setMapConfig(data)
+                }
+            })
+            .catch((err) => {
+                console.error('Failed to load map config:', err)
+                if (!cancelled) {
+                    setMapConfig({
+                        city_name: 'Default',
+                        center: { lat: -34.6037, lng: -58.3816 },
+                        default_zoom: 13,
+                        bounds: null,
+                    })
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setConfigLoading(false)
+                }
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    if (configLoading || !mapConfig) {
+        return (
+            <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cargando mapa...</span>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="h-full w-full relative">
@@ -436,8 +503,8 @@ export default function InteractiveMap({
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
-                center={cabaCenter}
-                zoom={13}
+                center={[mapConfig.center.lat, mapConfig.center.lng]}
+                zoom={mapConfig.default_zoom || 13}
                 className="h-full w-full relative"
                 maxZoom={21}
                 minZoom={10}
@@ -448,6 +515,8 @@ export default function InteractiveMap({
                     maxNativeZoom={19}
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
+
+                <MapConfigController config={mapConfig} />
 
                 <MapViewportController
                     mapRef={mapRef}

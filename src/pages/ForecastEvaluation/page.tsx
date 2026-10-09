@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
   Activity,
   AlertCircle,
@@ -12,8 +12,6 @@ import {
   Info,
   Layers,
   LineChart,
-  Loader2,
-  Sparkles,
   Target,
 } from 'lucide-react'
 
@@ -68,6 +66,12 @@ interface EvaluationReport {
   worst_predicted_sites: SiteMetric[]
 }
 
+interface ModelOption {
+  key: string
+  name: string
+  status?: string
+}
+
 const formatNumber = (value: number | null | undefined, suffix = '') => {
   if (value === null || value === undefined || Number.isNaN(value)) return 'N/A'
   return `${value.toFixed(2)}${suffix}`
@@ -93,7 +97,7 @@ const metricCards = [
     detail: 'Error absoluto promedio',
     icon: Gauge,
     suffix: ' pts',
-    tone: 'blue',
+    tone: 'sky',
   },
   {
     key: 'rmse',
@@ -101,7 +105,7 @@ const metricCards = [
     detail: 'Penaliza errores grandes',
     icon: BarChart3,
     suffix: ' pts',
-    tone: 'indigo',
+    tone: 'slate',
   },
   {
     key: 'threshold_precision',
@@ -122,15 +126,15 @@ const metricCards = [
 ]
 
 const toneStyles = {
-  blue: {
-    panel: 'from-blue-50/80 to-slate-50 border-blue-100',
-    text: 'text-blue-700',
-    badge: 'bg-blue-100',
+  sky: {
+    panel: 'from-sky-50/80 to-slate-50 border-sky-100',
+    text: 'text-sky-700',
+    badge: 'bg-sky-100',
   },
-  indigo: {
-    panel: 'from-indigo-50/80 to-slate-50 border-indigo-100',
-    text: 'text-indigo-700',
-    badge: 'bg-indigo-100',
+  slate: {
+    panel: 'from-slate-100/80 to-slate-50 border-slate-200',
+    text: 'text-slate-700',
+    badge: 'bg-slate-200',
   },
   amber: {
     panel: 'from-amber-50/80 to-slate-50 border-amber-100',
@@ -153,7 +157,7 @@ function Panel({
 }: {
   title: string
   description?: string
-  icon: typeof Gauge
+  icon?: typeof Gauge
   children: ReactNode
   actions?: ReactNode
 }) {
@@ -161,9 +165,11 @@ function Panel({
     <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
-            <Icon className="h-5 w-5" />
-          </div>
+          {Icon && (
+            <div className="p-2 rounded-lg bg-sky-50 text-sky-700">
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
           <div>
             <h2 className="font-bold text-slate-900 text-base">{title}</h2>
             {description && <p className="text-xs text-slate-500">{description}</p>}
@@ -244,7 +250,7 @@ function SummaryCard({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-        <Icon className="h-4 w-4 text-blue-600" />
+        <Icon className="h-4 w-4 text-sky-600" />
       </div>
       <div className="mt-2 text-xl font-black text-slate-900">{value}</div>
     </div>
@@ -371,6 +377,11 @@ const buildReportHtml = (report: EvaluationReport) => {
 }
 
 export default function ForecastEvaluation() {
+  const [selectedModel, setSelectedModel] = useState<string>('baseline_operational')
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([
+    { key: 'baseline_operational', name: 'Baseline operativo' },
+    { key: 'chronos_2_small', name: 'Chronos-2 Small' },
+  ])
   const [siteSampleSize, setSiteSampleSize] = useState(20)
   const [horizonHours, setHorizonHours] = useState(24)
   const [criticalLevel, setCriticalLevel] = useState(80)
@@ -380,6 +391,19 @@ export default function ForecastEvaluation() {
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null)
   const [report, setReport] = useState<EvaluationReport | null>(null)
+
+  useEffect(() => {
+    api.get<{ default_model_key: string; models: ModelOption[] }>(
+      '/map/site-projections/models'
+    ).then((res) => {
+      if (res?.models && res.models.length > 0) {
+        setAvailableModels(res.models)
+        if (res.default_model_key) {
+          setSelectedModel(res.default_model_key)
+        }
+      }
+    }).catch(() => { })
+  }, [])
 
   const comparedPoints = useMemo(
     () => Number(report?.summary?.compared_points ?? evaluation?.summary?.compared_points ?? 0),
@@ -397,7 +421,7 @@ export default function ForecastEvaluation() {
     try {
       const payload = {
         site_sample_size: siteSampleSize,
-        model_key: 'baseline_operational',
+        model_key: selectedModel,
         horizon_hours: horizonHours,
         critical_level: criticalLevel,
         level_aggregation: levelAggregation,
@@ -432,11 +456,11 @@ export default function ForecastEvaluation() {
   const displayedSiteMetrics = report?.site_metrics.slice(0, 50) ?? []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-extrabold text-slate-900">
               Evaluación del Forecaster
             </h1>
             <p className="text-slate-600 mt-1">
@@ -448,7 +472,7 @@ export default function ForecastEvaluation() {
             variant="outline"
             onClick={handleDownloadReport}
             disabled={!report}
-            className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-xs transition-all cursor-pointer gap-2"
+            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer gap-2"
           >
             <Download className="h-4 w-4" />
             Descargar informe
@@ -475,21 +499,19 @@ export default function ForecastEvaluation() {
         <form onSubmit={handleRunEvaluation}>
           <Panel
             title="Parámetros de Evaluación"
-            description="Configuración del backtesting temporal del modelo baseline_operational"
-            icon={FileText}
+            description={`Configuración del backtesting temporal para el modelo ${availableModels.find((m) => m.key === selectedModel)?.name || selectedModel}`}
             actions={
               <Button
                 type="submit"
                 disabled={loading}
-                className="text-xs font-semibold gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer"
+                className="text-xs font-bold px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-xs cursor-pointer transition-all"
               >
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 {loading ? 'Evaluando Modelo...' : 'Ejecutar Evaluación'}
               </Button>
             }
           >
-            <div className="flex items-center gap-2 text-xs text-slate-500 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
-              <Info className="h-4 w-4 text-blue-600 shrink-0" />
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-sky-50/60 p-2.5 rounded-xl border border-sky-100">
+              <Info className="h-4 w-4 text-sky-600 shrink-0" />
               <span>
                 El backend calcula automáticamente el cutoff como <strong>última medición disponible menos horizonte</strong>. El intervalo de comparación es fijo: <strong>60 minutos</strong>.
               </span>
@@ -559,7 +581,7 @@ export default function ForecastEvaluation() {
                 <select
                   value={levelAggregation}
                   onChange={(event) => setLevelAggregation(event.target.value as 'avg' | 'max')}
-                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
                   <option value="avg">Promedio del sitio</option>
                   <option value="max">Máximo del sitio</option>
@@ -568,13 +590,17 @@ export default function ForecastEvaluation() {
 
               <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
                 <span className="text-xs font-semibold text-slate-700 block">Modelo</span>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-white p-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">baseline_operational</p>
-                    <p className="text-[10px] text-slate-500">Incrementos históricos por bucket temporal</p>
-                  </div>
-                </div>
+                <select
+                  value={selectedModel}
+                  onChange={(event) => setSelectedModel(event.target.value)}
+                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  {availableModels.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </Panel>

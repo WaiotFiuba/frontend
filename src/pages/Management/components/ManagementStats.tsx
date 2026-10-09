@@ -15,7 +15,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-      <Card onClick={() => onToggleAlerts(false)} className={`border-slate-200/80 shadow-sm hover:shadow-md transition-all bg-white cursor-pointer hover:border-blue-400 active:scale-[0.98] ${!showOnlyAlerts ? 'ring-2 ring-blue-500/10 border-blue-400' : ''}`}>
+      <Card onClick={() => onToggleAlerts(false)} className={`border-slate-200/80 shadow-sm hover:shadow-md transition-all bg-white cursor-pointer hover:border-sky-400 active:scale-[0.98] ${!showOnlyAlerts ? 'ring-2 ring-sky-500/10 border-sky-400' : ''}`}>
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
@@ -23,7 +23,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.total}</h3>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <div className="p-3 bg-sky-50 text-sky-600 rounded-xl">
             <Database className="h-6 w-6" />
           </div>
         </CardContent>

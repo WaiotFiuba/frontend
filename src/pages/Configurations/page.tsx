@@ -20,7 +20,6 @@ import {
   Edit3,
   Map,
   X,
-  Eye,
   AlertCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -349,32 +348,32 @@ export default function ConfigurationsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-4 sm:p-6 lg:p-8">
       <div className="max-w-[1700px] w-full mx-auto space-y-6">
         {/* Header Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent flex items-center gap-3">
-              <Settings className="h-9 w-9 text-indigo-600" />
+            <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
+              <Settings className="h-8 w-8 text-sky-600" />
               Configurations
             </h1>
             <p className="text-slate-600 mt-1">
-              Cree, gestione y almacene configuraciones de simulación en formato JSON asociadas a su usuario.
+              Cree, gestione y almacene configuraciones de simulación asociadas a su usuario.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
               onClick={() => navigate('/map')}
-              className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold px-4 py-2 rounded-xl shadow-sm flex items-center gap-2"
+              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
             >
-              <Map className="h-4 w-4" />
+              <Map className="h-4 w-4 text-sky-600" />
               Ir al Mapa
             </Button>
             <Button
               variant="outline"
               onClick={() => navigate('/')}
-              className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-xl shadow-sm"
+              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
             >
               Back to Home
             </Button>
@@ -409,13 +408,13 @@ export default function ConfigurationsPage() {
               <CardHeader className="border-b border-slate-100 bg-slate-50/70 p-6 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Edit3 className="h-5 w-5 text-indigo-600" />
+                    <Edit3 className="h-5 w-5 text-sky-600" />
                     {editingId ? 'Editar Configuración' : 'Nueva Configuración de Simulación'}
                   </CardTitle>
                   <CardDescription className="text-slate-500 mt-1">
                     {editingId
                       ? 'Modifique los parámetros y guarde los cambios en la base de datos.'
-                      : 'Configure los parámetros y almacénelos en formato JSON en su cuenta.'}
+                      : 'Configure los parámetros y almacénelos en su cuenta.'}
                   </CardDescription>
                 </div>
                 {editingId && (
@@ -436,7 +435,7 @@ export default function ConfigurationsPage() {
                   {/* Datos Básicos */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <FileCode className="h-3.5 w-3.5 text-indigo-600" />
+                      <FileCode className="h-3.5 w-3.5 text-sky-600" />
                       Identificación de la Configuración
                     </span>
 
@@ -451,7 +450,7 @@ export default function ConfigurationsPage() {
                           placeholder="Ej: Semana Normal Noche, Fin de Semana Alto"
                           value={configName}
                           onChange={(e) => setConfigName(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-semibold"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 font-semibold"
                         />
                       </div>
                       <div className="space-y-1">
@@ -463,7 +462,7 @@ export default function ConfigurationsPage() {
                           placeholder="Ej: Recolección solo nocturna con refuerzo en Palermo"
                           value={configDescription}
                           onChange={(e) => setConfigDescription(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
                         />
                       </div>
                     </div>
@@ -472,7 +471,7 @@ export default function ConfigurationsPage() {
                   {/* SECCIÓN: Tiempos y Velocidad */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                      <Clock className="h-3.5 w-3.5 text-sky-600" />
                       Tiempos y Velocidad
                     </span>
 
@@ -486,7 +485,7 @@ export default function ConfigurationsPage() {
                           required
                           value={speedup}
                           onChange={(e) => setSpeedup(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                         />
                         <p className="text-[10px] text-slate-400">Multiplicador de velocidad (1000x).</p>
                       </div>
@@ -511,7 +510,7 @@ export default function ConfigurationsPage() {
                           required
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                         />
                       </div>
 
@@ -531,9 +530,9 @@ export default function ConfigurationsPage() {
                                 setEndTime('')
                               }
                             }}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer ${
                               isEndUndefined
-                                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                ? 'bg-sky-100 text-sky-900 border border-sky-200'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                             }`}
                           >
@@ -547,11 +546,11 @@ export default function ConfigurationsPage() {
                               setIsEndUndefined(false)
                               setEndTime(getNowRoundedHourArgentina(0))
                             }}
-                            className="w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/20"
+                            className="w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium cursor-pointer hover:border-sky-300 hover:bg-sky-50/20"
                             title="Haga click para desbloquear e introducir fecha de fin"
                           >
                             <span>Sin definir</span>
-                            <span className="text-[10px] text-indigo-600 font-semibold">Definir fecha</span>
+                            <span className="text-[10px] text-sky-600 font-semibold">Definir fecha</span>
                           </div>
                         ) : (
                           <input
@@ -563,7 +562,7 @@ export default function ConfigurationsPage() {
                                 setIsEndUndefined(true)
                               }
                             }}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                           />
                         )}
                       </div>
@@ -575,47 +574,52 @@ export default function ConfigurationsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                          <Truck className="h-3.5 w-3.5 text-indigo-600" />
+                          <Truck className="h-3.5 w-3.5 text-sky-600" />
                           Franja Horaria y Días de Recolección (Truck Engine)
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCollectionPreset('night_reinforce')}
-                          className="h-7 px-2 text-[10px] font-semibold"
-                        >
-                          Noche + Refuerzo
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCollectionPreset('night_only')}
-                          className="h-7 px-2 text-[10px] font-semibold"
-                        >
-                          Solo Noche
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCollectionPreset('all')}
-                          className="h-7 px-2 text-[10px] font-semibold"
-                        >
-                          24 Horas
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCollectionPreset('clear')}
-                          className="h-7 px-2 text-[10px] font-semibold text-rose-600"
-                        >
-                          Limpiar
-                        </Button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
+                          {collectionHours.length} hs seleccionadas
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCollectionPreset('night_reinforce')}
+                            className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                          >
+                            Noche + Refuerzo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCollectionPreset('night_only')}
+                            className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                          >
+                            Solo Noche
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCollectionPreset('all')}
+                            className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                          >
+                            24 Horas
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCollectionPreset('clear')}
+                            className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
+                          >
+                            Limpiar
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
@@ -628,14 +632,14 @@ export default function ConfigurationsPage() {
                             key={hour}
                             type="button"
                             onClick={() => toggleCollectionHour(hour)}
-                            className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
                               isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
                             <span>{String(hour).padStart(2, '0')}:00</span>
-                            <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                            <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
                               {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
                             </span>
                           </button>
@@ -652,9 +656,9 @@ export default function ConfigurationsPage() {
                             key={day.id}
                             type="button"
                             onClick={() => toggleCollectionDay(day.id)}
-                            className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
                               isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
@@ -662,7 +666,7 @@ export default function ConfigurationsPage() {
                             <span className="sm:hidden">{day.short}</span>
                             <span
                               className={`text-[9px] ${
-                                isSelected ? 'text-indigo-200 font-semibold' : 'text-slate-400'
+                                isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
                               }`}
                             >
                               {isSelected ? 'Activo' : 'Sin recolección'}
@@ -676,7 +680,7 @@ export default function ConfigurationsPage() {
                   {/* SECCIÓN: Demanda Global y por Barrio */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                      <Layers className="h-3.5 w-3.5 text-sky-600" />
                       Demanda Global y Multiplicadores por Barrio
                     </span>
 
@@ -700,14 +704,14 @@ export default function ConfigurationsPage() {
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                         <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-indigo-600" /> Sobrescrituras por Barrio
+                          <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras por Barrio
                         </span>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={addZoneOverride}
-                          className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50"
+                          className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
                         >
                           <Plus className="h-3.5 w-3.5 text-slate-500" />
                           Agregar Barrio
@@ -729,7 +733,7 @@ export default function ConfigurationsPage() {
                               <select
                                 value={zo.neighborhood}
                                 onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
-                                className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                                className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                               >
                                 {neighborhoods.map((n) => (
                                   <option key={n} value={n}>
@@ -746,7 +750,7 @@ export default function ConfigurationsPage() {
                                   required
                                   value={zo.multiplier}
                                   onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
-                                  className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold"
+                                  className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                                   placeholder="Multiplicador"
                                 />
                                 <span className="text-xs font-bold text-slate-500">x</span>
@@ -756,7 +760,7 @@ export default function ConfigurationsPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => removeZoneOverride(index)}
-                                className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0"
+                                className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 cursor-pointer"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -768,31 +772,11 @@ export default function ConfigurationsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() =>
-                        setShowJsonModal({
-                          id: 0,
-                          user_id: 0,
-                          name: configName || 'Nueva Configuración (Previsualización)',
-                          description: configDescription,
-                          config: buildCurrentConfigJson(),
-                          created_at: new Date().toISOString(),
-                          updated_at: new Date().toISOString(),
-                        })
-                      }
-                      className="border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold gap-2"
-                    >
-                      <Eye className="h-4 w-4 text-slate-500" />
-                      Ver JSON en Vivo
-                    </Button>
-
+                  <div className="flex items-center justify-end pt-2 border-t border-slate-100">
                     <Button
                       type="submit"
                       disabled={saving}
-                      className="!bg-indigo-600 hover:!bg-indigo-700 !text-white font-bold shadow-md px-6 py-2.5 rounded-xl transition-all text-sm gap-2"
+                      className="!bg-sky-600 hover:!bg-sky-700 !text-white font-bold shadow-sm px-6 py-2.5 rounded-xl transition-all text-sm gap-2 cursor-pointer"
                     >
                       {saving ? (
                         <>
@@ -819,7 +803,7 @@ export default function ConfigurationsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                      <FolderOpen className="h-5 w-5 text-indigo-600" />
+                      <FolderOpen className="h-5 w-5 text-sky-600" />
                       Mis Configuraciones
                     </CardTitle>
                     <CardDescription className="text-slate-500 mt-1">
@@ -833,7 +817,7 @@ export default function ConfigurationsPage() {
                     size="sm"
                     onClick={fetchConfigs}
                     disabled={loadingList}
-                    className="h-8 px-2.5 text-xs text-slate-600 gap-1.5"
+                    className="h-8 px-2.5 text-xs text-slate-600 gap-1.5 cursor-pointer"
                     title="Recargar lista"
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingList ? 'animate-spin' : ''}`} />
@@ -848,7 +832,7 @@ export default function ConfigurationsPage() {
                       placeholder="Buscar por nombre o descripción..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
                     />
                   </div>
                 )}
@@ -857,7 +841,7 @@ export default function ConfigurationsPage() {
               <CardContent className="p-6">
                 {loadingList ? (
                   <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-                    <RefreshCw className="h-6 w-6 animate-spin text-indigo-600" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-sky-600" />
                     <span className="text-xs font-semibold">Cargando configuraciones...</span>
                   </div>
                 ) : configs.length === 0 ? (
@@ -880,7 +864,7 @@ export default function ConfigurationsPage() {
                         key={item.id}
                         className={`p-4 border rounded-xl transition-all ${
                           editingId === item.id
-                            ? 'border-indigo-500 bg-indigo-50/30 ring-1 ring-indigo-500 shadow-sm'
+                            ? 'border-sky-500 bg-sky-50/30 ring-1 ring-sky-500 shadow-sm'
                             : 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs'
                         }`}
                       >
@@ -889,7 +873,7 @@ export default function ConfigurationsPage() {
                             <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                               {item.name}
                               {editingId === item.id && (
-                                <span className="bg-indigo-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase">
+                                <span className="bg-sky-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase">
                                   En edición
                                 </span>
                               )}
@@ -912,7 +896,7 @@ export default function ConfigurationsPage() {
                             Demanda: {item.config?.global_demand_multiplier ?? 1.0}x
                           </span>
                           {item.config?.scenario?.collection_hours && (
-                            <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-semibold">
+                            <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-semibold">
                               {item.config.scenario.collection_hours.length} hs recolección
                             </span>
                           )}
@@ -931,7 +915,7 @@ export default function ConfigurationsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setShowJsonModal(item)}
-                              className="h-7 px-2 text-[11px] font-semibold text-slate-600 hover:text-indigo-600 gap-1"
+                              className="h-7 px-2 text-[11px] font-semibold text-slate-600 hover:text-sky-600 gap-1 cursor-pointer"
                               title="Inspeccionar JSON"
                             >
                               <FileCode className="h-3.5 w-3.5" />
@@ -942,7 +926,7 @@ export default function ConfigurationsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditConfig(item)}
-                              className="h-7 px-2 text-[11px] font-semibold text-indigo-600 hover:bg-indigo-50 gap-1"
+                              className="h-7 px-2 text-[11px] font-semibold text-sky-600 hover:bg-sky-50 gap-1 cursor-pointer"
                               title="Cargar en editor para modificar"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -956,7 +940,7 @@ export default function ConfigurationsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleUseInMap(item)}
-                              className="h-7 px-2.5 text-[11px] font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1 shadow-xs"
+                              className="h-7 px-2.5 text-[11px] font-bold border-sky-200 text-sky-700 hover:bg-sky-50 gap-1 shadow-xs cursor-pointer"
                               title="Cargar en el Mapa y simular"
                             >
                               <Map className="h-3.5 w-3.5" />
@@ -967,7 +951,7 @@ export default function ConfigurationsPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteConfig(item.id, item.name)}
-                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
                               title="Eliminar configuración"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -990,7 +974,7 @@ export default function ConfigurationsPage() {
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <FileCode className="h-5 w-5 text-indigo-600" />
+                <FileCode className="h-5 w-5 text-sky-600" />
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">{showJsonModal.name}</h3>
                   <p className="text-xs text-slate-500">Estructura JSON completa de la configuración</p>
@@ -1022,7 +1006,7 @@ export default function ConfigurationsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => copyToClipboard(JSON.stringify(showJsonModal.config, null, 2))}
-                  className="gap-1.5 text-xs font-semibold"
+                  className="gap-1.5 text-xs font-semibold cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -1045,7 +1029,7 @@ export default function ConfigurationsPage() {
                       setShowJsonModal(null)
                       handleUseInMap(item)
                     }}
-                    className="!bg-indigo-600 hover:!bg-indigo-700 !text-white text-xs font-bold gap-1.5"
+                    className="!bg-sky-600 hover:!bg-sky-700 !text-white text-xs font-bold gap-1.5 cursor-pointer"
                   >
                     <Map className="h-3.5 w-3.5" />
                     Cargar en Mapa
@@ -1056,7 +1040,7 @@ export default function ConfigurationsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowJsonModal(null)}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold cursor-pointer"
                 >
                   Cerrar
                 </Button>

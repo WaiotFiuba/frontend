@@ -108,12 +108,12 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             )}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input type="text" placeholder="Search by ID, name or neighborhood..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-700" />
+              <input type="text" placeholder="Search by ID, name or neighborhood..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all placeholder:text-slate-400 text-slate-700" />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
-              <select value={selectedType} onChange={(e) => handleTypeChange(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium">
+              <select value={selectedType} onChange={(e) => handleTypeChange(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-medium">
                 <option value="all">All Types</option>
                 <option value="lateral">Side Load (Carga Lateral)</option>
                 <option value="bilateral">Bilateral Load (Carga Bilateral)</option>
@@ -132,7 +132,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
         )}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <RefreshCw className="h-10 w-10 animate-spin text-indigo-500" />
+            <RefreshCw className="h-10 w-10 animate-spin text-sky-600" />
             <p className="text-sm font-medium">Loading containers...</p>
           </div>
         ) : containers.length === 0 ? (
@@ -141,7 +141,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             <p className="text-lg font-bold text-slate-500">No containers found</p>
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
               {totalItems === 0 && !debouncedSearch && selectedType === 'all' && !showOnlyAlerts
-                ? "The database is empty. Please register a container using the form below."
+                ? "No containers currently found in the database."
                 : 'No containers match the search or selected filter.'}
             </p>
           </div>

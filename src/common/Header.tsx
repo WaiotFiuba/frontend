@@ -11,7 +11,7 @@ export default function Header({ className }: { className?: string }) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="flex items-center justify-between">
 
-                    <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
+                    <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')} title="Ir al inicio">
                         <img
                             src="/images/WAIOT FIUBA.png"
                             alt="Waiot Logo"
@@ -24,9 +24,6 @@ export default function Header({ className }: { className?: string }) {
                     </div>
 
                     <nav className="hidden md:flex items-center gap-8">
-                        <button onClick={() => navigate('/')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Home
-                        </button>
                         <button onClick={() => navigate('/map')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Map
                         </button>

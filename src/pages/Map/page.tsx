@@ -7,10 +7,12 @@ import MapLegend from '@/common/MapLegend'
 import { useState } from 'react'
 import SimulationControl from '@/common/SimulationControl'
 import { ArrowLeft, MapPin } from 'lucide-react'
+import { useCityConfig } from '@/context/CityConfigContext'
 
 export default function Map() {
     const navigate = useNavigate()
     const [refreshTrigger, setRefreshTrigger] = useState(0)
+    const { cityName } = useCityConfig()
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
@@ -21,10 +23,10 @@ export default function Map() {
                             <MapPin className="w-8 h-8 text-sky-600 shrink-0" />
                             <div>
                                 <h1 className="text-3xl font-extrabold text-slate-900">
-                                    Interactive Map
+                                    Mapa Interactivo
                                 </h1>
                                 <p className="text-slate-600 text-sm mt-0.5">
-                                    Monitoreo geográfico de sitios, niveles de llenado y telemetría de contenedores.
+                                    Monitoreo geográfico de sitios, niveles de llenado y telemetría de contenedores{cityName ? ` en ${cityName}` : ''}.
                                 </p>
                             </div>
                         </div>

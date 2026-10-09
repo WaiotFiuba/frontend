@@ -137,7 +137,7 @@ export const fetchSitesBBox = async (
 
                 return {
                     id: clusterId,
-                    name: `Cluster (${count} sitios)`,
+                    name: `Cluster (${count} contenedores)`,
                     address: null,
                     lat: lat,
                     long: lon,
@@ -160,14 +160,7 @@ export const fetchSitesBBox = async (
             const siteContainers = Array.isArray(s.containers) ? (s.containers as Array<Record<string, unknown>>) : []
 
             const containers: Container[] = siteContainers.map((c) => {
-                let type: ContainerType = "indiferenciado"
-                const typeName = String(c.container_type || "").toLowerCase()
-                if (typeName.includes("seca") || typeName.includes("reciclaje")) {
-                    type = "reciclaje"
-                } else if (typeName.includes("humeda") || typeName.includes("húmeda") || typeName.includes("organico")) {
-                    type = "organico"
-                }
-
+                const type = containerTypeForWaste(String(c.container_type || ""), String(c.waste_type || ""))
                 const cLevel = Number(c.current_level ?? avgLevel)
                 return {
                     id: String(c.id),
