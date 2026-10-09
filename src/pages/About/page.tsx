@@ -1,12 +1,8 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/common/ui/button'
 import {
-  FileText,
   ArrowRight,
-  AlertTriangle,
   Building2,
-  Truck,
-  Recycle,
   GraduationCap,
   MapPin,
 } from 'lucide-react'
