@@ -3,26 +3,27 @@ import 'leaflet/dist/leaflet.css'
 import { Button } from '@/common/ui/button'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchOptimizationMetrics, fetchActiveWhatIfPlan } from './services/optimizationApi'
+import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } from './services/optimizationApi'
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
+import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
+import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import {
-  Activity,
   AlertCircle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
   Cpu,
   Download,
   RotateCcw,
-  Scale,
   Sliders,
   Sparkles,
-  TrendingDown,
   Zap,
 } from 'lucide-react'
 
 export default function Optimization() {
   const navigate = useNavigate()
+
+  // Filtro de categoría de utilización
+  const [selectedCategory, setSelectedCategory] = useState<UtilizationCategory | 'all'>('all')
 
   // Configuración de parámetros unificada
   const [config, setConfig] = useState<OptimizationConfig>({
@@ -39,6 +40,7 @@ export default function Optimization() {
   const [generating, setGenerating] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
+  const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -51,18 +53,22 @@ export default function Optimization() {
     const loadInitialData = async () => {
       setLoadingMetrics(true)
       try {
-        const [metricsData, activePlan] = await Promise.allSettled([
-          fetchOptimizationMetrics(config.window_days),
+        const [whatifRes, baselineRes, activePlanRes] = await Promise.allSettled([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
           fetchActiveWhatIfPlan(),
         ])
         if (isMounted) {
-          if (metricsData.status === 'fulfilled') {
-            setNetworkMetrics(metricsData.value)
+          if (whatifRes.status === 'fulfilled') {
+            setNetworkMetrics(whatifRes.value)
           }
-          if (activePlan.status === 'fulfilled' && activePlan.value) {
-            setPlan(activePlan.value)
-            if (activePlan.value.config) {
-              setConfig((prev) => ({ ...prev, ...activePlan.value.config }))
+          if (baselineRes.status === 'fulfilled') {
+            setBaselineMetrics(baselineRes.value)
+          }
+          if (activePlanRes.status === 'fulfilled' && activePlanRes.value) {
+            setPlan(activePlanRes.value)
+            if (activePlanRes.value.config) {
+              setConfig((prev) => ({ ...prev, ...activePlanRes.value.config }))
             }
           }
         }
@@ -88,6 +94,12 @@ export default function Optimization() {
       const generated = await generateOptimizationPlan(config)
       setPlan(generated)
       setRefreshTrigger((prev) => prev + 1)
+      try {
+        const updatedWhatif = await fetchNetworkKpis(true)
+        setNetworkMetrics(updatedWhatif)
+      } catch (kpiErr) {
+        console.warn('Error al actualizar KPIs What-If tras generar plan:', kpiErr)
+      }
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
           `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
@@ -370,219 +382,21 @@ export default function Optimization() {
           </div>
         </div>
 
-        {/* Network Fill & Dispersion Metrics (Current vs Redistribution) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Scale className="h-5 w-5 text-indigo-600" />
-              <h2 className="font-bold text-slate-900 text-base">
-                {plan ? 'Comparativa de Balanceo de Red (Original vs Redistribución)' : 'Diagnóstico de Llenado y Dispersión de la Red'}
-              </h2>
-            </div>
-            {loadingMetrics && (
-              <span className="text-xs text-slate-400 animate-pulse font-medium">Actualizando métricas...</span>
-            )}
-          </div>
+        {/* 1. Panel de Métricas de la Red (What-If en Playground de Simulación) */}
+        <NetworkKpiPanel
+          metrics={networkMetrics}
+          loading={loadingMetrics}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          whatif={true}
+        />
 
-          {!plan ? (
-            // Estado Actual previo a optimizar
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-gradient-to-br from-blue-50/70 to-slate-50 p-4 rounded-xl border border-blue-100/70 space-y-1">
-                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5 text-blue-600" />
-                  Promedio de Llenado Total
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-slate-900">
-                    {(networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
-                  </span>
-                  <span className="text-[11px] text-slate-500">ocupación media</span>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mt-2">
-                  <div
-                    className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, networkMetrics?.mean_fill_level ?? 0))}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-indigo-50/70 to-slate-50 p-4 rounded-xl border border-indigo-100/70 space-y-1">
-                <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                  <BarChart3 className="h-3.5 w-3.5 text-indigo-600" />
-                  Desvío Estándar (&sigma;)
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-indigo-900">
-                    &plusmn;{(networkMetrics?.std_fill_level ?? 0).toFixed(1)}%
-                  </span>
-                  <span className="text-[11px] text-slate-500">dispersión</span>
-                </div>
-                <span className="text-[11px] text-slate-500 block">
-                  Mide qué tan dispar es el llenado entre contenedores.
-                </span>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-1 flex flex-col justify-between">
-                <div>
-                  <span className="text-xs font-semibold text-slate-600 block">Contenedores Monitoreados</span>
-                  <span className="text-2xl font-black text-slate-800">
-                    {networkMetrics?.total_containers ?? 0}
-                  </span>
-                  <span className="text-[11px] text-slate-500 block">
-                    distribuidos en {networkMetrics?.total_sites ?? 0} sitios de la ciudad
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  Generá un plan de redistribución para comparar el balanceo proyectado.
-                </span>
-              </div>
-            </div>
-          ) : (
-            // Comparativa tras generar el plan
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1. Promedio de Llenado */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Activity className="h-4 w-4 text-blue-600" />
-                      Promedio de Llenado de la Red
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                      Masa conservada
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div className="bg-white p-3 rounded-lg border border-slate-100">
-                      <span className="text-[11px] text-slate-500 font-medium block">Original</span>
-                      <span className="text-xl font-black text-slate-800">
-                        {(plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-2xs">
-                      <span className="text-[11px] text-blue-600 font-semibold block">Redistribuido</span>
-                      <span className="text-xl font-black text-blue-700">
-                        {(plan.optimized_mean_fill ?? 0).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-500">
-                    El volumen global de residuos se conserva, repartiéndose de forma equitativa entre sitios.
-                  </p>
-                </div>
-
-                {/* 2. Desvío Estándar (Balanceo) */}
-                {(() => {
-                  const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
-                  const optStd = plan.optimized_std_fill ?? 0
-                  const diff = optStd - origStd
-                  const reductionPct = origStd > 0 ? Math.round((Math.abs(diff) / origStd) * 100) : 0
-                  const improved = diff < -0.1
-
-                  return (
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                          <Scale className="h-4 w-4 text-indigo-600" />
-                          Desvío Estándar (&sigma;) — Dispersión
-                        </span>
-                        {improved ? (
-                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <TrendingDown className="h-3 w-3" />
-                            -{reductionPct}% dispersión
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                            Sin variación
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div className="bg-white p-3 rounded-lg border border-slate-100">
-                          <span className="text-[11px] text-slate-500 font-medium block">Original</span>
-                          <span className="text-xl font-black text-slate-800">
-                            &plusmn;{origStd.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-2xs">
-                          <span className="text-[11px] text-emerald-600 font-semibold block">Redistribuido</span>
-                          <span className="text-xl font-black text-emerald-700">
-                            &plusmn;{optStd.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-slate-500">
-                        {improved
-                          ? `Al reducir el desvío estándar de ±${origStd.toFixed(1)}% a ±${optStd.toFixed(1)}%, los contenedores se homogenizan, previniendo desbordes en sitios críticos.`
-                          : 'La dispersión de la red se mantiene estable con los parámetros definidos.'}
-                      </p>
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Visual Distribution Range Meter */}
-              {(() => {
-                const origMean = plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0
-                const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
-                const optMean = plan.optimized_mean_fill ?? 0
-                const optStd = plan.optimized_std_fill ?? 0
-
-                const origMin = Math.max(0, origMean - origStd)
-                const origMax = Math.min(100, origMean + origStd)
-                const optMin = Math.max(0, optMean - optStd)
-                const optMax = Math.min(100, optMean + optStd)
-
-                return (
-                  <div className="bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
-                    <div className="flex justify-between items-center text-[11px] text-slate-600 font-semibold">
-                      <span>Rango típico de ocupación (Banda de 1 desvío &mu; &plusmn; &sigma;)</span>
-                      <span className="font-mono text-[10px] text-slate-400">0% a 100%</span>
-                    </div>
-
-                    {/* Original bar */}
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span>Original: {origMin.toFixed(0)}% a {origMax.toFixed(0)}%</span>
-                        <span>Dispersión amplia</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-200 rounded-full relative overflow-hidden">
-                        <div
-                          className="absolute h-full bg-slate-400/80 rounded-full"
-                          style={{
-                            left: `${origMin}%`,
-                            width: `${Math.max(2, origMax - origMin)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Optimized bar */}
-                    <div className="space-y-1 pt-1">
-                      <div className="flex justify-between text-[10px] text-emerald-700 font-semibold">
-                        <span>Redistribuido: {optMin.toFixed(0)}% a {optMax.toFixed(0)}%</span>
-                        <span>Banda concentrada y balanceada</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-200 rounded-full relative overflow-hidden">
-                        <div
-                          className="absolute h-full bg-emerald-500 rounded-full shadow-xs transition-all duration-700"
-                          style={{
-                            left: `${optMin}%`,
-                            width: `${Math.max(2, optMax - optMin)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-        </div>
+        {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}
+        <RedistributionImpactPanel
+          plan={plan}
+          baselineMetrics={baselineMetrics}
+          loading={generating}
+        />
 
         {/* Feedback messages */}
         {successMsg && (

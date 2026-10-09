@@ -5,6 +5,7 @@ import InteractiveMap from '@/common/InteractiveMap'
 import MapLegend from '@/common/MapLegend'
 import { useState } from 'react'
 import SimulationControl from '@/common/SimulationControl'
+import { NetworkKpiPanel } from '@/common/KpiPanel'
 import { useCityConfig } from '@/context/CityConfigContext'
 
 export default function Map() {
@@ -32,6 +33,9 @@ export default function Map() {
                         Back to Home
                     </Button>
                 </div>
+
+                {/* Panel de Métricas Operativas de la Red */}
+                <NetworkKpiPanel refreshTrigger={refreshTrigger} />
 
                 {/* Contenedor principal con Diccionario a la izquierda y Mapa a la derecha */}
                 <div className="flex flex-col lg:flex-row gap-5 items-stretch">
