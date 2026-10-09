@@ -355,7 +355,7 @@ export default function ConfigurationsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
               <Settings className="h-8 w-8 text-sky-600" />
-              Configurations
+              Configuraciones
             </h1>
             <p className="text-slate-600 mt-1">
               Cree, gestione y almacene configuraciones de simulación asociadas a su usuario.
@@ -375,7 +375,7 @@ export default function ConfigurationsPage() {
               onClick={() => navigate('/')}
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
             >
-              Back to Home
+              Volver al inicio
             </Button>
           </div>
         </div>

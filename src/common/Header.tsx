@@ -19,28 +19,28 @@ export default function Header({ className }: { className?: string }) {
                         />
                         <div>
                             <h1 className="text-2xl font-bold text-slate-900">Waiot FIUBA</h1>
-                            <p className="text-xs text-slate-500">Digital Twin Solutions</p>
+                            <p className="text-xs text-slate-500">Soluciones de Gemelo Digital</p>
                         </div>
                     </div>
 
                     <nav className="hidden md:flex items-center gap-8">
                         <button onClick={() => navigate('/map')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Map
+                            Mapa
                         </button>
                         <button onClick={() => navigate('/optimization')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Optimization
+                            Optimización
                         </button>
                         <button onClick={() => navigate('/forecast-evaluation')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Forecasts
+                            Predicciones
                         </button>
                         <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Management
+                            Gestión
                         </button>
                         <button onClick={() => navigate('/configurations')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Configurations
+                            Configuraciones
                         </button>
                         <button onClick={() => navigate('/about')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            About
+                            Acerca de
                         </button>
                     </nav>
 
@@ -50,11 +50,11 @@ export default function Header({ className }: { className?: string }) {
                         )}
                         {accessToken ? (
                             <Button variant="outline" onClick={() => logout()} className="cursor-pointer">
-                                Log Out
+                                Cerrar Sesión
                             </Button>
                         ) : (
                             <Button variant="outline" onClick={() => navigate('/login')} className="cursor-pointer">
-                                Sign In
+                                Ingresar
                             </Button>
                         )}
                     </div>

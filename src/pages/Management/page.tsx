@@ -72,7 +72,7 @@ export default function Management() {
             <Database className="h-8 w-8 text-sky-600 shrink-0" />
             <div className="space-y-0.5">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                Container Management
+                Gestión de Contenedores
               </h1>
               <p className="text-slate-500 text-sm md:text-base">
                 Administración y monitoreo de unidades de recolección y estado de la red.

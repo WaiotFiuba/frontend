@@ -9,10 +9,10 @@ export default function Home() {
             <div className="max-w-2xl w-full text-center space-y-8">
                 <div className="space-y-4">
                     <h1 className="text-5xl font-bold text-slate-900 tracking-tight">
-                        Welcome to Waiot FIUBA!
+                        ¡Bienvenido a Waiot FIUBA!
                     </h1>
                     <p className="text-xl text-slate-600 leading-relaxed">
-                        First steps in digital twin solutions.
+                        Primeros pasos en soluciones de gemelos digitales.
                     </p>
                 </div>
 
@@ -22,7 +22,7 @@ export default function Home() {
                         size="lg"
                         className="px-8 py-6 text-base font-semibold"
                     >
-                        Explore Map
+                        Explorar Mapa
                     </Button>
                 </div>
             </div>

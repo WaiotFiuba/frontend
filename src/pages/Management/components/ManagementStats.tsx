@@ -19,7 +19,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Total Containers
+              Total Contenedores
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.total}</h3>
           </div>
@@ -34,7 +34,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Available / Active
+              Disponibles / Activos
             </p>
             <h3 className="text-3xl font-extrabold text-emerald-600">{statsValues.available}</h3>
           </div>
@@ -49,7 +49,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Average Fill Level
+              Nivel Promedio de Llenado
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.avg_fill}%</h3>
           </div>
@@ -63,7 +63,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Overflow Alerts
+              Alertas de Desborde
             </p>
             <h3 className="text-3xl font-extrabold text-amber-600">{statsValues.alert_level}</h3>
           </div>

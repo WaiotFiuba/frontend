@@ -31,7 +31,7 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
     } catch (err: unknown) {
       console.error(err)
       const msg = err instanceof Error ? err.message : String(err)
-      setError('Error deleting container: ' + msg)
+      setError('Error al eliminar el contenedor: ' + msg)
     } finally {
       setLoading(false)
     }
@@ -46,11 +46,11 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
           </div>
           <div className="space-y-2 w-full">
             <DialogHeader className="p-0">
-              <DialogTitle className="text-lg font-bold text-slate-900">Delete Container</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-slate-900">Eliminar Contenedor</DialogTitle>
               <DialogDescription className="text-sm text-slate-500 leading-relaxed mt-1">
-                Are you sure you want to delete container{' '}
+                ¿Está seguro de que desea eliminar el contenedor{' '}
                 <span className="font-mono font-bold text-slate-800">{container.site_id}</span>{' '}
-                ({container.site_name || 'No Name'})?
+                ({container.site_name || 'Sin Nombre'})?
               </DialogDescription>
             </DialogHeader>
             {error && (
@@ -67,7 +67,7 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             disabled={loading}
             className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={handleConfirmDelete}
@@ -77,10 +77,10 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             {loading ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                Deleting...
+                Eliminando...
               </>
             ) : (
-              'Delete Container'
+              'Eliminar Contenedor'
             )}
           </Button>
         </DialogFooter>

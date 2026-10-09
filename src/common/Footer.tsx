@@ -5,10 +5,10 @@ export default function Footer() {
                 <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-800 text-sm tracking-wide">Waiot FIUBA</span>
                     <span className="text-slate-300">|</span>
-                    <span className="text-xs text-slate-500 font-medium">Digital Twin Solutions</span>
+                    <span className="text-xs text-slate-500 font-medium">Soluciones de Gemelo Digital</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                    Copyright © 2026 Waiot Fiuba. All rights reserved.
+                    Copyright © 2026 Waiot FIUBA. Todos los derechos reservados.
                 </p>
             </div>
         </footer>

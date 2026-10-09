@@ -105,9 +105,9 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold text-slate-950">Containers List</CardTitle>
+            <CardTitle className="text-xl font-bold text-slate-950">Lista de Contenedores</CardTitle>
             <CardDescription className="text-slate-500 mt-1">
-              Shows the geographical information and current status of each unit.
+              Muestra la información geográfica y el estado actual de cada unidad.
             </CardDescription>
           </div>
 
@@ -115,7 +115,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             {showOnlyAlerts && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold px-2.5 py-1.5 animate-fade-in shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                Only ≥80%
+                Solo ≥80%
                 <button onClick={() => handleToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
                   ×
                 </button>
@@ -123,20 +123,20 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             )}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input type="text" placeholder="Search by ID, name or neighborhood..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all placeholder:text-slate-400 text-slate-700" />
+              <input type="text" placeholder="Buscar por ID, nombre o barrio..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all placeholder:text-slate-400 text-slate-700" />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
               <Select value={selectedType} onValueChange={handleTypeChange}>
                 <SelectTrigger className="w-full sm:w-56 text-xs font-semibold bg-white border-slate-200">
-                  <SelectValue placeholder="All Types" />
+                  <SelectValue placeholder="Todos los tipos" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="lateral">Side Load (Carga Lateral)</SelectItem>
-                  <SelectItem value="bilateral">Bilateral Load (Carga Bilateral)</SelectItem>
-                  <SelectItem value="soterrado">Underground (Soterrado)</SelectItem>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="lateral">Carga Lateral</SelectItem>
+                  <SelectItem value="bilateral">Carga Bilateral</SelectItem>
+                  <SelectItem value="soterrado">Soterrado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,29 +153,29 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
             <RefreshCw className="h-10 w-10 animate-spin text-sky-600" />
-            <p className="text-sm font-medium">Loading containers...</p>
+            <p className="text-sm font-medium">Cargando contenedores...</p>
           </div>
         ) : containers.length === 0 ? (
           <div className="py-20 text-center text-slate-400 space-y-2">
             <Database className="h-12 w-12 mx-auto text-slate-300" />
-            <p className="text-lg font-bold text-slate-500">No containers found</p>
+            <p className="text-lg font-bold text-slate-500">No se encontraron contenedores</p>
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
               {totalItems === 0 && !debouncedSearch && selectedType === 'all' && !showOnlyAlerts
-                ? "No containers currently found in the database."
-                : 'No containers match the search or selected filter.'}
+                ? "No hay contenedores registrados en la base de datos."
+                : 'Ningún contenedor coincide con la búsqueda o el filtro seleccionado.'}
             </p>
           </div>
         ) : (
             <Table>
               <TableHeader className="bg-slate-50/40">
                 <TableRow className="border-b border-slate-100">
-                  <TableHead className="px-6 py-4 font-semibold text-slate-900">Container ID</TableHead>
-                  <TableHead className="px-6 py-4">Site ID</TableHead>
-                  <TableHead className="px-6 py-4">Neighborhood / Zone</TableHead>
-                  <TableHead className="px-6 py-4">Type</TableHead>
-                  <TableHead className="px-6 py-4">Status</TableHead>
-                  <TableHead className="px-6 py-4 w-64">Fill Level</TableHead>
-                  <TableHead className="px-6 py-4 text-right">Action</TableHead>
+                  <TableHead className="px-6 py-4 font-semibold text-slate-900">ID Contenedor</TableHead>
+                  <TableHead className="px-6 py-4">ID Sitio</TableHead>
+                  <TableHead className="px-6 py-4">Barrio / Zona</TableHead>
+                  <TableHead className="px-6 py-4">Tipo</TableHead>
+                  <TableHead className="px-6 py-4">Estado</TableHead>
+                  <TableHead className="px-6 py-4 w-64">Nivel de Llenado</TableHead>
+                  <TableHead className="px-6 py-4 text-right">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -200,22 +200,22 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                       <TableCell className="px-6 py-4 font-mono text-xs text-slate-600">
                         {container.site_id}
                       </TableCell>
-                      <TableCell className="px-6 py-4 text-slate-600">{container.zone || 'Not assigned'}</TableCell>
+                      <TableCell className="px-6 py-4 text-slate-600">{container.zone || 'Sin asignar'}</TableCell>
                       <TableCell className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                          {container.container_type?.name || 'Generic'}
+                          {container.container_type?.name || 'Genérico'}
                         </span>
                       </TableCell>
                       <TableCell className="px-6 py-4">
                         {container.available ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Active
+                            Activo
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            Inactive
+                            Inactivo
                           </span>
                         )}
                       </TableCell>
@@ -230,7 +230,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg cursor-pointer" title="Remove from view (frontend only)">
+                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg cursor-pointer" title="Eliminar de la vista (solo visual)">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -245,23 +245,23 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
       {!loading && totalItems > 0 && (
         <div className="border-t border-slate-100 bg-slate-50/30 px-6 py-4 flex items-center justify-between">
           <div className="text-xs text-slate-500 font-medium">
-            Showing{' '}
+            Mostrando{' '}
             <span className="font-bold text-slate-700">
               {Math.min(totalItems, (currentPage - 1) * ITEMS_PER_PAGE + 1)}
             </span>{' '}
-            to{' '}
+            a{' '}
             <span className="font-bold text-slate-700">
               {Math.min(totalItems, currentPage * ITEMS_PER_PAGE)}
             </span>{' '}
-            of <span className="font-bold text-slate-700">{totalItems}</span>{' '}
-            containers
+            de <span className="font-bold text-slate-700">{totalItems}</span>{' '}
+            contenedores
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} className="h-8 w-8 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-xs font-bold text-slate-700">
-              Page {currentPage} of {totalPages}
+              Página {currentPage} de {totalPages}
             </div>
             <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} className="h-8 w-8 p-0">
               <ChevronRight className="h-4 w-4" />

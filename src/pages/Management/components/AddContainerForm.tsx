@@ -63,44 +63,44 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
   return (
     <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden rounded-2xl">
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
-        <CardTitle className="text-xl font-bold text-slate-950">Add New Container</CardTitle>
+        <CardTitle className="text-xl font-bold text-slate-950">Añadir Nuevo Contenedor</CardTitle>
         <CardDescription className="text-slate-500 mt-1">
-          Register a localized individual unit in the system.
+          Registre una unidad individual localizada en el sistema.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleCreateContainer} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Site ID *</label>
-              <input type="text" required placeholder="Ex: SITE-0520" value={newSiteId} onChange={(e) => setNewSiteId(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
+              <label className="text-xs font-bold text-slate-500 uppercase">ID del Sitio *</label>
+              <input type="text" required placeholder="Ej: SITE-0520" value={newSiteId} onChange={(e) => setNewSiteId(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Site Name *</label>
-              <input type="text" required placeholder="Ex: Corner Callao & Corrientes" value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Nombre del Sitio *</label>
+              <input type="text" required placeholder="Ej: Esquina Callao y Corrientes" value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Address (Optional)</label>
-            <input type="text" placeholder="Ex: Av. Callao 400" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
+            <label className="text-xs font-bold text-slate-500 uppercase">Dirección (Opcional)</label>
+            <input type="text" placeholder="Ej: Av. Callao 400" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Latitude *</label>
-              <input type="number" step="any" required placeholder="Ex: -34.6037" value={newLat} onChange={(e) => setNewLat(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Latitud *</label>
+              <input type="number" step="any" required placeholder="Ej: -34.6037" value={newLat} onChange={(e) => setNewLat(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Longitude *</label>
-              <input type="number" step="any" required placeholder="Ex: -58.3816" value={newLng} onChange={(e) => setNewLng(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
+              <label className="text-xs font-bold text-slate-500 uppercase">Longitud *</label>
+              <input type="number" step="any" required placeholder="Ej: -58.3816" value={newLng} onChange={(e) => setNewLng(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">Container Type *</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">Tipo de Contenedor *</label>
             <select required value={newTypeId} onChange={(e) => setNewTypeId(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold">
-              <option value="">Select a type...</option>
+              <option value="">Seleccione un tipo...</option>
               {containerTypes.map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
@@ -114,10 +114,10 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
               {creatingContainer ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin mr-2 inline" />
-                  Adding...
+                  Registrando...
                 </>
               ) : (
-                'Register Container'
+                'Registrar Contenedor'
               )}
             </Button>
           </div>

@@ -264,13 +264,13 @@ function SiteMetricsTable({ sites }: { sites: SiteMetric[] }) {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Site ID</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">ID de Sitio</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">MAE</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">RMSE</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Error crítico</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Precisión</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Recall</th>
-              <th className="px-4 py-3 text-right font-semibold text-slate-600">Samples</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-600">Muestras</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
