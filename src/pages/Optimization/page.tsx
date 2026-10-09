@@ -215,7 +215,7 @@ export default function Optimization() {
           {!plan ? (
             // Estado Actual previo a optimizar
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              {/* 1. Promedio de Llenado */}
+              {/* Promedio de Llenado */}
               <div className="bg-sky-50/70 p-3 rounded-xl border border-sky-100/80 space-y-1">
                 <span className="text-[11px] font-semibold text-slate-600 block">
                   Promedio de Llenado Total
@@ -484,22 +484,20 @@ export default function Optimization() {
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
-                              config.algorithm === 'greedy'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${config.algorithm === 'greedy'
                                 ? 'bg-sky-600 text-white shadow-xs font-bold'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
+                              }`}
                           >
                             Greedy
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'lp' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${
-                              config.algorithm === 'lp'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${config.algorithm === 'lp'
                                 ? 'bg-emerald-600 text-white shadow-xs font-bold'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
+                              }`}
                           >
                             Prog. Lineal
                           </button>
@@ -670,171 +668,169 @@ export default function Optimization() {
             </CardContent>
           </Card>
 
-            {/* Baseline distribution info notice */}
-            {plan && plan.moves.length === 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
-                <p className="text-xs font-semibold text-slate-700">
-                  🌱 Distribución What-If base activa (réplica 1:1 de la red física).
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  Ajustá los parámetros en el panel lateral y presioná <strong>&ldquo;Generar Redistribución&rdquo;</strong> para reubicar contenedores en el playground.
-                </p>
-              </div>
-            )}
+          {/* Baseline distribution info notice */}
+          {plan && plan.moves.length === 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
+              <p className="text-xs font-semibold text-slate-700">
+                🌱 Distribución What-If base activa (réplica 1:1 de la red física).
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Ajustá los parámetros en el panel lateral y presioná <strong>&ldquo;Generar Redistribución&rdquo;</strong> para reubicar contenedores en el playground.
+              </p>
+            </div>
+          )}
 
-            {/* Results Summary & Moves Table (visible when plan has moves) */}
-            {plan && plan.moves.length > 0 && (
-              <div id="moves-table-section" className="bg-white rounded-2xl border border-slate-200 shadow-lg p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base">
-                      Movimientos Recomendados ({plan.moves.length})
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      {plan.sites_donating} sitios donantes ceden contenedores a {plan.sites_receiving} sitios saturados.
-                    </p>
-                  </div>
+          {/* Results Summary & Moves Table (visible when plan has moves) */}
+          {plan && plan.moves.length > 0 && (
+            <div id="moves-table-section" className="bg-white rounded-2xl border border-slate-200 shadow-lg p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    Movimientos Recomendados ({plan.moves.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {plan.sites_donating} sitios donantes ceden contenedores a {plan.sites_receiving} sitios saturados.
+                  </p>
+                </div>
 
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCsv}
+                    className="text-xs gap-1.5 border-slate-200 cursor-pointer"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Exportar CSV
+                  </Button>
+                  {highlightedMoveId && (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      onClick={handleExportCsv}
-                      className="text-xs gap-1.5 border-slate-200 cursor-pointer"
+                      onClick={() => setHighlightedMoveId(null)}
+                      className="text-xs gap-1 text-slate-500 cursor-pointer"
                     >
-                      <Download className="h-3.5 w-3.5" />
-                      Exportar CSV
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Limpiar selección
                     </Button>
-                    {highlightedMoveId && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setHighlightedMoveId(null)}
-                        className="text-xs gap-1 text-slate-500 cursor-pointer"
-                      >
-                        <RotateCcw className="h-3.5 w-3.5" />
-                        Limpiar selección
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick summary badges */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-sky-50/80 p-3 rounded-xl border border-sky-200/80">
-                    <span className="text-[11px] text-sky-700 font-semibold block">Contenedores</span>
-                    <span className="text-xl font-extrabold text-sky-950">
-                      {plan.total_containers_moved}
-                    </span>
-                    <span className="text-[10px] text-sky-600 block">a reubicar</span>
-                  </div>
-                  <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
-                    <span className="text-[11px] text-emerald-700 font-semibold block">Distancia Promedio</span>
-                    <span className="text-xl font-extrabold text-emerald-950">
-                      {plan.avg_distance_km.toFixed(2)} km
-                    </span>
-                    <span className="text-[10px] text-emerald-600 block">por traslado</span>
-                  </div>
-                  <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
-                    <span className="text-[11px] text-emerald-700 font-semibold block">Sitios Donantes</span>
-                    <span className="text-xl font-extrabold text-emerald-950">{plan.sites_donating}</span>
-                    <span className="text-[10px] text-emerald-600 block">ceden exceso</span>
-                  </div>
-                  <div className="bg-rose-50/80 p-3 rounded-xl border border-rose-200/80">
-                    <span className="text-[11px] text-rose-700 font-semibold block">Sitios Receptores</span>
-                    <span className="text-xl font-extrabold text-rose-950">{plan.sites_receiving}</span>
-                    <span className="text-[10px] text-rose-600 block">descongestionados</span>
-                  </div>
-                </div>
-
-                {/* Moves List */}
-                <div className="overflow-x-auto border border-slate-100 rounded-xl max-h-96 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50/90 text-slate-600 font-semibold border-b border-slate-200 sticky top-0 z-10">
-                      <tr>
-                        <th className="p-3">#</th>
-                        <th className="p-3">Contenedor</th>
-                        <th className="p-3">Sitio Donante (Origen)</th>
-                        <th className="p-3 text-center"></th>
-                        <th className="p-3">Sitio Receptor (Destino)</th>
-                        <th className="p-3 text-right">Distancia</th>
-                        <th className="p-3 text-center">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {plan.moves.map((m, idx) => {
-                        const isSelected = highlightedMoveId === m.container_id
-                        return (
-                          <tr
-                            key={`move-${m.container_id}-${idx}`}
-                            className={`transition-colors hover:bg-slate-50/80 ${
-                              isSelected ? 'bg-sky-50/70 font-semibold' : ''
-                            }`}
-                          >
-                            <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                            <td className="p-3">
-                              <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
-                                #{m.container_id}
-                              </span>
-                            </td>
-                            <td className="p-3 max-w-[260px]">
-                              <div className="font-medium text-slate-900 truncate" title={m.from_site_name}>
-                                {m.from_site_name}
-                              </div>
-                              <span className="text-[10px] text-sky-600 font-semibold">
-                                ID Sitio {m.from_site_id}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center text-slate-400">
-                              <ArrowRight className="h-4 w-4 inline text-sky-600" />
-                            </td>
-                            <td className="p-3 max-w-[260px]">
-                              <div className="font-medium text-slate-900 truncate" title={m.to_site_name}>
-                                {m.to_site_name}
-                              </div>
-                              <span className="text-[10px] text-rose-600 font-semibold">
-                                ID Sitio {m.to_site_id}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right font-mono">
-                              <span className="text-slate-800 font-bold">{m.distance_km.toFixed(2)}</span>
-                              <span className="text-slate-400 text-[10px] ml-1">km</span>
-                              <div className="text-[10px] text-slate-400">
-                                {Math.round(m.distance_km * 1000)} m
-                              </div>
-                            </td>
-                            <td className="p-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const nextId = isSelected ? null : m.container_id
-                                  setHighlightedMoveId(nextId)
-                                  if (nextId != null) {
-                                    mapContainerRef.current?.scrollIntoView({
-                                      behavior: 'smooth',
-                                      block: 'center',
-                                    })
-                                  }
-                                }}
-                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-sky-600 text-white shadow-xs'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                              >
-                                {isSelected ? 'Seleccionado' : 'Ver en mapa'}
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Quick summary badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-sky-50/80 p-3 rounded-xl border border-sky-200/80">
+                  <span className="text-[11px] text-sky-700 font-semibold block">Contenedores</span>
+                  <span className="text-xl font-extrabold text-sky-950">
+                    {plan.total_containers_moved}
+                  </span>
+                  <span className="text-[10px] text-sky-600 block">a reubicar</span>
+                </div>
+                <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
+                  <span className="text-[11px] text-emerald-700 font-semibold block">Distancia Promedio</span>
+                  <span className="text-xl font-extrabold text-emerald-950">
+                    {plan.avg_distance_km.toFixed(2)} km
+                  </span>
+                  <span className="text-[10px] text-emerald-600 block">por traslado</span>
+                </div>
+                <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
+                  <span className="text-[11px] text-emerald-700 font-semibold block">Sitios Donantes</span>
+                  <span className="text-xl font-extrabold text-emerald-950">{plan.sites_donating}</span>
+                  <span className="text-[10px] text-emerald-600 block">ceden exceso</span>
+                </div>
+                <div className="bg-rose-50/80 p-3 rounded-xl border border-rose-200/80">
+                  <span className="text-[11px] text-rose-700 font-semibold block">Sitios Receptores</span>
+                  <span className="text-xl font-extrabold text-rose-950">{plan.sites_receiving}</span>
+                  <span className="text-[10px] text-rose-600 block">descongestionados</span>
+                </div>
+              </div>
+
+              {/* Moves List */}
+              <div className="overflow-x-auto border border-slate-100 rounded-xl max-h-96 overflow-y-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/90 text-slate-600 font-semibold border-b border-slate-200 sticky top-0 z-10">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Contenedor</th>
+                      <th className="p-3">Sitio Donante (Origen)</th>
+                      <th className="p-3 text-center"></th>
+                      <th className="p-3">Sitio Receptor (Destino)</th>
+                      <th className="p-3 text-right">Distancia</th>
+                      <th className="p-3 text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {plan.moves.map((m, idx) => {
+                      const isSelected = highlightedMoveId === m.container_id
+                      return (
+                        <tr
+                          key={`move-${m.container_id}-${idx}`}
+                          className={`transition-colors hover:bg-slate-50/80 ${isSelected ? 'bg-sky-50/70 font-semibold' : ''
+                            }`}
+                        >
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                          <td className="p-3">
+                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
+                              #{m.container_id}
+                            </span>
+                          </td>
+                          <td className="p-3 max-w-[260px]">
+                            <div className="font-medium text-slate-900 truncate" title={m.from_site_name}>
+                              {m.from_site_name}
+                            </div>
+                            <span className="text-[10px] text-sky-600 font-semibold">
+                              ID Sitio {m.from_site_id}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center text-slate-400">
+                            <ArrowRight className="h-4 w-4 inline text-sky-600" />
+                          </td>
+                          <td className="p-3 max-w-[260px]">
+                            <div className="font-medium text-slate-900 truncate" title={m.to_site_name}>
+                              {m.to_site_name}
+                            </div>
+                            <span className="text-[10px] text-rose-600 font-semibold">
+                              ID Sitio {m.to_site_id}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono">
+                            <span className="text-slate-800 font-bold">{m.distance_km.toFixed(2)}</span>
+                            <span className="text-slate-400 text-[10px] ml-1">km</span>
+                            <div className="text-[10px] text-slate-400">
+                              {Math.round(m.distance_km * 1000)} m
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const nextId = isSelected ? null : m.container_id
+                                setHighlightedMoveId(nextId)
+                                if (nextId != null) {
+                                  mapContainerRef.current?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                  })
+                                }
+                              }}
+                              className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${isSelected
+                                  ? 'bg-sky-600 text-white shadow-xs'
+                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                            >
+                              {isSelected ? 'Seleccionado' : 'Ver en mapa'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+    </div>
   )
 }

@@ -41,20 +41,13 @@ export default function Map() {
                     </Button>
                 </div>
 
-                {/* Contenedor principal con Diccionario a la izquierda y Mapa a la derecha */}
-                <div className="flex flex-col lg:flex-row gap-5 items-stretch">
-                    {/* Panel lateral izquierdo: Diccionario de iconos */}
-                    <div className="w-full lg:w-80 xl:w-80 shrink-0">
-                        <MapLegend className="h-[75vh]" />
-                    </div>
-
-                    {/* Panel derecho: Mapa interactivo */}
-                    <Card className="flex-1 rounded-2xl border-slate-200 shadow-lg h-[75vh] w-full overflow-hidden p-0 gap-0">
-                        <CardContent className="h-full w-full p-0 overflow-hidden relative">
-                            <InteractiveMap refreshTrigger={refreshTrigger} />
-                        </CardContent>
-                    </Card>
-                </div>
+                {/* Hero Map Full-Width con Leyenda Flotante Superpuesta */}
+                <Card className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative">
+                    <CardContent className="h-full w-full p-0 overflow-hidden relative">
+                        <InteractiveMap refreshTrigger={refreshTrigger} />
+                        <MapLegend />
+                    </CardContent>
+                </Card>
 
                 <SimulationControl onSimulationStateChange={async () => {
                     setRefreshTrigger(prev => prev + 1)
