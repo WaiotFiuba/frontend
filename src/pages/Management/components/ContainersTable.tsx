@@ -2,6 +2,21 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
 import { Button } from '@/common/ui/button'
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/common/ui/table'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/common/ui/select'
+import {
   Search,
   AlertTriangle,
   Filter,
@@ -113,12 +128,17 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
-              <select value={selectedType} onChange={(e) => handleTypeChange(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-medium">
-                <option value="all">All Types</option>
-                <option value="lateral">Side Load (Carga Lateral)</option>
-                <option value="bilateral">Bilateral Load (Carga Bilateral)</option>
-                <option value="soterrado">Underground (Soterrado)</option>
-              </select>
+              <Select value={selectedType} onValueChange={handleTypeChange}>
+                <SelectTrigger className="w-full sm:w-56 text-xs font-semibold bg-white border-slate-200">
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="lateral">Side Load (Carga Lateral)</SelectItem>
+                  <SelectItem value="bilateral">Bilateral Load (Carga Bilateral)</SelectItem>
+                  <SelectItem value="soterrado">Underground (Soterrado)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -146,20 +166,19 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/30 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <th className="px-6 py-4 font-semibold text-slate-900">Container ID</th>
-                  <th className="px-6 py-4">Site ID</th>
-                  <th className="px-6 py-4">Neighborhood / Zone</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 w-64">Fill Level</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+            <Table>
+              <TableHeader className="bg-slate-50/40">
+                <TableRow className="border-b border-slate-100">
+                  <TableHead className="px-6 py-4 font-semibold text-slate-900">Container ID</TableHead>
+                  <TableHead className="px-6 py-4">Site ID</TableHead>
+                  <TableHead className="px-6 py-4">Neighborhood / Zone</TableHead>
+                  <TableHead className="px-6 py-4">Type</TableHead>
+                  <TableHead className="px-6 py-4">Status</TableHead>
+                  <TableHead className="px-6 py-4 w-64">Fill Level</TableHead>
+                  <TableHead className="px-6 py-4 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {containers.map((container) => {
                   const fillPercentage = container.current_level
 
@@ -174,20 +193,20 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                   }
 
                   return (
-                    <tr key={container.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-mono text-xs text-slate-500">
+                    <TableRow key={container.id} className="hover:bg-slate-50/80 transition-colors">
+                      <TableCell className="px-6 py-4 font-mono text-xs text-slate-500">
                         {container.id}
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-600">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 font-mono text-xs text-slate-600">
                         {container.site_id}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">{container.zone || 'Not assigned'}</td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-slate-600">{container.zone || 'Not assigned'}</TableCell>
+                      <TableCell className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
                           {container.container_type?.name || 'Generic'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
                         {container.available ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -199,8 +218,8 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                             Inactive
                           </span>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="w-9 text-right font-bold text-xs tabular-nums text-slate-700">
                             {fillPercentage}%
@@ -209,18 +228,17 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                             <div className={`h-2.5 rounded-full transition-all duration-300 ${fillBg}`} style={{ width: `${Math.min(100, fillPercentage)}%` }} />
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg" title="Remove from view (frontend only)">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg cursor-pointer" title="Remove from view (frontend only)">
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
         )}
       </CardContent>
 

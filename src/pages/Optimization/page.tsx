@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { Button } from '@/common/ui/button'
 import { Card, CardContent } from '@/common/ui/card'
+import { Switch } from '@/common/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import { generateOptimizationPlan, fetchOptimizationMetrics, fetchActiveWhatIfPlan } from './services/optimizationApi'
@@ -508,22 +509,22 @@ export default function Optimization() {
                       <div className="flex items-center justify-between text-xs pt-1 pb-1">
                         <label
                           htmlFor="capacity-constraints-checkbox"
-                          className="font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer select-none"
+                          className="font-semibold text-slate-700 cursor-pointer select-none"
                         >
-                          <input
-                            id="capacity-constraints-checkbox"
-                            type="checkbox"
-                            checked={config.apply_capacity_constraints ?? true}
-                            onChange={(e) =>
-                              setConfig({ ...config, apply_capacity_constraints: e.target.checked })
-                            }
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
-                          />
-                          <span>Respetar capacidad máxima</span>
+                          Respetar capacidad máxima
                         </label>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadística'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadística'}
+                          </span>
+                          <Switch
+                            id="capacity-constraints-checkbox"
+                            checked={config.apply_capacity_constraints ?? true}
+                            onCheckedChange={(checked) =>
+                              setConfig({ ...config, apply_capacity_constraints: checked })
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
 

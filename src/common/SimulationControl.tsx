@@ -645,7 +645,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         <div>
           <CardTitle className="text-xl font-bold text-slate-950 flex items-center gap-2">
             <Activity className="h-5 w-5 text-blue-600" />
-            Digital Twin Control
+            Control del Gemelo Digital
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
             {activeSim
