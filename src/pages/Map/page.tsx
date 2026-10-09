@@ -1,31 +1,41 @@
 import 'leaflet/dist/leaflet.css'
 import { Button } from '@/common/ui/button'
+import { Card, CardContent } from '@/common/ui/card'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import MapLegend from '@/common/MapLegend'
 import { useState } from 'react'
 import SimulationControl from '@/common/SimulationControl'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
 export default function Map() {
     const navigate = useNavigate()
     const [refreshTrigger, setRefreshTrigger] = useState(0)
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
             <div className="max-w-[1600px] mx-auto space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
-                            Interactive Map
-                        </h1>
-                        <p className="text-slate-600 mt-1">Monitoring of containers and geographic telemetry.</p>
+                        <div className="flex items-center gap-3">
+                            <MapPin className="w-8 h-8 text-sky-600 shrink-0" />
+                            <div>
+                                <h1 className="text-3xl font-extrabold text-slate-900">
+                                    Interactive Map
+                                </h1>
+                                <p className="text-slate-600 text-sm mt-0.5">
+                                    Monitoreo geográfico de sitios, niveles de llenado y telemetría de contenedores.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <Button
                         variant="outline"
                         onClick={() => navigate('/')}
-                        className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-sm transition-all"
+                        className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm"
                     >
-                        Back to Home
+                        <ArrowLeft className="w-4 h-4" />
+                        Volver al inicio
                     </Button>
                 </div>
 
@@ -37,9 +47,11 @@ export default function Map() {
                     </div>
 
                     {/* Panel derecho: Mapa interactivo */}
-                    <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-lg h-[75vh] w-full overflow-hidden flex items-center justify-center">
-                        <InteractiveMap refreshTrigger={refreshTrigger} />
-                    </div>
+                    <Card className="flex-1 rounded-2xl border-slate-200 shadow-lg h-[75vh] w-full overflow-hidden p-0 gap-0">
+                        <CardContent className="h-full w-full p-0 overflow-hidden relative">
+                            <InteractiveMap refreshTrigger={refreshTrigger} />
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <SimulationControl onSimulationStateChange={async () => {

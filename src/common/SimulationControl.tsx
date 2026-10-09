@@ -13,7 +13,6 @@ import {
   Calendar,
   Layers,
   RotateCcw,
-  Zap,
   Clock,
   MapPin,
   FolderOpen,
@@ -618,7 +617,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   if (loading) {
     return (
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-indigo-600 mb-2" />
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mb-2" />
         <p className="text-slate-500 font-semibold text-sm">Cargando estado del simulador...</p>
       </Card>
     )
@@ -629,7 +628,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       {activeSim && ['pending', 'stopping'].includes(activeSim.status) && (
         <div className="absolute inset-0 bg-slate-900/45 backdrop-blur-[1px] flex flex-col items-center justify-center z-30 animate-in fade-in duration-200">
           <div className="bg-white/95 border border-slate-200/80 shadow-2xl rounded-2xl p-6 flex flex-col items-center gap-3 max-w-sm mx-4 transform animate-in zoom-in-95 duration-200">
-            <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
             <p className="text-slate-800 font-bold text-sm text-center">
               {activeSim.status === 'pending' ? 'Generando simulación...' : 'Deteniendo simulación...'}
             </p>
@@ -645,7 +644,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-xl font-bold text-slate-950 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-600" />
+            <Activity className="h-5 w-5 text-blue-600" />
             Digital Twin Control
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
@@ -708,13 +707,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reloj Simulado</p>
-                <p className="text-sm font-bold text-indigo-700 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
+                <p className="text-sm font-bold text-blue-900 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
                   {formatSimulatedTime(activeSim.simulated_time)}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiempo Real Transcurrido</p>
-                <p className="text-sm font-bold text-indigo-700 mt-1.5 truncate">
+                <p className="text-sm font-bold text-blue-900 mt-1.5 truncate">
                   {formatElapsed(realElapsedMs)}
                 </p>
               </div>
@@ -760,8 +759,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                   Intervalo entre Sets de Telemetría
                 </span>
@@ -770,7 +769,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     Tiempo transcurrido: {timeSinceLastSet}s
                   </span>
                   {updateLogs.filter((log) => log.duration !== null).length > 0 && (
-                    <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                    <span className="text-[11px] font-bold text-emerald-950 bg-emerald-200 border border-emerald-300 px-2 py-0.5 rounded-full">
                       Promedio:{' '}
                       {(
                         updateLogs
@@ -814,8 +813,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           <p className="font-semibold text-slate-700 text-xs">Recibido: {log.timestamp}</p>
                           <p className="text-[10px] text-slate-400 font-medium">Simulado: {log.simulatedTime}</p>
                         </div>
-                        <div className="bg-indigo-50/70 border border-indigo-100/60 rounded-lg px-2.5 py-1 text-center shrink-0 min-w-[70px] ml-2">
-                          <span className="font-extrabold text-indigo-700 text-xs block leading-tight">
+                        <div className="bg-blue-100 border border-blue-200 rounded-lg px-2.5 py-1 text-center shrink-0 min-w-[70px] ml-2">
+                          <span className="font-extrabold text-blue-900 text-xs block leading-tight">
                             {log.duration !== null ? `+${log.duration.toFixed(1)}s` : 'Inicio'}
                           </span>
                         </div>
@@ -840,8 +839,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           )}
 
           <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-5">
-            <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-indigo-600" /> Parámetros del Escenario de Simulación
+            <span className="text-sm font-bold text-slate-800">
+              Parámetros del Escenario de Simulación
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -850,11 +849,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 size="sm"
                 onClick={handleOpenLoadModal}
                 disabled={!!activeSim}
-                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
+                className="text-xs bg-blue-100 border-blue-200 text-blue-950 hover:bg-blue-200 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
                 title="Cargar una configuración guardada en su cuenta"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Load Config
+                Carga configuraciones
               </Button>
               <Button
                 type="button"
@@ -862,7 +861,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 size="sm"
                 onClick={resetToDefaults}
                 disabled={!!activeSim}
-                className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 h-8 px-2 cursor-pointer"
+                className="text-xs text-slate-500 hover:text-blue-700 flex items-center gap-1 h-8 px-2 cursor-pointer"
                 title="Restablecer valores por defecto"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -875,13 +874,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             {/* SECCIÓN 1: Tiempos, Velocidad y Frecuencia */}
             <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                <Clock className="h-3.5 w-3.5 text-blue-600" />
                 Tiempos, Períodos y Velocidad
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Speed Up *</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">Aceleración *</label>
                   <input
                     type="number"
                     step="any"
@@ -890,13 +889,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     value={speedup}
                     onChange={(e) => setSpeedup(e.target.value)}
                     disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
                   <p className="text-[10px] text-slate-400">Multiplicador de velocidad (defecto: 1000x).</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Frequency Minutes</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">Frecuencia (minutos)</label>
                   <input
                     type="number"
                     value={frequencyMinutes}
@@ -916,7 +915,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                     disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
                   <p className="text-[10px] text-slate-400">Hora actual de Argentina (redondeada a hora en punto).</p>
                 </div>
@@ -941,7 +940,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       disabled={!!activeSim}
                       className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
                         isEndUndefined
-                          ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                          ? 'bg-blue-100 text-blue-900 border border-blue-200'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
@@ -958,12 +957,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }
                       }}
                       className={`w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium ${
-                        !activeSim ? 'cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/20' : 'cursor-not-allowed'
+                        !activeSim ? 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/20' : 'cursor-not-allowed'
                       }`}
                       title="Haga click para desbloquear e introducir fecha de fin"
                     >
                       <span>Sin definir</span>
-                      <span className="text-[10px] text-indigo-600 font-semibold">Definir fecha</span>
+                      <span className="text-[10px] text-blue-700 font-semibold">Definir fecha</span>
                     </div>
                   ) : (
                     <input
@@ -976,7 +975,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }
                       }}
                       disabled={!!activeSim}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                     />
                   )}
                   <p className="text-[10px] text-slate-400">
@@ -988,20 +987,20 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               </div>
             </div>
 
-            {/* SECCIÓN 2: Franja Horaria de Recolección (TruckEngine) */}
+            {/* SECCIÓN 2: Franja Horaria de Recolección */}
             <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Truck className="h-3.5 w-3.5 text-indigo-600" />
-                    Franja Horaria de Recolección de Camiones (Truck Engine)
+                    <Truck className="h-3.5 w-3.5 text-blue-600" />
+                    Franja Horaria de Recolección de Camiones
                   </span>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     Define las horas en las que los camiones de recolección salen del depósito y descargan los contenedores.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                  <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
                     {collectionHours.length} hs seleccionadas
                   </span>
                   <div className="flex gap-1">
@@ -1011,7 +1010,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       size="sm"
                       onClick={() => setCollectionPreset('night_reinforce')}
                       disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
+                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                     >
                       Noche + Refuerzo
                     </Button>
@@ -1021,7 +1020,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       size="sm"
                       onClick={() => setCollectionPreset('night_only')}
                       disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
+                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                     >
                       Solo Noche
                     </Button>
@@ -1031,7 +1030,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       size="sm"
                       onClick={() => setCollectionPreset('all')}
                       disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
+                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                     >
                       24 Horas
                     </Button>
@@ -1041,7 +1040,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       size="sm"
                       onClick={() => setCollectionPreset('clear')}
                       disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold text-rose-600"
+                      className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
                     >
                       Limpiar
                     </Button>
@@ -1059,14 +1058,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       type="button"
                       onClick={() => toggleCollectionHour(hour)}
                       disabled={!!activeSim}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
                         isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                       } disabled:opacity-60 disabled:cursor-not-allowed`}
                     >
                       <span>{String(hour).padStart(2, '0')}:00</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                      <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
                         {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
                       </span>
                     </button>
@@ -1084,15 +1083,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       type="button"
                       onClick={() => toggleCollectionDay(day.id)}
                       disabled={!!activeSim}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
                         isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
                           : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
                       } disabled:opacity-60 disabled:cursor-not-allowed`}
                     >
                       <span className="hidden sm:inline">{day.label}</span>
                       <span className="sm:hidden">{day.short}</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-indigo-200 font-semibold' : 'text-slate-400'}`}>
+                      <span className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'}`}>
                         {isSelected ? 'Activo' : 'Sin recolección'}
                       </span>
                     </button>
@@ -1104,7 +1103,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             {/* SECCIÓN 3: Demanda Global y Ajustes Específicos por Barrio */}
             <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                <Layers className="h-3.5 w-3.5 text-blue-600" />
                 Demanda Global y Multiplicadores por Barrio
               </span>
 
@@ -1120,7 +1119,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     value={globalDemandMultiplier}
                     onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
                     disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
                   <p className="text-[10px] text-slate-400">Multiplicador general para todos los contenedores (1.0 = base).</p>
                 </div>
@@ -1131,7 +1130,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <div>
                     <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-indigo-600" /> Sobrescrituras de Demanda por Barrio
+                      <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras de Demanda por Barrio
                     </span>
                     <p className="text-[10px] text-slate-400">
                       Ajuste la tasa de llenado para barrios específicos (ej: Palermo 1.8x, Recoleta 1.4x, hasta 1100x).
@@ -1162,7 +1161,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           value={zo.neighborhood}
                           onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
                           disabled={!!activeSim}
-                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                         >
                           {neighborhoods.map((n) => (
                             <option key={n} value={n}>
@@ -1180,7 +1179,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                             value={zo.multiplier}
                             onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
                             disabled={!!activeSim}
-                            className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                            className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                             placeholder="Multiplicador"
                           />
                           <span className="text-xs font-bold text-slate-500">x</span>
@@ -1206,7 +1205,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <Button
                 type="submit"
                 disabled={actionLoading || !!activeSim}
-                className="!bg-indigo-600 hover:!bg-indigo-700 !text-white font-bold shadow-md px-6 py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-bold shadow-md px-6 py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {actionLoading ? (
                   <>
@@ -1235,9 +1234,9 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <FolderOpen className="h-5 w-5 text-indigo-600" />
+                <FolderOpen className="h-5 w-5 text-blue-600" />
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Load Configuration</h3>
+                  <h3 className="font-bold text-slate-900 text-base">Carga de Configuraciones</h3>
                   <p className="text-xs text-slate-500">Seleccione una configuración guardada para cargar en los campos</p>
                 </div>
               </div>
@@ -1252,7 +1251,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             </div>
 
             <div className="p-5 overflow-y-auto flex-1 space-y-3">
-              <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800 flex items-start gap-2">
+              <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-start gap-2">
                 <span className="font-bold shrink-0">Tip:</span>
                 <span>
                   Aquí solo se listan los nombres de sus configuraciones. Si desea inspeccionar el contenido completo o crear nuevas variantes, visite la pestaña <strong>Configurations</strong> en la barra superior.
@@ -1261,7 +1260,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
               {loadingConfigs ? (
                 <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <RefreshCw className="h-6 w-6 animate-spin text-indigo-600" />
+                  <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                   <span className="text-xs font-semibold">Buscando configuraciones guardadas...</span>
                 </div>
               ) : savedConfigs.length === 0 ? (
@@ -1278,10 +1277,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     <div
                       key={item.id}
                       onClick={() => applyConfig(item.config, item.name)}
-                      className="p-3.5 border border-slate-200/80 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center justify-between group shadow-xs"
+                      className="p-3.5 border border-slate-200/80 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer flex items-center justify-between group shadow-xs"
                     >
                       <div className="space-y-0.5">
-                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">
+                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-blue-800 transition-colors">
                           {item.name}
                         </h4>
                         {item.description && (
@@ -1291,7 +1290,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       <Button
                         type="button"
                         size="sm"
-                        className="!bg-indigo-600 group-hover:!bg-indigo-700 !text-white text-xs font-bold px-3 h-8 shadow-xs shrink-0 cursor-pointer"
+                        className="!bg-blue-200 group-hover:!bg-blue-300 !text-blue-950 border border-blue-300/80 text-xs font-bold px-3 h-8 shadow-xs shrink-0 cursor-pointer"
                       >
                         Cargar
                       </Button>

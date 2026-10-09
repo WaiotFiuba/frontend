@@ -478,7 +478,7 @@ export default function ConfigurationsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Speed Up *</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">Aceleración *</label>
                         <input
                           type="number"
                           step="any"
@@ -492,7 +492,7 @@ export default function ConfigurationsPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Frequency Minutes</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">Frecuencia (minutos)</label>
                         <input
                           type="number"
                           value={60}

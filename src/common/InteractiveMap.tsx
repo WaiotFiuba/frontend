@@ -15,10 +15,13 @@ import {
 } from "./utils/functions"
 import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
-import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
+import MapVisual from "./MapVisual"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
+import { Button } from "@/common/ui/button"
+import { Badge } from "@/common/ui/badge"
+import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
@@ -50,8 +53,17 @@ function MapViewportController({
     onZoomChange?: (zoom: number) => void
 }) {
     const map = useMapEvents({
+        zoom: () => {
+            mapRef.current = map
+            if (onZoomChange) {
+                onZoomChange(map.getZoom())
+            }
+        },
         moveend: () => {
             mapRef.current = map
+            if (onZoomChange) {
+                onZoomChange(map.getZoom())
+            }
             fetchForMap(map)
         },
         zoomend: () => {
@@ -145,7 +157,7 @@ function MovePolylineItem({
             <Polyline
                 positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
                 pathOptions={{
-                    color: isSelected ? '#2563eb' : '#4f46e5',
+                    color: isSelected ? '#0284c7' : '#059669',
                     weight: isSelected ? 6 : 3.5,
                     dashArray: isSelected ? undefined : '6, 8',
                     opacity: isSelected ? 1 : 0.85,
@@ -165,8 +177,8 @@ function MovePolylineItem({
                         center={[move.from_lat!, move.from_lng!]}
                         radius={7}
                         pathOptions={{
-                            color: '#1d4ed8',
-                            fillColor: '#3b82f6',
+                            color: '#0284c7',
+                            fillColor: '#38bdf8',
                             fillOpacity: 0.9,
                             weight: 3,
                         }}
@@ -204,7 +216,21 @@ export default function InteractiveMap({
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
+    const [currentZoom, setCurrentZoom] = useState<number>(13)
     const zoneProfiles = useZoneProfiles()
+
+    const handleZoomChange = useCallback((newZoom: number) => {
+        const rounded = Math.round(newZoom)
+        setCurrentZoom((prev) => (prev === rounded ? prev : rounded))
+    }, [])
+
+    const handleZoomIn = useCallback(() => {
+        mapRef.current?.zoomIn()
+    }, [])
+
+    const handleZoomOut = useCallback(() => {
+        mapRef.current?.zoomOut()
+    }, [])
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -216,7 +242,7 @@ export default function InteractiveMap({
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
         const requestId = ++latestRequestIdRef.current
-        const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
+        const { backendZoom, limit } = getContainerFetchConfigByZoom(zoom)
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
@@ -338,90 +364,74 @@ export default function InteractiveMap({
         [activeSimulation?.simulated_time]
     )
 
-    // Sitios a desplegar: usa propContainers si fueron provistos, sino los sitios del backend directamente
+    // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
+        if (!sites || sites.length === 0) return []
+
+        if (currentZoom <= 10 && sites.length > 1) {
+            let totalCount = 0
+            let sumLevel = 0
+            let sumLat = 0
+            let sumLng = 0
+            let totalWeight = 0
+
+            for (const s of sites) {
+                const count = s.containerCount ?? (s.containers?.length || 1)
+                const level = s.currentLevel ?? s.avgLevel ?? 0
+                totalCount += count
+                sumLevel += level * count
+                sumLat += s.lat * count
+                sumLng += s.long * count
+                totalWeight += count
+            }
+
+            const avgLevel = totalWeight > 0 ? Math.round(sumLevel / totalWeight) : 0
+            const centerLat = totalWeight > 0 ? sumLat / totalWeight : -34.6037
+            const centerLng = totalWeight > 0 ? sumLng / totalWeight : -58.3816
+
+            return [{
+                id: 'macro-cluster-all',
+                name: `Total Ciudad (${totalCount} contenedores)`,
+                address: null,
+                lat: centerLat,
+                long: centerLng,
+                type: (wasteFilter === 'all' ? 'indiferenciado' : wasteFilter) as ContainerType,
+                color: colorForLevel(avgLevel),
+                currentLevel: avgLevel,
+                avgLevel: avgLevel,
+                containerCount: totalCount,
+                containers: [],
+                isCluster: true,
+            }]
+        }
+
         return sites
-    }, [sites])
+    }, [sites, currentZoom, wasteFilter])
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
-        return displaySites.reduce((acc, s) => {
+        return sites.reduce((acc, s) => {
             return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
         }, 0)
-    }, [displaySites])
+    }, [sites])
 
     // Centro del mapa en CABA
     const cabaCenter: [number, number] = [-34.6037, -58.3816]
 
     return (
         <div className="h-full w-full relative">
-            <div className="absolute top-3 left-14 z-[1000] flex gap-3">
-                {/* Pestaña flotante: Contenedores al 100% */}
-                <div
-                    className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
-                    title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
-                >
-                    <div className="relative flex items-center justify-center">
-                        <span className="flex h-2.5 w-2.5 relative">
-                            {fullContainersCount > 0 && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            )}
-                            <span
-                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
-                                    }`}
-                            ></span>
-                        </span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                            Al 100%
-                        </span>
-                        <span
-                            className={`text-base font-extrabold leading-tight ${fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
-                                }`}
-                        >
-                            {fullContainersCount}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Reloj de tiempo simulado */}
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Reloj de Simulación
-                    </p>
-                    <p className="font-semibold text-slate-900 leading-tight">
-                        {simulatedClock}
-                    </p>
-                </div>
-
-                <ZoneProfilesControls
-                    visible={zoneProfiles.visible}
-                    loading={zoneProfiles.loading}
-                    onToggle={zoneProfiles.toggle}
-                />
-
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-md backdrop-blur flex items-center gap-1">
-                    {[
-                        ['all', 'Todos'],
-                        ['organico', 'Húmedos'],
-                        ['reciclaje', 'Reciclables'],
-                    ].map(([value, label]) => (
-                        <button
-                            key={value}
-                            type="button"
-                            onClick={() => setWasteFilter(value as MapWasteFilter)}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-                                wasteFilter === value
-                                    ? 'bg-slate-900 text-white shadow-sm'
-                                    : 'text-slate-600 hover:bg-slate-100'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <MapVisual
+                fullContainersCount={fullContainersCount}
+                simulatedClock={simulatedClock}
+                currentZoom={currentZoom}
+                wasteFilter={wasteFilter}
+                onWasteFilterChange={setWasteFilter}
+                zoneProfilesVisible={zoneProfiles.visible}
+                zoneProfilesLoading={zoneProfiles.loading}
+                onToggleZoneProfiles={zoneProfiles.toggle}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+            />
 
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
@@ -443,6 +453,7 @@ export default function InteractiveMap({
                     mapRef={mapRef}
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
+                    onZoomChange={handleZoomChange}
                 />
 
                 <MapMoveFocusController
@@ -462,7 +473,7 @@ export default function InteractiveMap({
                     <Polyline
                         positions={selectedRoute.waypoints}
                         pathOptions={{
-                            color: "#2563eb",
+                            color: "#0284c7",
                             weight: 5,
                             opacity: 0.85,
                             dashArray: "8, 6",
@@ -487,29 +498,41 @@ export default function InteractiveMap({
                         }
                     }
                     const siteKey = site.id
+                    const markerKey = `${siteKey}-z${currentZoom}`
                     if (!isCluster) {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
                                     <div className="p-2 space-y-2.5 max-w-xs min-w-[220px]">
-                                        <div className="border-b pb-1.5 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-bold text-sm text-slate-900 leading-tight">
-                                                    {site.name || `Sitio #${site.id}`}
-                                                </h3>
+                                        <div className="border-b pb-1.5 flex items-start justify-between gap-1.5">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                                    <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
+                                                        {site.name || `Sitio #${site.id}`}
+                                                    </h3>
+                                                </div>
                                                 {site.address && site.address !== site.name && (
-                                                    <p className="text-[11px] text-slate-500 font-medium">
+                                                    <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                                                         {site.address}
                                                     </p>
                                                 )}
-                                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                                                    Sitio #{site.id} • {labels[site.type as ContainerType] || labels.indiferenciado} • {containerCount} cont.
-                                                </p>
+                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        #{site.id}
+                                                    </Badge>
+                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {labels[site.type as ContainerType] || labels.indiferenciado}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {containerCount} cont.
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -565,13 +588,15 @@ export default function InteractiveMap({
                                             </div>
                                         </div>
 
-                                        <button
+                                        <Button
                                             type="button"
+                                            size="sm"
                                             onClick={() => navigate(`/map/sites/${site.id}`)}
-                                            className="mt-2 w-full rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-sm"
+                                            className="mt-2 w-full h-8 text-xs font-bold bg-blue-200 hover:bg-blue-300 text-blue-950 border border-blue-300/80 gap-1.5 shadow-xs"
                                         >
                                             Ver detalle del sitio
-                                        </button>
+                                            <ExternalLink className="w-3 h-3 text-blue-900" />
+                                        </Button>
                                     </div>
                                 </Popup>
                             </Marker>
@@ -580,9 +605,9 @@ export default function InteractiveMap({
                     else {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )

@@ -9,10 +9,10 @@ import { api } from "../../lib/api"
 // genérico: ese nombre solo existe como fallback interno de
 // ZoneClassifier.get_profile() por nombre directo, no por clasificación real).
 export const ZONE_TYPE_COLORS: Record<string, string> = {
-    residential_multifamily: "#2563eb",
+    residential_multifamily: "#0284c7",
     residential_singlefamily: "#38bdf8",
     commercial: "#f59e0b",
-    office: "#a855f7",
+    office: "#0d9488",
     industrial: "#ef4444",
     mixed: "#10b981",
 }
@@ -58,10 +58,10 @@ export const getContainerFetchConfigByZoom = (zoom: number): ContainerFetchZoomC
     }
 
     if (normalizedZoom >= 12) {
-        return { backendZoom: Math.max(0, normalizedZoom), boundsPadding: 0.25, limit: 200 }
+        return { backendZoom: Math.max(0, normalizedZoom), boundsPadding: 0.15, limit: 200 }
     }
 
-    return { backendZoom: Math.max(0, normalizedZoom), boundsPadding: 0.25, limit: 200 }
+    return { backendZoom: 10, boundsPadding: 0.35, limit: 50 }
 }
 
 export const formatSimulatedTime = (isoString?: string | null): string => {
@@ -216,12 +216,81 @@ const pinTypeAccent = (type: ContainerType) => {
     return { color: "#64748b", label: "" }
 }
 
-// PROVISIONAL HASTA ENCONTRAR UNA LIBRERIA DE ICONOS PERSONALIZABLE
-export const createMapPinIcon = (color: string, containerCount: number = 1, type: ContainerType = "indiferenciado") => {
-    const size = containerCount >= 100 ? 92 : containerCount >= 25 ? 80 : containerCount > 1 ? 70 : 56
-    const countFontSize = containerCount >= 100 ? 22 : containerCount >= 25 ? 19 : containerCount > 1 ? 16 : 15
-    const countY = containerCount >= 100 ? 28 : containerCount >= 25 ? 28 : 27
+export const calculateMapPinSize = (zoom: number = 14, containerCount: number = 1): number => {
+    const z = Math.max(10, Math.min(21, Math.round(zoom)))
+
+    let baseSize: number
+    if (z >= 18) {
+        baseSize = 48
+    } else if (z === 17) {
+        baseSize = 52
+    } else if (z === 16) {
+        baseSize = 58
+    } else if (z === 15) {
+        baseSize = 64
+    } else if (z === 14) {
+        baseSize = 70
+    } else if (z === 13) {
+        baseSize = 76
+    } else if (z === 12) {
+        baseSize = 82
+    } else if (z === 11) {
+        baseSize = 86
+    } else {
+        baseSize = 90
+    }
+
+    if (containerCount >= 100) {
+        baseSize += 3
+    } else if (containerCount >= 25) {
+        baseSize += 2
+    } else if (containerCount > 1) {
+        baseSize += 1
+    }
+
+    return baseSize
+}
+
+const getContainerCountDisplay = (count: number): { label: string; fontSize: number } => {
+    if (count >= 1000) {
+        const kValue = (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+        return { label: kValue, fontSize: 9.5 }
+    }
+    if (count >= 100) {
+        return { label: String(count), fontSize: 10.5 }
+    }
+    if (count >= 10) {
+        return { label: String(count), fontSize: 13.5 }
+    }
+    return { label: String(Math.max(1, count)), fontSize: 16.5 }
+}
+
+const pinIconCache = new Map<string, L.DivIcon>()
+
+export const createMapPinIcon = (
+    color: string,
+    containerCount: number = 1,
+    type: ContainerType = "indiferenciado",
+    zoom: number = 14
+) => {
+    const roundedZoom = Math.max(10, Math.min(21, Math.round(zoom)))
+    const cacheKey = `${color}|${containerCount}|${type}|${roundedZoom}`
+    const cached = pinIconCache.get(cacheKey)
+    if (cached) {
+        return cached
+    }
+
+    if (pinIconCache.size > 800) {
+        pinIconCache.clear()
+    }
+
+    const size = calculateMapPinSize(roundedZoom, containerCount)
     const accent = pinTypeAccent(type)
+    const { label: displayCount, fontSize: countFontSize } = getContainerCountDisplay(containerCount)
+    const showTipLabel = Boolean(accent.label)
+    const textStrokeWidth = "1.25"
+    const pinStrokeWidth = "4"
+    const filter = "drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
 
     const iconHtml = renderToStaticMarkup(
         <svg
@@ -236,30 +305,31 @@ export const createMapPinIcon = (color: string, containerCount: number = 1, type
                 d="M32 4C21.4 4 12.8 12.6 12.8 23.2C12.8 37.6 32 60 32 60C32 60 51.2 37.6 51.2 23.2C51.2 12.6 42.6 4 32 4Z"
                 fill={color}
                 stroke={accent.color}
-                strokeWidth="4.25"
-                filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"
+                strokeWidth={pinStrokeWidth}
+                filter={filter}
             />
             <path
                 d="M22 45C25.3 50.5 29.5 56.1 32 60C34.5 56.1 38.7 50.5 42 45Z"
                 fill={accent.color}
                 opacity="1"
             />
-            <circle cx="32" cy="23" r="11" fill="rgba(17, 24, 39, 0.30)" />
+            <circle cx="32" cy="23" r="11" fill="rgba(17, 24, 39, 0.35)" />
             <text
                 x="32"
-                y={countY}
+                y="23"
+                dominantBaseline="central"
                 textAnchor="middle"
                 fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
                 fontSize={countFontSize}
                 fontWeight="800"
                 fill="white"
                 stroke="rgba(17, 24, 39, 0.75)"
-                strokeWidth="1.25"
+                strokeWidth={textStrokeWidth}
                 paintOrder="stroke"
             >
-                {containerCount}
+                {displayCount}
             </text>
-            {accent.label && (
+            {showTipLabel && (
                 <text
                     x="32"
                     y="54"
@@ -275,7 +345,17 @@ export const createMapPinIcon = (color: string, containerCount: number = 1, type
         </svg>
     )
 
-    return L.divIcon({ html: iconHtml, iconSize: [size, size], iconAnchor: [size / 2, size], popupAnchor: [0, -size / 1.2], className: "bg-transparent border-none", })
+    const anchorY = Math.round(size * (60 / 64))
+    const icon = L.divIcon({
+        html: iconHtml,
+        iconSize: [size, size],
+        iconAnchor: [Math.round(size / 2), anchorY],
+        popupAnchor: [0, -Math.round(size * 0.9)],
+        className: "bg-transparent border-none",
+    })
+
+    pinIconCache.set(cacheKey, icon)
+    return icon
 }
 
 export const calculateBearing = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
