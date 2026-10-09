@@ -7,6 +7,7 @@ import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } fro
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
 import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
 import RedistributionImpactPanel from './components/RedistributionImpactPanel'
+import MoveImpactCard from './components/MoveImpactCard'
 import {
   AlertCircle,
   ArrowRight,
@@ -47,6 +48,8 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+
+  const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
   useEffect(() => {
     let isMounted = true
@@ -442,6 +445,14 @@ export default function Optimization() {
             highlightedMoveId={highlightedMoveId}
             isPlayground
           />
+
+          {/* Tarjeta flotante de impacto de descongestión */}
+          {selectedMove && (
+            <MoveImpactCard
+              move={selectedMove}
+              onClose={() => setHighlightedMoveId(null)}
+            />
+          )}
         </div>
 
         {/* Baseline distribution info notice */}
@@ -532,6 +543,7 @@ export default function Optimization() {
                     <th className="p-3 text-center"></th>
                     <th className="p-3">Sitio Receptor (Destino)</th>
                     <th className="p-3 text-right">Distancia</th>
+                    <th className="p-3 text-center">Descongestión Neta</th>
                     <th className="p-3 text-center">Acción</th>
                   </tr>
                 </thead>
@@ -576,6 +588,24 @@ export default function Optimization() {
                           <div className="text-[10px] text-slate-400">
                             {Math.round(m.distance_km * 1000)} m
                           </div>
+                        </td>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          {m.net_decongestion_pct != null ? (
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${
+                                m.net_decongestion_pct < 0
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}
+                              title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_after ?? '?'}%`}
+                            >
+                              {m.net_decongestion_pct > 0
+                                ? `+${m.net_decongestion_pct}%`
+                                : `${m.net_decongestion_pct}%`}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">-</span>
+                          )}
                         </td>
                         <td className="p-3 text-center">
                           <button

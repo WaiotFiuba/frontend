@@ -56,6 +56,11 @@ export interface RedistributionMove {
   from_lng?: number
   to_lat?: number
   to_lng?: number
+  donor_fill_before?: number | null
+  donor_fill_after?: number | null
+  receiver_fill_before?: number | null
+  receiver_fill_after?: number | null
+  net_decongestion_pct?: number | null
 }
 
 export interface RedistributionPlan {
