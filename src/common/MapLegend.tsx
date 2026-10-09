@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Info, Layers, CheckCircle2, AlertTriangle, AlertCircle, ChevronDown, MapPin } from "lucide-react"
 import { Badge } from "@/common/ui/badge"
+import { Card, CardContent } from "@/common/ui/card"
 
 interface MapLegendProps {
     className?: string
@@ -74,7 +75,7 @@ export default function MapLegend({
             className={`absolute top-3 right-3 z-[1000] flex flex-col gap-2 w-[310px] max-w-[calc(100vw-2.5rem)] pointer-events-auto select-none ${className}`}
         >
             {/* Desplegable 1: Nivel de Llenado */}
-            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden transition-all duration-200">
+            <Card className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden transition-all duration-200 py-0 gap-0">
                 <button
                     type="button"
                     onClick={() => setIsLevelsOpen((prev) => !prev)}
@@ -97,7 +98,7 @@ export default function MapLegend({
                 </button>
 
                 {isLevelsOpen && (
-                    <div className="p-2.5 border-t border-slate-100 space-y-2 bg-white max-h-[40vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
+                    <CardContent className="p-2.5 px-3 border-t border-slate-100 space-y-2 bg-white max-h-[40vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
                         <div className="flex items-center gap-2.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 transition-colors hover:bg-emerald-50">
                             <PinPreview fill="#10b981" accent="#ffffff" count={1} label="" size={46} />
                             <div className="flex-1 min-w-0">
@@ -153,12 +154,12 @@ export default function MapLegend({
                                 <span className="text-slate-600 ml-1">Desborde hacia sitios cercanos.</span>
                             </div>
                         </div>
-                    </div>
+                    </CardContent>
                 )}
-            </div>
+            </Card>
 
             {/* Desplegable 2: Tipo de Sitio */}
-            <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden transition-all duration-200">
+            <Card className="bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xl overflow-hidden transition-all duration-200 py-0 gap-0">
                 <button
                     type="button"
                     onClick={() => setIsTypesOpen((prev) => !prev)}
@@ -181,7 +182,7 @@ export default function MapLegend({
                 </button>
 
                 {isTypesOpen && (
-                    <div className="p-2.5 border-t border-slate-100 space-y-2 bg-white max-h-[40vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
+                    <CardContent className="p-2.5 px-3 border-t border-slate-100 space-y-2 bg-white max-h-[40vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
                         <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80">
                             <PinPreview fill="#10b981" accent="#111827" count={1} label="H" size={46} />
                             <div className="min-w-0">
@@ -216,9 +217,9 @@ export default function MapLegend({
                             <Info className="w-3.5 h-3.5 text-sky-600 shrink-0" />
                             <span>Click en pin del mapa para ver telemetría.</span>
                         </div>
-                    </div>
+                    </CardContent>
                 )}
-            </div>
+            </Card>
         </div>
     )
 }
