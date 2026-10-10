@@ -22,8 +22,8 @@ export default function PageRoutes() {
             <Route element={<MainLayout />}>
                 <Route path='/' element={<Home />} />
                 <Route path='/map' element={<RutaProtegida><Map /></RutaProtegida>} />
-                <Route path='/map/sites/:siteId' element={<SiteDetail />} />
-                <Route path='/optimization' element={<Optimization />} />
+                <Route path='/map/sites/:siteId' element={<RutaProtegida><SiteDetail /></RutaProtegida>} />
+                <Route path='/optimization' element={<RutaProtegida><Optimization /></RutaProtegida>} />
                 <Route path='/forecast-evaluation' element={<RutaProtegida><ForecastEvaluation /></RutaProtegida>} />
                 <Route path='/about' element={<About />} />
                 <Route path='/management' element={<RutaProtegida><Management /></RutaProtegida>} />

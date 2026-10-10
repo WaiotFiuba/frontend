@@ -97,6 +97,19 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
   })
 
+  it.each(['/map/sites/1', '/optimization'])(
+    'redirects %s to login when there is no token',
+    (path) => {
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <PageRoutes />
+        </MemoryRouter>
+      )
+
+      expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
+    }
+  )
+
   it('redirects /configurations to login when there is no token', () => {
     render(
       <MemoryRouter initialEntries={['/configurations']}>
