@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { BackendContainer, PaginatedContainers } from './types'
 import { api } from '@/lib/api'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 
 interface ContainersTableProps {
   onRemoveContainer: (container: BackendContainer) => void
@@ -22,6 +23,7 @@ interface ContainersTableProps {
 const ITEMS_PER_PAGE = 10
 
 export default function ContainersTable({ onRemoveContainer, refreshTrigger }: ContainersTableProps) {
+  const thresholds = useLevelThresholds()
 
   const [containers, setContainers] = useState<BackendContainer[]>([])
   const [totalItems, setTotalItems] = useState(0)
@@ -100,7 +102,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             {showOnlyAlerts && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold px-2.5 py-1.5 animate-fade-in shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                Only ≥80%
+                Only ≥{thresholds.critical}%
                 <button onClick={() => handleToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
                   ×
                 </button>
@@ -165,10 +167,10 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
 
                   let fillBg = 'bg-emerald-500'
                   let fillTrack = 'bg-emerald-100'
-                  if (fillPercentage >= 80) {
+                  if (fillPercentage >= thresholds.critical) {
                     fillBg = 'bg-rose-500'
                     fillTrack = 'bg-rose-100'
-                  } else if (fillPercentage >= 50) {
+                  } else if (fillPercentage >= thresholds.high) {
                     fillBg = 'bg-amber-500'
                     fillTrack = 'bg-amber-100'
                   }

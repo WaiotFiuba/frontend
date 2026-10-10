@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { BookOpen, Info, Layers, Sparkles } from "lucide-react"
+import { useLevelThresholds } from "@/context/CityConfigContext"
 
 interface MapLegendProps {
     className?: string
@@ -53,6 +54,7 @@ function PinPreview({
 
 export default function MapLegend({ className = "" }: MapLegendProps) {
     const [activeTab, setActiveTab] = useState<"all" | "levels" | "markers">("all")
+    const { high, critical } = useLevelThresholds()
 
     return (
         <div className={`bg-white rounded-2xl border border-slate-200 shadow-lg flex flex-col overflow-hidden text-slate-800 ${className}`}>
@@ -105,7 +107,7 @@ export default function MapLegend({ className = "" }: MapLegendProps) {
                             <PinPreview fill="#10b981" accent="#ffffff" count={1} label="" />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-emerald-950">&lt; 50%</span>
+                                    <span className="font-bold text-xs text-emerald-950">&lt; {high}%</span>
                                     <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md">Optimo</span>
                                 </div>
                                 <p className="text-xs text-slate-600 leading-snug mt-0.5">
@@ -118,7 +120,7 @@ export default function MapLegend({ className = "" }: MapLegendProps) {
                             <PinPreview fill="#f59e0b" accent="#ffffff" count={1} label="" />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-amber-950">50% - 79%</span>
+                                    <span className="font-bold text-xs text-amber-950">{high}% - {critical - 1}%</span>
                                     <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md">Medio</span>
                                 </div>
                                 <p className="text-xs text-slate-600 leading-snug mt-0.5">
@@ -131,7 +133,7 @@ export default function MapLegend({ className = "" }: MapLegendProps) {
                             <PinPreview fill="#ef4444" accent="#ffffff" count={1} label="" />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-red-950">&ge; 80%</span>
+                                    <span className="font-bold text-xs text-red-950">&ge; {critical}%</span>
                                     <span className="text-[10px] font-bold bg-red-100 text-red-800 px-1.5 py-0.5 rounded-md">Critico</span>
                                 </div>
                                 <p className="text-xs text-slate-600 leading-snug mt-0.5">

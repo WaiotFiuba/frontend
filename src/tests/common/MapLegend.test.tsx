@@ -7,8 +7,8 @@ describe('MapLegend', () => {
         render(<MapLegend />)
 
         expect(screen.getByText(/Diccionario de Iconos/i)).toBeInTheDocument()
-        expect(screen.getByText(/< 50%/i)).toBeInTheDocument()
-        expect(screen.getByText(/50% - 79%/i)).toBeInTheDocument()
+        expect(screen.getByText(/< 70%/i)).toBeInTheDocument()
+        expect(screen.getByText(/70% - 79%/i)).toBeInTheDocument()
         expect(screen.getByText(/≥ 80%/i)).toBeInTheDocument()
 
         fireEvent.click(screen.getByRole('button', { name: /^Pines$/i }))
