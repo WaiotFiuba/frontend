@@ -10,6 +10,7 @@ import {
 import KpiCard from './KpiCard'
 import KpiDistributionBar from './KpiDistributionBar'
 import { useNetworkKpis } from './useNetworkKpis'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 import type { NetworkKpiPanelProps } from './types'
 
 export function NetworkKpiPanel({
@@ -24,6 +25,7 @@ export function NetworkKpiPanel({
   whatif = false,
 }: NetworkKpiPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const { critical } = useLevelThresholds()
 
   const {
     metrics: fetchedMetrics,
@@ -154,7 +156,7 @@ export function NetworkKpiPanel({
               <span className="font-bold font-mono tabular-nums text-rose-700">
                 {metrics.critical_count}
               </span>
-              <span className="text-slate-500">críticos (&gt;85%)</span>
+              <span className="text-slate-500">críticos (&ge;{critical}%)</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
@@ -199,11 +201,11 @@ export function NetworkKpiPanel({
               tooltip="Nivel medio de ocupación de la red medido en este instante exacto a partir de los sensores de los contenedores."
             />
 
-            {/* 3. Sitios Críticos (>85%) */}
+            {/* 3. Sitios Críticos (>= umbral crítico) */}
             <KpiCard
               title="Sitios Críticos"
               value={metrics.critical_count}
-              subvalue="saturación > 85%"
+              subvalue={`saturación ≥ ${critical}%`}
               icon={AlertTriangle}
               iconColor="text-rose-600"
               badgeText="Desborde"
@@ -217,7 +219,7 @@ export function NetworkKpiPanel({
                   : undefined
               }
               isSelected={selectedCategory === 'critical'}
-              tooltip="Sitios con saturación superior al 85%, receptores prioritarios en redistribución o requiriendo recolección urgente."
+              tooltip={`Sitios con saturación igual o superior al ${critical}%, receptores prioritarios en redistribución o requiriendo recolección urgente.`}
             />
 
             {/* 4. Dispersión Actual */}

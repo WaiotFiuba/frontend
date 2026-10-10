@@ -1,3 +1,4 @@
+import { useLevelThresholds, type LevelThresholds } from '@/context/CityConfigContext'
 import type { NetworkMetricsData, UtilizationCategory } from './types'
 
 interface KpiDistributionBarProps {
@@ -11,7 +12,6 @@ export const CATEGORY_DEFINITIONS: Record<
   UtilizationCategory,
   {
     label: string
-    sub: string
     barColor: string
     badgeBg: string
     badgeText: string
@@ -20,7 +20,6 @@ export const CATEGORY_DEFINITIONS: Record<
 > = {
   critical: {
     label: 'Críticos',
-    sub: '> 85%',
     barColor: 'bg-rose-500',
     badgeBg: 'bg-rose-50 hover:bg-rose-100/70',
     badgeText: 'text-rose-700',
@@ -28,7 +27,6 @@ export const CATEGORY_DEFINITIONS: Record<
   },
   high: {
     label: 'Alto Uso',
-    sub: '65% - 85%',
     barColor: 'bg-amber-500',
     badgeBg: 'bg-amber-50 hover:bg-amber-100/70',
     badgeText: 'text-amber-700',
@@ -36,7 +34,6 @@ export const CATEGORY_DEFINITIONS: Record<
   },
   normal: {
     label: 'Equilibrados',
-    sub: '35% - 65%',
     barColor: 'bg-emerald-500',
     badgeBg: 'bg-emerald-50 hover:bg-emerald-100/70',
     badgeText: 'text-emerald-700',
@@ -44,7 +41,6 @@ export const CATEGORY_DEFINITIONS: Record<
   },
   low: {
     label: 'Bajo Uso',
-    sub: '15% - 35%',
     barColor: 'bg-sky-500',
     badgeBg: 'bg-sky-50 hover:bg-sky-100/70',
     badgeText: 'text-sky-700',
@@ -52,12 +48,30 @@ export const CATEGORY_DEFINITIONS: Record<
   },
   idle: {
     label: 'Ociosos',
-    sub: '< 15%',
     barColor: 'bg-purple-500',
     badgeBg: 'bg-purple-50 hover:bg-purple-100/70',
     badgeText: 'text-purple-700',
     badgeBorder: 'border-purple-200',
   },
+}
+
+/** Rango de nivel (%) de cada categoría según los umbrales del backend. */
+export function categoryRangeLabel(
+  category: UtilizationCategory,
+  { normal, high, critical }: LevelThresholds
+): string {
+  switch (category) {
+    case 'critical':
+      return `≥ ${critical}%`
+    case 'high':
+      return `${high}% - ${critical - 1}%`
+    case 'normal':
+      return `${normal}% - ${high - 1}%`
+    case 'low':
+      return `1% - ${normal - 1}%`
+    case 'idle':
+      return '0%'
+  }
 }
 
 export function KpiDistributionBar({
@@ -67,6 +81,7 @@ export function KpiDistributionBar({
   className = '',
 }: KpiDistributionBarProps) {
   const total = metrics.total_sites || 1
+  const thresholds = useLevelThresholds()
 
   const items: Array<{ id: UtilizationCategory; count: number }> = [
     { id: 'critical', count: metrics.critical_count },
@@ -149,6 +164,7 @@ export function KpiDistributionBar({
               type="button"
               disabled={!isInteractive}
               onClick={() => onSelectCategory?.(isSelected ? 'all' : id)}
+              title={`${cfg.label}: ${categoryRangeLabel(id, thresholds)}`}
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] border transition-all ${
                 isInteractive ? 'cursor-pointer' : 'cursor-default'
               } ${
