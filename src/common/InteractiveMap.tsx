@@ -19,6 +19,8 @@ import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
+import { Activity, Clock3, RotateCw } from 'lucide-react'
+import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 
 interface ActiveSimulation {
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
@@ -233,7 +235,26 @@ export default function InteractiveMap({
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
+    const [viewMode, setViewMode] = useState<'current' | 'projected'>('current')
+    const [projectionAsOf, setProjectionAsOf] = useState<string | null>(null)
+    const [horizonHours, setHorizonHours] = useState(24)
     const zoneProfiles = useZoneProfiles()
+
+    const targetAt = useMemo(() => projectionAsOf
+        ? new Date(new Date(projectionAsOf).getTime() + horizonHours * 60 * 60 * 1000).toISOString()
+        : null, [projectionAsOf, horizonHours])
+    const { projections, loading: projectionsLoading, error: projectionsError, retry: retryProjections } =
+        useVisibleSiteProjections(sites, viewMode === 'projected' ? projectionAsOf : null, targetAt)
+
+    const enterProjectedMode = () => {
+        const simulationTime = activeSimulation?.simulated_time
+        const utcSimulationTime = simulationTime && !/(Z|[+-]\d{2}:\d{2})$/i.test(simulationTime)
+            ? `${simulationTime}Z`
+            : simulationTime
+        const parsed = utcSimulationTime ? new Date(utcSimulationTime) : null
+        setProjectionAsOf(parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString())
+        setViewMode('projected')
+    }
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -424,7 +445,7 @@ export default function InteractiveMap({
         <div className="h-full w-full relative">
             <div className="absolute top-3 left-14 z-[1000] flex gap-3">
                 {/* Pestaña flotante: Contenedores al 100% */}
-                <div
+                {viewMode === 'current' && <div
                     className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
                     title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
                 >
@@ -450,7 +471,7 @@ export default function InteractiveMap({
                             {fullContainersCount}
                         </span>
                     </div>
-                </div>
+                </div>}
 
                 {/* Reloj de tiempo simulado */}
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
@@ -489,6 +510,58 @@ export default function InteractiveMap({
                     ))}
                 </div>
             </div>
+
+            {!isPlayground && <div className="absolute bottom-4 left-3 z-[1000] max-w-[calc(100%-1.5rem)] border border-slate-200 bg-white/95 p-2 shadow-md backdrop-blur-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex border border-slate-200 bg-slate-100 p-0.5" role="group" aria-label="Vista del mapa">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('current')}
+                            className={`flex h-8 items-center gap-1 px-2 text-xs font-semibold ${viewMode === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                            aria-pressed={viewMode === 'current'}
+                        >
+                            <Activity size={14} /> Actual
+                        </button>
+                        <button
+                            type="button"
+                            onClick={enterProjectedMode}
+                            className={`flex h-8 items-center gap-1 px-2 text-xs font-semibold ${viewMode === 'projected' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                            aria-pressed={viewMode === 'projected'}
+                        >
+                            <Clock3 size={14} /> Proyectado
+                        </button>
+                    </div>
+                    {viewMode === 'projected' && <>
+                        <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                            Horizonte
+                            <input
+                                type="number"
+                                min={1}
+                                max={168}
+                                value={horizonHours}
+                                onChange={(event) => setHorizonHours(Math.min(168, Math.max(1, Number(event.target.value) || 1)))}
+                                className="h-8 w-14 border border-slate-300 bg-white px-1 text-center font-mono text-xs text-slate-900"
+                            />
+                            h
+                        </label>
+                        {projectionsLoading && <span className="text-xs text-slate-600" role="status">Calculando...</span>}
+                        {projectionsError && <button
+                            type="button"
+                            onClick={retryProjections}
+                            title="Reintentar proyecciones"
+                            aria-label="Reintentar proyecciones"
+                            className="flex h-8 w-8 items-center justify-center text-red-700 hover:bg-red-50"
+                        ><RotateCw size={16} /></button>}
+                    </>}
+                </div>
+                {viewMode === 'projected' && projectionAsOf && targetAt && <div className="mt-1 text-[11px] leading-tight text-slate-600 break-words">
+                    Inicio {new Date(projectionAsOf).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}
+                    Objetivo {new Date(targetAt).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {sites.length > 0 && sites.every((site) => site.isCluster) && <span className="ml-2">Sin sitios individuales en esta vista.</span>}
+                    {projectionsError && <span className="ml-2 text-red-700">{projectionsError}</span>}
+                </div>}
+            </div>}
 
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
@@ -544,6 +617,12 @@ export default function InteractiveMap({
                     const clusterTotal = isCluster ? site.containerCount ?? (Number(site.containers[0]?.description) || 1) : 0
                     const containerCount = isCluster ? clusterTotal : site.containers.length
                     const siteLevel = site.currentLevel ?? site.avgLevel ?? 0
+                    const projection = viewMode === 'projected' && !isCluster ? projections.get(Number(site.id)) : undefined
+                    const projectedLevel = projection?.target_point?.predicted_level
+                    const shownLevel = viewMode === 'projected' ? projectedLevel : siteLevel
+                    const markerColor = viewMode === 'projected'
+                        ? shownLevel == null ? '#94a3b8' : colorForLevel(shownLevel)
+                        : site.color
 
                     const handleMarkerClick = () => {
                         const map = mapRef.current
@@ -561,7 +640,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
@@ -584,23 +663,26 @@ export default function InteractiveMap({
 
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-600 font-medium">Nivel promedio:</span>
-                                                <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel) }}>
-                                                    {siteLevel}%
+                                                <span className="text-slate-600 font-medium">{viewMode === 'projected' ? 'Nivel proyectado:' : 'Nivel promedio:'}</span>
+                                                <span className="font-bold font-mono" style={{ color: shownLevel == null ? '#64748b' : colorForLevel(shownLevel) }}>
+                                                    {shownLevel == null ? 'Sin datos' : `${shownLevel}%`}
                                                 </span>
                                             </div>
-                                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                            {shownLevel != null && <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                                                 <div
                                                     className="h-full rounded-full transition-all duration-300"
                                                     style={{
-                                                        width: `${Math.min(100, Math.max(0, siteLevel))}%`,
-                                                        backgroundColor: colorForLevel(siteLevel),
+                                                        width: `${Math.min(100, Math.max(0, shownLevel))}%`,
+                                                        backgroundColor: colorForLevel(shownLevel),
                                                     }}
                                                 />
-                                            </div>
+                                            </div>}
+                                            {viewMode === 'projected' && <p className="text-[11px] text-slate-500">
+                                                {projection ? `Nivel al inicio: ${projection.current_level}%` : projection === null ? 'Sin lecturas completas al inicio.' : projectionsLoading ? 'Calculando proyección...' : 'Proyección no disponible.'}
+                                            </p>}
                                         </div>
 
-                                        <div className="border-t pt-2">
+                                        {viewMode === 'current' && <div className="border-t pt-2">
                                             <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                                                 Contenedores
                                             </p>
@@ -632,7 +714,7 @@ export default function InteractiveMap({
                                                     )
                                                 })}
                                             </div>
-                                        </div>
+                                        </div>}
 
                                         <button
                                             type="button"
@@ -651,7 +733,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={siteKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )
