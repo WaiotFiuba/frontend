@@ -194,6 +194,15 @@ export type BackendSiteProjectionBatch = {
     target_at: string | null
 }
 
+export type BackendSiteProjectionModels = {
+    default_model_key: string
+    models: {
+        key: string
+        name: string
+        status: string
+    }[]
+}
+
 export interface RouteDetails {
     route_id: string
     zone: number

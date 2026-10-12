@@ -1,5 +1,8 @@
-import type { BackendSiteProjectionBatch } from '@/common/utils/types'
+import type { BackendSiteProjectionBatch, BackendSiteProjectionModels } from '@/common/utils/types'
 import { api } from '@/lib/api'
+
+export const fetchProjectionModels = (): Promise<BackendSiteProjectionModels> =>
+  api.get<BackendSiteProjectionModels>('/map/site-projections/models')
 
 export const fetchSiteProjections = (
   siteIds: number[],

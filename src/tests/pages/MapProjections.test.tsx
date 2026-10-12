@@ -28,7 +28,7 @@ describe('visible site projections', () => {
     let resolveRequest!: (value: ReturnType<typeof response>) => void
     fetchSiteProjections.mockReturnValue(new Promise((resolve) => { resolveRequest = resolve }))
     const { result, rerender } = renderHook(
-      ({ sites }) => useVisibleSiteProjections(sites, asOf, targetAt),
+      ({ sites }) => useVisibleSiteProjections(sites, asOf, targetAt, 'baseline_operational'),
       { initialProps: { sites: [site(1)] } }
     )
 
@@ -44,7 +44,7 @@ describe('visible site projections', () => {
     fetchSiteProjections.mockImplementation(async (ids: number[]) => response(ids))
     const initialSites = Array.from({ length: 101 }, (_, index) => site(index + 1))
     const { result, rerender } = renderHook(
-      ({ sites }) => useVisibleSiteProjections(sites, asOf, targetAt),
+      ({ sites }) => useVisibleSiteProjections(sites, asOf, targetAt, 'baseline_operational'),
       { initialProps: { sites: initialSites } }
     )
 
@@ -54,5 +54,21 @@ describe('visible site projections', () => {
     rerender({ sites: [site(101), site(102)] })
     await waitFor(() => expect(result.current.projections.has(102)).toBe(true))
     expect(fetchSiteProjections.mock.calls[2][0]).toEqual([102])
+  })
+
+  it('requests a fresh forecast when the model changes', async () => {
+    fetchSiteProjections.mockImplementation(async (ids: number[]) => response(ids))
+    const { result, rerender } = renderHook(
+      ({ modelKey }) => useVisibleSiteProjections([site(1)], asOf, targetAt, modelKey),
+      { initialProps: { modelKey: 'baseline_operational' } }
+    )
+
+    await waitFor(() => expect(result.current.projections.has(1)).toBe(true))
+    rerender({ modelKey: 'chronos_2_small' })
+
+    await waitFor(() => expect(fetchSiteProjections).toHaveBeenCalledTimes(2))
+    expect(fetchSiteProjections.mock.calls.map((call) => call[3])).toEqual([
+      'baseline_operational', 'chronos_2_small',
+    ])
   })
 })

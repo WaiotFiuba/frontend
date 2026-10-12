@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
 import { labels } from "./utils/types"
-import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "./utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails, BackendSiteProjectionModels } from "./utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -21,6 +21,7 @@ import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 import { Activity, Clock3, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
+import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
 
 interface ActiveSimulation {
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
@@ -238,13 +239,31 @@ export default function InteractiveMap({
     const [viewMode, setViewMode] = useState<'current' | 'projected'>('current')
     const [projectionAsOf, setProjectionAsOf] = useState<string | null>(null)
     const [horizonHours, setHorizonHours] = useState(24)
+    const [modelKey, setModelKey] = useState('baseline_operational')
+    const [projectionModels, setProjectionModels] = useState<BackendSiteProjectionModels['models']>([])
     const zoneProfiles = useZoneProfiles()
+
+    useEffect(() => {
+        if (viewMode !== 'projected') return
+        let cancelled = false
+        fetchProjectionModels().then((response) => {
+            if (cancelled) return
+            const available = response.models.filter((model) => model.status === 'available')
+            setProjectionModels(available)
+            setModelKey((current) => available.some((model) => model.key === current)
+                ? current
+                : available.find((model) => model.key === response.default_model_key)?.key ?? available[0]?.key ?? current)
+        }).catch(() => {
+            if (!cancelled) setProjectionModels([])
+        })
+        return () => { cancelled = true }
+    }, [viewMode])
 
     const targetAt = useMemo(() => projectionAsOf
         ? new Date(new Date(projectionAsOf).getTime() + horizonHours * 60 * 60 * 1000).toISOString()
         : null, [projectionAsOf, horizonHours])
     const { projections, loading: projectionsLoading, error: projectionsError, retry: retryProjections } =
-        useVisibleSiteProjections(sites, viewMode === 'projected' ? projectionAsOf : null, targetAt)
+        useVisibleSiteProjections(sites, viewMode === 'projected' ? projectionAsOf : null, targetAt, modelKey)
 
     const enterProjectedMode = () => {
         const simulationTime = activeSimulation?.simulated_time
@@ -532,6 +551,16 @@ export default function InteractiveMap({
                         </button>
                     </div>
                     {viewMode === 'projected' && <>
+                        {projectionModels.length > 1 && <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                            Modelo
+                            <select
+                                value={modelKey}
+                                onChange={(event) => setModelKey(event.target.value)}
+                                className="h-8 max-w-36 border border-slate-300 bg-white px-1 text-xs text-slate-900"
+                            >
+                                {projectionModels.map((model) => <option key={model.key} value={model.key}>{model.name}</option>)}
+                            </select>
+                        </label>}
                         <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
                             Horizonte
                             <input

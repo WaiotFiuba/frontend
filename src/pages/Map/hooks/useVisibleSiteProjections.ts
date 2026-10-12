@@ -7,9 +7,10 @@ type ProjectionResult = BackendSiteProjection | null
 export function useVisibleSiteProjections(
   sites: Site[],
   asOf: string | null,
-  targetAt: string | null
+  targetAt: string | null,
+  modelKey: string
 ) {
-  const key = asOf && targetAt ? `${asOf}|${targetAt}` : ''
+  const key = asOf && targetAt ? `${asOf}|${targetAt}|${modelKey}` : ''
   const cache = useRef<{ key: string; values: Map<number, ProjectionResult> }>({
     key: '',
     values: new Map(),
@@ -55,7 +56,7 @@ export function useVisibleSiteProjections(
         for (let index = 0; index < missing.length; index += 100) {
           if (cancelled) return
           const batch = missing.slice(index, index + 100)
-          const response = await fetchSiteProjections(batch, asOf, targetAt)
+          const response = await fetchSiteProjections(batch, asOf, targetAt, modelKey)
           if (cancelled || cache.current.key !== key) return
 
           for (const projection of response.sites) {
@@ -77,7 +78,7 @@ export function useVisibleSiteProjections(
 
     void load()
     return () => { cancelled = true }
-  }, [visibleSiteIds, asOf, targetAt, key, retry])
+  }, [visibleSiteIds, asOf, targetAt, modelKey, key, retry])
 
   return {
     projections: result.key === key ? result.values : new Map<number, ProjectionResult>(),
