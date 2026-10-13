@@ -6,7 +6,8 @@ export interface OptimizationConfig {
   min_utilization_donor: number
   min_utilization_receiver: number
   target_utilization: number
-  algorithm: 'greedy' | 'lp'
+  // 'greedy' y 'lp': modelo por score. 'overload': modelo de sobrecarga.
+  algorithm: 'greedy' | 'lp' | 'overload'
   apply_capacity_constraints?: boolean
 }
 
@@ -61,6 +62,9 @@ export interface RedistributionMove {
   receiver_fill_before?: number | null
   receiver_fill_after?: number | null
   net_decongestion_pct?: number | null
+  // Solo modelo 'overload': cuánto baja la sobrecarga total con este movimiento
+  // (horas en crítico + 3 x horas desbordado, en la ventana de historia).
+  overload_reduction?: number | null
 }
 
 export interface RedistributionPlan {
@@ -80,6 +84,12 @@ export interface RedistributionPlan {
   original_std_fill?: number
   optimized_mean_fill?: number
   optimized_std_fill?: number
+  // Solo modelo 'overload': horas en la ventana de historia, sumadas sobre los
+  // sitios candidatos, con la distribución actual y con la del plan.
+  critical_hours_before?: number | null
+  critical_hours_after?: number | null
+  overflow_hours_before?: number | null
+  overflow_hours_after?: number | null
 }
 
 export interface WhatIfSiteComparison {
