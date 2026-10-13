@@ -192,6 +192,8 @@
     "algorithm": "Algoritmo",
     "algo_greedy": "Greedy",
     "algo_lp": "Prog. Lineal",
+    "algo_overload": "Sobrecarga",
+    "overload_hint": "Minimiza las horas en zona crítica y desbordado usando la historia de cada sitio. Decide por sí solo qué sitios donan y cuáles reciben, por eso no usa los umbrales de utilización.",
     "capacity_constraint": "Respetar capacidad máxima",
     "capacity_active": "Vial activa",
     "capacity_inactive": "Solo estadística",

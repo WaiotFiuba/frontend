@@ -192,6 +192,8 @@
     "algorithm": "Algorithm",
     "algo_greedy": "Greedy",
     "algo_lp": "Linear Prog.",
+    "algo_overload": "Overload",
+    "overload_hint": "Minimizes the hours in the critical zone and overflowing, using each site's history. It decides on its own which sites donate and which receive, so it does not use the utilization thresholds.",
     "capacity_constraint": "Respect maximum capacity",
     "capacity_active": "Roadway active",
     "capacity_inactive": "Statistical only",
