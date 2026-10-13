@@ -19,7 +19,7 @@ import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
-import { Activity, Clock3, RotateCw } from 'lucide-react'
+import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
 
@@ -239,6 +239,7 @@ export default function InteractiveMap({
     const [viewMode, setViewMode] = useState<'current' | 'projected'>('current')
     const [projectionAsOf, setProjectionAsOf] = useState<string | null>(null)
     const [horizonHours, setHorizonHours] = useState(24)
+    const [draftHorizonHours, setDraftHorizonHours] = useState(24)
     const [modelKey, setModelKey] = useState('baseline_operational')
     const [projectionModels, setProjectionModels] = useState<BackendSiteProjectionModels['models']>([])
     const zoneProfiles = useZoneProfiles()
@@ -530,13 +531,13 @@ export default function InteractiveMap({
                 </div>
             </div>
 
-            {!isPlayground && <div className="absolute bottom-4 left-3 z-[1000] max-w-[calc(100%-1.5rem)] border border-slate-200 bg-white/95 p-2 shadow-md backdrop-blur-sm">
+            {!isPlayground && <div className="absolute bottom-4 left-3 z-[1000] max-w-[calc(100%-1.5rem)] rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-md backdrop-blur">
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex border border-slate-200 bg-slate-100 p-0.5" role="group" aria-label="Vista del mapa">
+                    <div className="flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label="Vista del mapa">
                         <button
                             type="button"
                             onClick={() => setViewMode('current')}
-                            className={`flex h-8 items-center gap-1 px-2 text-xs font-semibold ${viewMode === 'current' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                            className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${viewMode === 'current' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-white/80'}`}
                             aria-pressed={viewMode === 'current'}
                         >
                             <Activity size={14} /> Actual
@@ -544,51 +545,76 @@ export default function InteractiveMap({
                         <button
                             type="button"
                             onClick={enterProjectedMode}
-                            className={`flex h-8 items-center gap-1 px-2 text-xs font-semibold ${viewMode === 'projected' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                            className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${viewMode === 'projected' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-white/80'}`}
                             aria-pressed={viewMode === 'projected'}
                         >
                             <Clock3 size={14} /> Proyectado
                         </button>
                     </div>
                     {viewMode === 'projected' && <>
-                        {projectionModels.length > 1 && <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                        {projectionModels.length > 1 && <label className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600">
                             Modelo
-                            <select
-                                value={modelKey}
-                                onChange={(event) => setModelKey(event.target.value)}
-                                className="h-8 max-w-36 border border-slate-300 bg-white px-1 text-xs text-slate-900"
-                            >
-                                {projectionModels.map((model) => <option key={model.key} value={model.key}>{model.name}</option>)}
-                            </select>
+                            <span className="relative min-w-0">
+                                <select
+                                    value={modelKey}
+                                    onChange={(event) => setModelKey(event.target.value)}
+                                    className="h-9 w-44 max-w-[44vw] appearance-none truncate rounded-lg border border-slate-200 bg-slate-50 py-1 pl-2.5 pr-7 text-xs font-bold text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                                    {projectionModels.map((model) => <option key={model.key} value={model.key}>{model.name}</option>)}
+                                </select>
+                                <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                            </span>
                         </label>}
-                        <label className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                            Horizonte
-                            <input
-                                type="number"
-                                min={1}
-                                max={168}
-                                value={horizonHours}
-                                onChange={(event) => setHorizonHours(Math.min(168, Math.max(1, Number(event.target.value) || 1)))}
-                                className="h-8 w-14 border border-slate-300 bg-white px-1 text-center font-mono text-xs text-slate-900"
-                            />
-                            h
-                        </label>
-                        {projectionsLoading && <span className="text-xs text-slate-600" role="status">Calculando...</span>}
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                            <span id="projection-horizon-label">Horizonte</span>
+                            <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100" role="group" aria-labelledby="projection-horizon-label">
+                                <button type="button" onClick={() => setDraftHorizonHours((value) => Math.max(1, value - 1))} disabled={draftHorizonHours <= 1} title="Reducir horizonte" aria-label="Reducir horizonte" className="flex h-8 w-8 items-center justify-center rounded-l-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent">
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={168}
+                                    value={draftHorizonHours}
+                                    onChange={(event) => setDraftHorizonHours(Math.min(168, Math.max(1, Number(event.target.value) || 1)))}
+                                    aria-label="Horas de proyección"
+                                    className="h-8 w-10 bg-transparent text-center font-mono text-xs font-bold text-slate-800 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                />
+                                <span className="pr-1 text-[11px] text-slate-500">h</span>
+                                <button type="button" onClick={() => setDraftHorizonHours((value) => Math.min(168, value + 1))} disabled={draftHorizonHours >= 168} title="Aumentar horizonte" aria-label="Aumentar horizonte" className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent">
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setHorizonHours(draftHorizonHours)}
+                            disabled={draftHorizonHours === horizonHours}
+                            className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:cursor-default disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                        >
+                            <Check size={14} /> Aplicar
+                        </button>
+                        {projectionsLoading && <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600" role="status"><RotateCw size={13} className="animate-spin" /> Calculando...</span>}
                         {projectionsError && <button
                             type="button"
                             onClick={retryProjections}
                             title="Reintentar proyecciones"
                             aria-label="Reintentar proyecciones"
-                            className="flex h-8 w-8 items-center justify-center text-red-700 hover:bg-red-50"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-700 hover:bg-red-50"
                         ><RotateCw size={16} /></button>}
                     </>}
                 </div>
-                {viewMode === 'projected' && projectionAsOf && targetAt && <div className="mt-1 text-[11px] leading-tight text-slate-600 break-words">
-                    Inicio {new Date(projectionAsOf).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    {' · '}
-                    Objetivo {new Date(targetAt).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    {sites.length > 0 && sites.every((site) => site.isCluster) && <span className="ml-2">Sin sitios individuales en esta vista.</span>}
-                    {projectionsError && <span className="ml-2 text-red-700">{projectionsError}</span>}
+                {viewMode === 'projected' && projectionAsOf && targetAt && <div className="-mx-2 -mb-2 mt-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 rounded-b-xl border-t border-blue-100 bg-blue-50/70 px-3 py-2">
+                    <div className="flex items-center gap-2 text-blue-800">
+                        <Clock3 size={16} className="shrink-0" />
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-[10px] font-bold uppercase text-blue-700">Hora proyectada</span>
+                            <span className="text-sm font-extrabold text-slate-900">{new Date(targetAt).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} UTC</span>
+                        </div>
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-600">Desde {new Date(projectionAsOf).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} UTC</span>
+                    {sites.length > 0 && sites.every((site) => site.isCluster) && <span className="text-[11px] text-slate-600">Sin sitios individuales en esta vista.</span>}
+                    {projectionsError && <span className="text-[11px] text-red-700">{projectionsError}</span>}
                 </div>}
             </div>}
 
