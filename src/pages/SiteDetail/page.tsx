@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/common/utils/ui/button'
 import { api } from '@/lib/api'
 import type {
   BackendSite,
@@ -127,7 +127,7 @@ function LevelHistoryChart({
       : ''
     const projectionLine = projectionCoords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
 
-    // Banda probabilística de cuantiles (ej. Chronos 10% - 90%)
+    // Banda probabilÃ­stica de cuantiles (ej. Chronos 10% - 90%)
     const hasBounds = projectionPoints.some((p) => p.lower_bound != null && p.upper_bound != null)
     let confidenceArea = ''
     if (hasBounds && projectionPoints.length > 0) {
@@ -171,7 +171,7 @@ function LevelHistoryChart({
   if (points.length === 0 && (!projection || projection.points.length === 0)) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
-        Todavía no hay mediciones históricas para este sitio.
+        TodavÃ­a no hay mediciones histÃ³ricas para este sitio.
       </div>
     )
   }
@@ -180,8 +180,8 @@ function LevelHistoryChart({
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Histórico y proyección de nivel</h2>
-          <p className="text-sm text-slate-500">Histórico observado y proyección predictiva futura.</p>
+          <h2 className="text-lg font-bold text-slate-900">HistÃ³rico y proyecciÃ³n de nivel</h2>
+          <p className="text-sm text-slate-500">HistÃ³rico observado y proyecciÃ³n predictiva futura.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {availableModels && availableModels.length > 1 && onSelectModel && (
@@ -204,23 +204,23 @@ function LevelHistoryChart({
             </div>
           )}
           <div className="text-right text-sm">
-            <p className="font-semibold text-slate-600">{points.length} históricos</p>
+            <p className="font-semibold text-slate-600">{points.length} histÃ³ricos</p>
             {projection?.critical_at ? (
               <p className="text-xs font-semibold text-red-600">
-                Umbral crítico: {formatDateTime(projection.critical_at)}
+                Umbral crÃ­tico: {formatDateTime(projection.critical_at)}
               </p>
             ) : (
-              <p className="text-xs text-slate-500">Sin cruce crítico proyectado</p>
+              <p className="text-xs text-slate-500">Sin cruce crÃ­tico proyectado</p>
             )}
           </div>
         </div>
       </div>
       <div className="mb-2 flex flex-wrap gap-3 text-xs font-semibold">
         <span className="inline-flex items-center gap-1 text-emerald-700">
-          <span className="h-0.5 w-6 rounded bg-emerald-600" /> Histórico
+          <span className="h-0.5 w-6 rounded bg-emerald-600" /> HistÃ³rico
         </span>
         <span className="inline-flex items-center gap-1 text-sky-700">
-          <span className="h-0.5 w-6 rounded border-t-2 border-dashed border-sky-600" /> Proyección
+          <span className="h-0.5 w-6 rounded border-t-2 border-dashed border-sky-600" /> ProyecciÃ³n
         </span>
         {chart.confidenceArea && (
           <span className="inline-flex items-center gap-1 text-sky-600">
@@ -228,7 +228,7 @@ function LevelHistoryChart({
           </span>
         )}
         <span className="inline-flex items-center gap-1 text-red-700">
-          <span className="h-0.5 w-6 rounded bg-red-500" /> Umbral crítico
+          <span className="h-0.5 w-6 rounded bg-red-500" /> Umbral crÃ­tico
         </span>
         {projection && (
           <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">
@@ -299,7 +299,7 @@ function LevelHistoryChart({
         ))}
         {chart.projectionCoords.map(({ x, y, point }) => (
           <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#0284c7" stroke="white" strokeWidth="2">
-            <title>{`${formatDateTime(point.timestamp)} - Proyección: ${Math.round(point.predicted_level)}%${point.lower_bound != null ? ` (Rango 10-90%: ${Math.round(point.lower_bound)}% - ${Math.round(point.upper_bound!)}%)` : ''}`}</title>
+            <title>{`${formatDateTime(point.timestamp)} - ProyecciÃ³n: ${Math.round(point.predicted_level)}%${point.lower_bound != null ? ` (Rango 10-90%: ${Math.round(point.lower_bound)}% - ${Math.round(point.upper_bound!)}%)` : ''}`}</title>
           </circle>
         ))}
       </svg>
@@ -316,8 +316,8 @@ export default function SiteDetail() {
   const [projection, setProjection] = useState<BackendSiteProjection | null>(null)
   const [selectedModel, setSelectedModel] = useState<string>('baseline_operational')
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([
-    { key: 'baseline_operational', name: 'Baseline Operativo', description: 'Modelo interpretable basado en incrementos históricos.' },
-    { key: 'chronos_2_small', name: 'Chronos-2 Small', description: 'Modelo fundacional zero-shot de Amazon con cuantiles probabilísticos.' },
+    { key: 'baseline_operational', name: 'Baseline Operativo', description: 'Modelo interpretable basado en incrementos histÃ³ricos.' },
+    { key: 'chronos_2_small', name: 'Chronos-2 Small', description: 'Modelo fundacional zero-shot de Amazon con cuantiles probabilÃ­sticos.' },
   ])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -354,11 +354,11 @@ export default function SiteDetail() {
             const frontClock = new Date().toLocaleTimeString()
             console.log(
               `%c[FRONTEND SITE DETAIL - SITIO 332]\n` +
-              `  • Nivel promedio: ${siteData.current_level}%\n` +
-              `  • Última lectura backend: ${siteData.last_reading ?? 'N/A'}\n` +
-              `  • Último vaciado backend: ${siteData.last_pickup ?? 'N/A'}\n` +
-              `  • Hora reloj local navegador: ${frontClock}\n` +
-              `  • Contenedores:`,
+              `  â€¢ Nivel promedio: ${siteData.current_level}%\n` +
+              `  â€¢ Ãšltima lectura backend: ${siteData.last_reading ?? 'N/A'}\n` +
+              `  â€¢ Ãšltimo vaciado backend: ${siteData.last_pickup ?? 'N/A'}\n` +
+              `  â€¢ Hora reloj local navegador: ${frontClock}\n` +
+              `  â€¢ Contenedores:`,
               'color: #0284c7; font-weight: bold;',
               siteData.containers
             )
@@ -428,7 +428,7 @@ export default function SiteDetail() {
             <h1 className="text-3xl font-extrabold text-slate-900">Sitio #{site.id}</h1>
             <p className="mt-1 flex items-center gap-2 text-slate-600">
               <MapPin className="size-4" />
-              {site.address || 'Dirección no disponible'}
+              {site.address || 'DirecciÃ³n no disponible'}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
@@ -447,7 +447,7 @@ export default function SiteDetail() {
           <InfoCard label="Contenedores" value={String(site.container_count)} />
           <InfoCard label="Residuo" value={site.waste_type_name || 'Sin tipo'} />
           <InfoCard label="Lado de carga" value={site.load_side_category || 'No especificado'} />
-          <InfoCard label="Disponible" value={site.available ? 'Sí' : 'No'} />
+          <InfoCard label="Disponible" value={site.available ? 'SÃ­' : 'No'} />
         </div>
 
         <LevelHistoryChart
@@ -463,11 +463,11 @@ export default function SiteDetail() {
             <h2 className="mb-3 text-lg font-bold text-slate-900">Datos del sitio</h2>
             <DetailRow label="ID" value={String(site.id)} />
             <DetailRow label="Nombre" value={site.name} />
-            <DetailRow label="Dirección" value={site.address || 'Sin datos'} />
+            <DetailRow label="DirecciÃ³n" value={site.address || 'Sin datos'} />
             <DetailRow label="Latitud" value={String(site.latitude)} />
             <DetailRow label="Longitud" value={String(site.longitude)} />
-            <DetailRow label="Última actualización" value={formatDateTime(site.last_reading)} />
-            <DetailRow label="Última recolección" value={formatDateTime(site.last_pickup)} />
+            <DetailRow label="Ãšltima actualizaciÃ³n" value={formatDateTime(site.last_reading)} />
+            <DetailRow label="Ãšltima recolecciÃ³n" value={formatDateTime(site.last_pickup)} />
             <DetailRow label="Registro actualizado" value={formatDateTime(site.updated_at)} />
           </section>
 
@@ -484,7 +484,7 @@ export default function SiteDetail() {
                     <th className="py-2 pr-3">Serie</th>
                     <th className="py-2 pr-3">Tipo</th>
                     <th className="py-2 pr-3">Nivel</th>
-                    <th className="py-2 pr-3">Última lectura</th>
+                    <th className="py-2 pr-3">Ãšltima lectura</th>
                   </tr>
                 </thead>
                 <tbody>

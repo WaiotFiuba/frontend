@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom'
-import { Button } from '@/common/ui/button'
+﻿import { useNavigate } from 'react-router-dom'
+import { Button } from '@/common/utils/ui/button'
 
 export default function Home() {
     const navigate = useNavigate()
@@ -9,7 +9,7 @@ export default function Home() {
             <div className="max-w-2xl w-full text-center space-y-8">
                 <div className="space-y-4">
                     <h1 className="text-5xl font-bold text-slate-900 tracking-tight">
-                        ¡Bienvenido a Waiot FIUBA!
+                        Â¡Bienvenido a Waiot FIUBA!
                     </h1>
                     <p className="text-xl text-slate-600 leading-relaxed">
                         Primeros pasos en soluciones de gemelos digitales.

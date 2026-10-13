@@ -1,29 +1,37 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
-import { Button } from '@/common/ui/button'
-import { Card, CardContent } from '@/common/ui/card'
-import { Switch } from '@/common/ui/switch'
+import { Button } from '@/common/utils/ui/button'
+import { Card, CardContent } from '@/common/utils/ui/card'
+import { Switch } from '@/common/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchOptimizationMetrics, fetchActiveWhatIfPlan } from './services/optimizationApi'
+import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } from './services/optimizationApi'
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
+import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
+import RedistributionImpactPanel from './components/RedistributionImpactPanel'
+import MoveImpactCard from './components/MoveImpactCard'
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChevronUp,
+  Cpu,
   Download,
   MapPin,
   RotateCcw,
   Sliders,
-  TrendingDown,
+  Sparkles,
+  Zap,
 } from 'lucide-react'
 
 export default function Optimization() {
   const navigate = useNavigate()
 
-  // Configuración de parámetros unificada
+  // Filtro de categorÃ­a de utilizaciÃ³n
+  const [selectedCategory, setSelectedCategory] = useState<UtilizationCategory | 'all'>('all')
+
+  // ConfiguraciÃ³n de parÃ¡metros unificada
   const [config, setConfig] = useState<OptimizationConfig>({
     max_distance_km: 2.0,
     window_days: null,
@@ -38,6 +46,7 @@ export default function Optimization() {
   const [generating, setGenerating] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
+  const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
@@ -46,28 +55,34 @@ export default function Optimization() {
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
   const mapContainerRef = useRef<HTMLDivElement>(null)
 
+  const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
+
   useEffect(() => {
     let isMounted = true
     const loadInitialData = async () => {
       setLoadingMetrics(true)
       try {
-        const [metricsData, activePlan] = await Promise.allSettled([
-          fetchOptimizationMetrics(config.window_days),
+        const [whatifRes, baselineRes, activePlanRes] = await Promise.allSettled([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
           fetchActiveWhatIfPlan(),
         ])
         if (isMounted) {
-          if (metricsData.status === 'fulfilled') {
-            setNetworkMetrics(metricsData.value)
+          if (whatifRes.status === 'fulfilled') {
+            setNetworkMetrics(whatifRes.value)
           }
-          if (activePlan.status === 'fulfilled' && activePlan.value) {
-            setPlan(activePlan.value)
-            if (activePlan.value.config) {
-              setConfig((prev) => ({ ...prev, ...activePlan.value.config }))
+          if (baselineRes.status === 'fulfilled') {
+            setBaselineMetrics(baselineRes.value)
+          }
+          if (activePlanRes.status === 'fulfilled' && activePlanRes.value) {
+            setPlan(activePlanRes.value)
+            if (activePlanRes.value.config) {
+              setConfig((prev) => ({ ...prev, ...activePlanRes.value.config }))
             }
           }
         }
       } catch (err) {
-        console.warn('Error al cargar datos iniciales de optimización:', err)
+        console.warn('Error al cargar datos iniciales de optimizaciÃ³n:', err)
       } finally {
         if (isMounted) setLoadingMetrics(false)
       }
@@ -88,15 +103,21 @@ export default function Optimization() {
       const generated = await generateOptimizationPlan(config)
       setPlan(generated)
       setRefreshTrigger((prev) => prev + 1)
+      try {
+        const updatedWhatif = await fetchNetworkKpis(true)
+        setNetworkMetrics(updatedWhatif)
+      } catch (kpiErr) {
+        console.warn('Error al actualizar KPIs What-If tras generar plan:', kpiErr)
+      }
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
-          `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
+          `RedistribuciÃ³n What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
         )
       } else {
-        setSuccessMsg('La red se encuentra balanceada con los parámetros seleccionados (0 movimientos necesarios).')
+        setSuccessMsg('La red se encuentra balanceada con los parÃ¡metros seleccionados (0 movimientos necesarios).')
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribución'
+      const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribuciÃ³n'
       setErrorMsg(message)
     } finally {
       setGenerating(false)
@@ -105,12 +126,13 @@ export default function Optimization() {
 
   const handleExportCsv = () => {
     if (!plan?.moves.length) return
-    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM']
+    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', 'DescongestiÃ³n Neta %']
     const rows = plan.moves.map((m) => [
       m.container_id,
       `"${m.from_site_name.replace(/"/g, '""')}"`,
       `"${m.to_site_name.replace(/"/g, '""')}"`,
       m.distance_km,
+      m.net_decongestion_pct ?? '',
     ])
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -136,10 +158,10 @@ export default function Optimization() {
               <Sliders className="w-8 h-8 text-sky-600 shrink-0" />
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">
-                  Redistribución de Contenedores
+                  RedistribuciÃ³n de Contenedores
                 </h1>
                 <p className="text-slate-600 text-sm mt-0.5">
-                  Optimización y balanceo de carga entre sitios según demanda y uso histórico.
+                  OptimizaciÃ³n y balanceo de carga entre sitios segÃºn demanda y uso histÃ³rico.
                 </p>
               </div>
             </div>
@@ -163,6 +185,22 @@ export default function Optimization() {
             </Button>
           </div>
         </div>
+
+        {/* 1. Panel de MÃ©tricas de la Red (What-If en Playground de SimulaciÃ³n) */}
+        <NetworkKpiPanel
+          metrics={networkMetrics}
+          loading={loadingMetrics}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+          whatif={true}
+        />
+
+        {/* 2. Panel Complementario de Impacto What-If (EspecÃ­fico de redistribuciÃ³n) */}
+        <RedistributionImpactPanel
+          plan={plan}
+          baselineMetrics={baselineMetrics}
+          loading={generating}
+        />
 
         {/* Feedback messages */}
         {successMsg && (
@@ -197,196 +235,7 @@ export default function Optimization() {
           </div>
         )}
 
-        {/* Diagnóstico de Red / Balanceo de Red (Siempre visible arriba por fuera del Dialog) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-slate-900 text-sm">
-                {plan ? 'Balanceo de Red (Comparativa)' : 'Diagnóstico de Red'}
-              </h2>
-              <span className="text-[11px] text-slate-500">
-                {plan ? '• Proyección tras redistribución' : '• Estado actual de llenado y dispersión'}
-              </span>
-            </div>
-            {loadingMetrics && (
-              <span className="text-[11px] text-slate-400 animate-pulse font-medium">Actualizando métricas...</span>
-            )}
-          </div>
-
-          {!plan ? (
-            // Estado Actual previo a optimizar
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              {/* Promedio de Llenado */}
-              <div className="bg-sky-50/70 p-3 rounded-xl border border-sky-100/80 space-y-1">
-                <span className="text-[11px] font-semibold text-slate-600 block">
-                  Promedio de Llenado Total
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-black text-slate-900">
-                    {(networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
-                  </span>
-                  <span className="text-[10px] text-slate-500">ocupación media</span>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mt-1.5">
-                  <div
-                    className="bg-sky-600 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Math.max(0, networkMetrics?.mean_fill_level ?? 0))}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* 2. Desvío Estándar */}
-              <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100/80 space-y-1">
-                <span className="text-[11px] font-semibold text-slate-600 block">
-                  Desvío Estándar (&sigma;) — Dispersión
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-black text-emerald-950">
-                    &plusmn;{(networkMetrics?.std_fill_level ?? 0).toFixed(1)}%
-                  </span>
-                  <span className="text-[10px] text-slate-500">dispersión</span>
-                </div>
-                <span className="text-[10px] text-slate-500 block">
-                  Mide qué tan dispar es el llenado entre contenedores.
-                </span>
-              </div>
-
-              {/* 3. Sitios y Contenedores Monitoreados */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2 flex flex-col justify-center">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-600 font-medium">Contenedores monitoreados:</span>
-                  <span className="font-bold text-slate-900 font-mono">{networkMetrics?.total_containers ?? 0}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-600 font-medium">Sitios activos:</span>
-                  <span className="font-bold text-slate-900 font-mono">{networkMetrics?.total_sites ?? 0}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Comparativa tras generar el plan
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              {/* 1. Llenado Promedio */}
-              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span>Llenado Promedio</span>
-                  <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                    Masa conservada
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block font-medium">Original</span>
-                    <span className="text-base font-black text-slate-800">
-                      {(plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-lg border border-sky-300 bg-sky-50/40">
-                    <span className="text-[10px] text-sky-700 block font-semibold">Redistribuido</span>
-                    <span className="text-base font-black text-sky-900">
-                      {(plan.optimized_mean_fill ?? 0).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. Desvío Estándar */}
-              {(() => {
-                const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
-                const optStd = plan.optimized_std_fill ?? 0
-                const diff = optStd - origStd
-                const reductionPct = origStd > 0 ? Math.round((Math.abs(diff) / origStd) * 100) : 0
-                const improved = diff < -0.1
-
-                return (
-                  <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                      <span>Desvío (&sigma;)</span>
-                      {improved ? (
-                        <span className="text-[10px] font-bold text-emerald-950 bg-emerald-200 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <TrendingDown className="h-2.5 w-2.5" />
-                          -{reductionPct}%
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-medium text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">
-                          Sin variación
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                        <span className="text-[10px] text-slate-400 block font-medium">Original</span>
-                        <span className="text-base font-black text-slate-800">
-                          &plusmn;{origStd.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="bg-white p-2.5 rounded-lg border border-emerald-300 bg-emerald-50/40">
-                        <span className="text-[10px] text-emerald-700 block font-semibold">Redistribuido</span>
-                        <span className="text-base font-black text-emerald-900">
-                          &plusmn;{optStd.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* 3. Visual Range Meter */}
-              {(() => {
-                const origMean = plan.original_mean_fill ?? networkMetrics?.mean_fill_level ?? 0
-                const origStd = plan.original_std_fill ?? networkMetrics?.std_fill_level ?? 0
-                const optMean = plan.optimized_mean_fill ?? 0
-                const optStd = plan.optimized_std_fill ?? 0
-
-                const origMin = Math.max(0, origMean - origStd)
-                const origMax = Math.min(100, origMean + origStd)
-                const optMin = Math.max(0, optMean - optStd)
-                const optMax = Math.min(100, optMean + optStd)
-
-                return (
-                  <div className="bg-gradient-to-r from-slate-50 via-sky-50/40 to-emerald-50/30 p-3 rounded-xl border border-slate-200/80 space-y-2 text-[10px] flex flex-col justify-center">
-                    <div className="flex justify-between items-center text-slate-600 font-semibold">
-                      <span>Banda de ocupación (&mu; &plusmn; &sigma;)</span>
-                      <span className="font-mono text-slate-400">0% a 100%</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-slate-500">
-                        <span>Orig: {origMin.toFixed(0)}% a {origMax.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-200 rounded-full relative overflow-hidden">
-                        <div
-                          className="absolute h-full bg-slate-400/80 rounded-full"
-                          style={{
-                            left: `${origMin}%`,
-                            width: `${Math.max(2, origMax - origMin)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 pt-0.5">
-                      <div className="flex justify-between text-emerald-800 font-bold">
-                        <span>Redist: {optMin.toFixed(0)}% a {optMax.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-200 rounded-full relative overflow-hidden">
-                        <div
-                          className="absolute h-full bg-emerald-500 rounded-full shadow-xs"
-                          style={{
-                            left: `${optMin}%`,
-                            width: `${Math.max(2, optMax - optMin)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-        </div>
-
-        {/* Disposición Opción 2: Hero Map Full-Width con Panel de Control Flotante Superpuesto */}
+        {/* Hero Map Full-Width con Panel de Control Flotante Superpuesto y Tarjeta de Impacto */}
         <div className="space-y-6">
           <Card
             ref={mapContainerRef}
@@ -400,7 +249,16 @@ export default function Optimization() {
                 isPlayground
               />
 
-              {/* Panel Flotante Retráctil (Superpuesto en esquina superior derecha) */}
+              {/* Tarjeta flotante de impacto de descongestiÃ³n */}
+              {selectedMove && (
+                <MoveImpactCard
+                  move={selectedMove}
+                  onClose={() => setHighlightedMoveId(null)}
+                  className="sm:top-4 sm:left-4 sm:right-auto z-[1002]"
+                />
+              )}
+
+              {/* Panel Flotante RetrÃ¡ctil (Superpuesto en esquina superior derecha) */}
               {isPanelOpen ? (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
@@ -412,27 +270,27 @@ export default function Optimization() {
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80">
                     <div className="flex items-center gap-2">
                       <Sliders className="h-4 w-4 text-sky-600" />
-                      <h2 className="font-bold text-slate-900 text-sm">Parámetros de control</h2>
+                      <h2 className="font-bold text-slate-900 text-sm">ParÃ¡metros de control</h2>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsPanelOpen(false)}
                       className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-                      title="Minimizar panel flotante"
+                      title="Minimizar panel"
                     >
                       <ChevronUp className="w-4 h-4" />
                     </button>
                   </div>
 
-                  {/* Contenido scrolleable dentro del panel flotante */}
-                  <div className="p-4 overflow-y-auto space-y-4 text-xs">
-                    {/* 1. Radio Máximo */}
-                    <div className="space-y-1.5">
+                  {/* Cuerpo scrollable con controles de optimizaciÃ³n */}
+                  <div className="p-4 overflow-y-auto space-y-4 max-h-[calc(78vh-60px)]">
+                    {/* 1. Radio MÃ¡ximo */}
+                    <div className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
                         <label htmlFor="max-dist-input" className="font-semibold text-slate-700">
-                          Radio Máximo de Traslado
+                          Radio MÃ¡ximo de Traslado
                         </label>
-                        <span className="font-mono font-bold text-sky-950 px-2.5 py-0.5 rounded-md bg-sky-100 border border-sky-200/80">
+                        <span className="font-mono font-bold text-sky-950 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-200">
                           {config.max_distance_km.toFixed(1)} km
                         </span>
                       </div>
@@ -447,11 +305,11 @@ export default function Optimization() {
                         className="w-full accent-slate-400 cursor-pointer"
                       />
                       <span className="text-[11px] text-slate-500 block">
-                        Distancia máxima entre sitios donantes y receptores.
+                        Distancia mÃ¡xima entre sitios donantes y receptores.
                       </span>
                     </div>
 
-                    {/* 2. Ventana Histórica */}
+                    {/* 2. Ventana HistÃ³rica */}
                     <div className="space-y-1.5">
                       <label htmlFor="window-days-select" className="text-xs font-semibold text-slate-700 block">
                         Ventana de Historial
@@ -468,12 +326,12 @@ export default function Optimization() {
                         className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
                       >
                         <option value="all">Todo el historial disponible</option>
-                        <option value="7">Últimos 7 días</option>
-                        <option value="15">Últimos 15 días</option>
-                        <option value="30">Últimos 30 días</option>
+                        <option value="7">Ãšltimos 7 dÃ­as</option>
+                        <option value="15">Ãšltimos 15 dÃ­as</option>
+                        <option value="30">Ãšltimos 30 dÃ­as</option>
                       </select>
                       <span className="text-[11px] text-slate-500 block">
-                        Período para evaluar la saturación de cada sitio.
+                        PerÃ­odo para evaluar la saturaciÃ³n de cada sitio.
                       </span>
                     </div>
 
@@ -485,37 +343,39 @@ export default function Optimization() {
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${config.algorithm === 'greedy'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center gap-1 ${config.algorithm === 'greedy'
                                 ? 'bg-sky-600 text-white shadow-xs font-bold'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                               }`}
                           >
+                            <Zap className="h-3 w-3" />
                             Greedy
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'lp' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all ${config.algorithm === 'lp'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center gap-1 ${config.algorithm === 'lp'
                                 ? 'bg-emerald-600 text-white shadow-xs font-bold'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                               }`}
                           >
+                            <Cpu className="h-3 w-3" />
                             Prog. Lineal
                           </button>
                         </div>
                       </div>
 
-                      {/* Control de Capacidad Máxima Vial */}
+                      {/* Control de Capacidad MÃ¡xima Vial */}
                       <div className="flex items-center justify-between text-xs pt-1 pb-1">
                         <label
                           htmlFor="capacity-constraints-checkbox"
                           className="font-semibold text-slate-700 cursor-pointer select-none"
                         >
-                          Respetar capacidad máxima
+                          Respetar capacidad mÃ¡xima
                         </label>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-slate-500 font-medium">
-                            {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadística'}
+                            {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadÃ­stica'}
                           </span>
                           <Switch
                             id="capacity-constraints-checkbox"
@@ -528,10 +388,10 @@ export default function Optimization() {
                       </div>
                     </div>
 
-                    {/* Umbrales de Score de Utilización */}
+                    {/* Umbrales de Score de UtilizaciÃ³n */}
                     <div className="pt-2 border-t border-slate-100 space-y-3">
                       <span className="text-xs font-bold text-slate-700 block">
-                        Umbrales de Score de Utilización
+                        Umbrales de Score de UtilizaciÃ³n
                       </span>
 
                       {/* Score Donante */}
@@ -607,14 +467,15 @@ export default function Optimization() {
                       </div>
                     </div>
 
-                    {/* Botón Principal Generar Redistribución */}
+                    {/* BotÃ³n Principal Generar RedistribuciÃ³n */}
                     <div className="pt-2">
                       <Button
                         onClick={handleGeneratePlan}
                         disabled={generating}
-                        className="w-full text-xs font-bold !bg-sky-600 hover:!bg-sky-700 !text-white shadow-sm cursor-pointer h-10 rounded-xl"
+                        className="w-full text-xs font-bold !bg-sky-600 hover:!bg-sky-700 !text-white shadow-sm cursor-pointer h-10 rounded-xl flex items-center justify-center gap-2"
                       >
-                        {generating ? 'Calculando Redistribución...' : 'Generar Redistribución'}
+                        <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+                        {generating ? 'Calculando RedistribuciÃ³n...' : 'Generar RedistribuciÃ³n'}
                       </Button>
                     </div>
                   </div>
@@ -630,7 +491,7 @@ export default function Optimization() {
                     className="bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl hover:shadow-2xl hover:border-sky-300 text-slate-800 px-4 py-2.5 rounded-xl flex items-center gap-2.5 font-bold text-xs transition-all cursor-pointer hover:bg-sky-50/70"
                   >
                     <Sliders className="w-4 h-4 text-sky-600" />
-                    <span>Parámetros de control</span>
+                    <span>ParÃ¡metros de control</span>
                     {plan && plan.moves.length > 0 && (
                       <span className="bg-sky-100 text-sky-800 text-[10px] font-black px-1.5 py-0.5 rounded-full">
                         {plan.moves.length} mov.
@@ -640,7 +501,7 @@ export default function Optimization() {
                 </div>
               )}
 
-              {/* Píldora inferior informativa si el panel está minimizado y hay plan */}
+              {/* PÃ­ldora inferior informativa si el panel estÃ¡ minimizado y hay plan */}
               {!isPanelOpen && plan && plan.moves.length > 0 && (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
@@ -649,11 +510,11 @@ export default function Optimization() {
                   <div className="flex items-center gap-1.5 font-bold text-slate-800">
                     <span className="text-sky-600 font-extrabold">{plan.total_containers_moved}</span> traslados
                   </div>
-                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-300">â€¢</span>
                   <div className="text-slate-600">
                     Distancia prom: <span className="font-bold text-slate-800">{plan.avg_distance_km.toFixed(2)} km</span>
                   </div>
-                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-300">â€¢</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -673,10 +534,10 @@ export default function Optimization() {
           {plan && plan.moves.length === 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
               <p className="text-xs font-semibold text-slate-700">
-                🌱 Distribución What-If base activa (réplica 1:1 de la red física).
+                ðŸŒ± DistribuciÃ³n What-If base activa (rÃ©plica 1:1 de la red fÃ­sica).
               </p>
               <p className="text-[11px] text-slate-500">
-                Ajustá los parámetros en el panel lateral y presioná <strong>&ldquo;Generar Redistribución&rdquo;</strong> para reubicar contenedores en el playground.
+                AjustÃ¡ los parÃ¡metros en el panel lateral y presionÃ¡ <strong>&ldquo;Generar RedistribuciÃ³n&rdquo;</strong> para reubicar contenedores en el playground.
               </p>
             </div>
           )}
@@ -712,7 +573,7 @@ export default function Optimization() {
                       className="text-xs gap-1 text-slate-500 cursor-pointer"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
-                      Limpiar selección
+                      Limpiar selecciÃ³n
                     </Button>
                   )}
                 </div>
@@ -757,7 +618,8 @@ export default function Optimization() {
                       <th className="p-3 text-center"></th>
                       <th className="p-3">Sitio Receptor (Destino)</th>
                       <th className="p-3 text-right">Distancia</th>
-                      <th className="p-3 text-center">Acción</th>
+                      <th className="p-3 text-center">DescongestiÃ³n Neta</th>
+                      <th className="p-3 text-center">AcciÃ³n</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -800,6 +662,24 @@ export default function Optimization() {
                             <div className="text-[10px] text-slate-400">
                               {Math.round(m.distance_km * 1000)} m
                             </div>
+                          </td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            {m.net_decongestion_pct != null ? (
+                              <span
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${
+                                  m.net_decongestion_pct < 0
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-sky-50 text-sky-700 border-sky-200'
+                                }`}
+                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% â†’ ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% â†’ ${m.donor_fill_after ?? '?'}%`}
+                              >
+                                {m.net_decongestion_pct > 0
+                                  ? `+${m.net_decongestion_pct}%`
+                                  : `${m.net_decongestion_pct}%`}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[11px]">-</span>
+                            )}
                           </td>
                           <td className="p-3 text-center">
                             <button

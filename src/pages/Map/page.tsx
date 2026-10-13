@@ -1,12 +1,13 @@
-import 'leaflet/dist/leaflet.css'
-import { Button } from '@/common/ui/button'
-import { Card, CardContent } from '@/common/ui/card'
+﻿import 'leaflet/dist/leaflet.css'
+import { Button } from '@/common/utils/ui/button'
+import { Card, CardContent } from '@/common/utils/ui/card'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import MapLegend from '@/common/MapLegend'
+import MapLegend from './components/MapLegend'
 import { useState } from 'react'
-import SimulationControl from '@/common/SimulationControl'
+import SimulationControl from './components/SimulationControl'
 import { ArrowLeft, MapPin } from 'lucide-react'
+import { NetworkKpiPanel } from '@/common/KpiPanel'
 import { useCityConfig } from '@/context/CityConfigContext'
 
 export default function Map() {
@@ -26,7 +27,7 @@ export default function Map() {
                                     Mapa Interactivo
                                 </h1>
                                 <p className="text-slate-600 text-sm mt-0.5">
-                                    Monitoreo geográfico de sitios, niveles de llenado y telemetría de contenedores{cityName ? ` en ${cityName}` : ''}.
+                                    Monitoreo geogrÃ¡fico de sitios, niveles de llenado y telemetrÃ­a de contenedores{cityName ? ` en ${cityName}` : ''}.
                                 </p>
                             </div>
                         </div>
@@ -40,6 +41,9 @@ export default function Map() {
                         Volver al inicio
                     </Button>
                 </div>
+
+                {/* Panel de MÃ©tricas Operativas de la Red */}
+                <NetworkKpiPanel refreshTrigger={refreshTrigger} />
 
                 {/* Hero Map Full-Width con Leyenda Flotante Superpuesta */}
                 <Card className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative">

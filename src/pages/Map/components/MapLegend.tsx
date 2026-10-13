@@ -1,7 +1,7 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { Info, Layers, CheckCircle2, AlertTriangle, AlertCircle, ChevronDown, MapPin } from "lucide-react"
-import { Badge } from "@/common/ui/badge"
-import { Card, CardContent } from "@/common/ui/card"
+import { Badge } from "@/common/utils/ui/badge"
+import { Card, CardContent } from "@/common/utils/ui/card"
 
 interface MapLegendProps {
     className?: string
@@ -79,7 +79,7 @@ export default function MapLegend({
                 <button
                     type="button"
                     onClick={() => setIsLevelsOpen((prev) => !prev)}
-                    className="w-full flex items-center justify-between p-2.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between p-2.5 px-3 hover:bg-slate-100 transition-colors cursor-pointer text-left"
                 >
                     <div className="flex items-center gap-2.5">
                         <div className="p-1.5 bg-sky-50 text-sky-600 rounded-lg shrink-0">
@@ -91,9 +91,8 @@ export default function MapLegend({
                         </div>
                     </div>
                     <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
-                            isLevelsOpen ? "rotate-180" : ""
-                        }`}
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${isLevelsOpen ? "rotate-180" : ""
+                            }`}
                     />
                 </button>
 
@@ -163,7 +162,7 @@ export default function MapLegend({
                 <button
                     type="button"
                     onClick={() => setIsTypesOpen((prev) => !prev)}
-                    className="w-full flex items-center justify-between p-2.5 px-3 hover:bg-slate-50/80 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between p-2.5 px-3 hover:bg-slate-100 transition-colors cursor-pointer text-left"
                 >
                     <div className="flex items-center gap-2.5">
                         <div className="p-1.5 bg-sky-50 text-sky-600 rounded-lg shrink-0">
@@ -175,9 +174,8 @@ export default function MapLegend({
                         </div>
                     </div>
                     <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${
-                            isTypesOpen ? "rotate-180" : ""
-                        }`}
+                        className={`w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0 ${isTypesOpen ? "rotate-180" : ""
+                            }`}
                     />
                 </button>
 

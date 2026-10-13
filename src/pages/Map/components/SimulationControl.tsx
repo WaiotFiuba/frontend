@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
-import { Button } from '@/common/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
+import { Button } from '@/common/utils/ui/button'
 import {
   Play,
   Pause,
@@ -17,9 +17,11 @@ import {
   MapPin,
   FolderOpen,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { formatSimulatedTime } from './utils/functions'
+import { formatSimulatedTime } from '@/common/utils/functions'
 
 interface UpdateLog {
   id: number
@@ -144,6 +146,9 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
+  // Desplegable de parámetros avanzados (por defecto desplegado mostrando todos los parámetros)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+
   // Stopwatch & Telemetry intervals
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
   const [lastSetTime, setLastSetTime] = useState<number | null>(null)
@@ -227,6 +232,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     setCollectionDays(DEFAULT_COLLECTION_DAYS)
     setGlobalDemandMultiplier(1.0)
     setZoneOverrides([])
+    setIsCollapsed(false)
   }
 
   // Fetch active simulation
@@ -653,18 +659,17 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               : 'Configure las fechas, franjas horarias de recolección de camiones, velocidad y demanda por barrio.'}
           </CardDescription>
         </div>
-        {activeSim && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {activeSim && (
             <span
-              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
-                activeSim.status === 'running'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : activeSim.status === 'paused'
+              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${activeSim.status === 'running'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : activeSim.status === 'paused'
                   ? 'bg-amber-50 border-amber-200 text-amber-700'
                   : activeSim.status === 'pending'
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-slate-50 border-slate-200 text-slate-700'
-              }`}
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
             >
               {activeSim.status === 'pending' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-spin mr-1" />
@@ -674,8 +679,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               )}
               {activeSim.status === 'pending' ? 'GENERANDO' : activeSim.status.toUpperCase()}
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="p-6">
@@ -855,6 +860,25 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 <FolderOpen className="h-3.5 w-3.5" />
                 Carga configuraciones
               </Button>
+              <button
+                type="button"
+                onClick={() => setIsCollapsed((prev) => !prev)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer select-none shadow-2xs h-8"
+                aria-expanded={!isCollapsed}
+                title={isCollapsed ? 'Más parámetros' : 'Menos parámetros'}
+              >
+                {isCollapsed ? (
+                  <>
+                    <span className='font-medium'>Más parámetros</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span className='font-medium'>Menos parámetros</span>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
               <Button
                 type="button"
                 variant="ghost"
@@ -938,11 +962,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }
                       }}
                       disabled={!!activeSim}
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
-                        isEndUndefined
-                          ? 'bg-blue-100 text-blue-900 border border-blue-200'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${isEndUndefined
+                        ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {isEndUndefined ? '✓ Sin definir' : 'Sin definir'}
                     </button>
@@ -956,9 +979,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           setEndTime(getNowRoundedHourArgentina(0))
                         }
                       }}
-                      className={`w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium ${
-                        !activeSim ? 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/20' : 'cursor-not-allowed'
-                      }`}
+                      className={`w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium ${!activeSim ? 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/20' : 'cursor-not-allowed'
+                        }`}
                       title="Haga click para desbloquear e introducir fecha de fin"
                     >
                       <span>Sin definir</span>
@@ -987,219 +1009,230 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               </div>
             </div>
 
-            {/* SECCIÓN 2: Franja Horaria de Recolección */}
-            <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Truck className="h-3.5 w-3.5 text-blue-600" />
-                    Franja Horaria de Recolección de Camiones
-                  </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Define las horas en las que los camiones de recolección salen del depósito y descargan los contenedores.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
-                    {collectionHours.length} hs seleccionadas
-                  </span>
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('night_reinforce')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
-                    >
-                      Noche + Refuerzo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('night_only')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
-                    >
-                      Solo Noche
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('all')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
-                    >
-                      24 Horas
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('clear')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
-                    >
-                      Limpiar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selector interactivo de 24 horas */}
-              <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-2">
-                {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
-                  const isSelected = collectionHours.includes(hour)
-                  return (
-                    <button
-                      key={hour}
-                      type="button"
-                      onClick={() => toggleCollectionHour(hour)}
-                      disabled={!!activeSim}
-                      className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      <span>{String(hour).padStart(2, '0')}:00</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
-                        {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+            {/* Opciones Avanzadas Desplegables (Franja de camiones y Demanda por barrio) */}
+            {!isCollapsed && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* SECCIÓN 2: Franja Horaria de Recolección */}
+                <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Truck className="h-3.5 w-3.5 text-blue-600" />
+                        Franja Horaria de Recolección de Camiones
                       </span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Selector interactivo de Días de la Semana (directamente debajo de las horas) */}
-              <div className="grid grid-cols-7 gap-1.5 pt-2 border-t border-slate-200/70">
-                {WEEKDAYS.map((day) => {
-                  const isSelected = collectionDays.includes(day.id)
-                  return (
-                    <button
-                      key={day.id}
-                      type="button"
-                      onClick={() => toggleCollectionDay(day.id)}
-                      disabled={!!activeSim}
-                      className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
-                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      <span className="hidden sm:inline">{day.label}</span>
-                      <span className="sm:hidden">{day.short}</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'}`}>
-                        {isSelected ? 'Activo' : 'Sin recolección'}
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Define las horas en las que los camiones de recolección salen del depósito y descargan los contenedores.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
+                        {collectionHours.length} hs seleccionadas
                       </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* SECCIÓN 3: Demanda Global y Ajustes Específicos por Barrio */}
-            <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-blue-600" />
-                Demanda Global y Multiplicadores por Barrio
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Demanda Global *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    max="1100"
-                    required
-                    value={globalDemandMultiplier}
-                    onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
-                    disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                  />
-                  <p className="text-[10px] text-slate-400">Multiplicador general para todos los contenedores (1.0 = base).</p>
-                </div>
-              </div>
-
-              {/* Ajustes por Barrio */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras de Demanda por Barrio
-                    </span>
-                    <p className="text-[10px] text-slate-400">
-                      Ajuste la tasa de llenado para barrios específicos (ej: Palermo 1.8x, Recoleta 1.4x, hasta 1100x).
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addZoneOverride}
-                    disabled={!!activeSim}
-                    className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-slate-500" />
-                    Agregar Barrio
-                  </Button>
-                </div>
-
-                {zoneOverrides.length === 0 ? (
-                  <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                    Sin excepciones por barrio. Se aplicará la demanda global (<strong>{globalDemandMultiplier}x</strong>) a toda la ciudad.
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {zoneOverrides.map((zo, index) => (
-                      <div key={index} className="flex gap-3 items-center bg-white p-2 border border-slate-200/80 rounded-xl shadow-xs">
-                        <select
-                          value={zo.neighborhood}
-                          onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('night_reinforce')}
                           disabled={!!activeSim}
-                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                         >
-                          {neighborhoods.map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="1100"
-                            required
-                            value={zo.multiplier}
-                            onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
-                            disabled={!!activeSim}
-                            className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                            placeholder="Multiplicador"
-                          />
-                          <span className="text-xs font-bold text-slate-500">x</span>
+                          Noche + Refuerzo
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('night_only')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                        >
+                          Solo Noche
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('all')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                        >
+                          24 Horas
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('clear')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
+                        >
+                          Limpiar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selector interactivo de 24 horas */}
+                  <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-2">
+                    {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
+                      const isSelected = collectionHours.includes(hour)
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          onClick={() => toggleCollectionHour(hour)}
+                          disabled={!!activeSim}
+                          className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
+                            ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        >
+                          <span>{String(hour).padStart(2, '0')}:00</span>
+                          <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
+                            {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Selector interactivo de Días de la Semana (directamente debajo de las horas) */}
+                  <div className="grid grid-cols-7 gap-1.5 pt-2 border-t border-slate-200/70">
+                    {WEEKDAYS.map((day) => {
+                      const isSelected = collectionDays.includes(day.id)
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          onClick={() => toggleCollectionDay(day.id)}
+                          disabled={!!activeSim}
+                          className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
+                            ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
+                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        >
+                          <span className="hidden sm:inline">{day.label}</span>
+                          <span className="sm:hidden">{day.short}</span>
+                          <span className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'}`}>
+                            {isSelected ? 'Activo' : 'Sin recolección'}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* SECCIÓN 3: Demanda Global y Ajustes Específicos por Barrio */}
+                <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
+
+
+                  <div className="flex flex-col md:flex-row gap-6 items-start">
+                    {/* Demanda Global */}
+                    <div className="w-full md:w-80 lg:w-96 shrink-0 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                            <Layers className="h-3 w-3 text-blue-600" /> Demanda Global *
+                          </label>
+                          <p className="text-[10px] text-slate-400">
+                            Multiplicador general para todos los contenedores (1.0 = base).
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          max="1100"
+                          required
+                          value={globalDemandMultiplier}
+                          onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
+                          disabled={!!activeSim}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Ajustes por Barrio */}
+                    <div className="flex-1 w-full space-y-3 min-w-0">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
+                        <div>
+                          <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras de Demanda por Barrio
+                          </span>
+                          <p className="text-[10px] text-slate-400">
+                            Ajuste la tasa de llenado para barrios específicos (ej: Palermo 1.8x, Recoleta 1.4x, hasta 1100x).
+                          </p>
                         </div>
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeZoneOverride(index)}
+                          variant="outline"
+                          size="sm"
+                          onClick={addZoneOverride}
                           disabled={!!activeSim}
-                          className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Plus className="h-3.5 w-3.5 text-slate-500" />
+                          Agregar Barrio
                         </Button>
                       </div>
-                    ))}
+
+                      {zoneOverrides.length === 0 ? (
+                        <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
+                          Sin excepciones por barrio. Se aplicará la demanda global (<strong>{globalDemandMultiplier}x</strong>) a toda la ciudad.
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {zoneOverrides.map((zo, index) => (
+                            <div key={index} className="flex gap-3 items-center bg-white p-2 border border-slate-200/80 rounded-xl shadow-xs">
+                              <select
+                                value={zo.neighborhood}
+                                onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
+                                disabled={!!activeSim}
+                                className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                {neighborhoods.map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  max="1100"
+                                  required
+                                  value={zo.multiplier}
+                                  onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
+                                  disabled={!!activeSim}
+                                  className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                                  placeholder="Multiplicador"
+                                />
+                                <span className="text-xs font-bold text-slate-500">x</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeZoneOverride(index)}
+                                disabled={!!activeSim}
+                                className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-2 flex items-center justify-end">
               <Button

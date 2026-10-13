@@ -1,4 +1,4 @@
-import { Card, CardContent } from '@/common/ui/card'
+﻿import { Card, CardContent } from '@/common/utils/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { ContainerStats } from './types'
 

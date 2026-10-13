@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/common/utils/ui/button'
 import { ContainerStats } from './components/types'
 import ManagementStats from './components/ManagementStats'
 import ContainersTable from './components/ContainersTable'
@@ -72,10 +72,10 @@ export default function Management() {
             <Database className="h-8 w-8 text-sky-600 shrink-0" />
             <div className="space-y-0.5">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                Gestión de Contenedores
+                GestiÃ³n de Contenedores
               </h1>
               <p className="text-slate-500 text-sm md:text-base">
-                Administración y monitoreo de unidades de recolección y estado de la red.
+                AdministraciÃ³n y monitoreo de unidades de recolecciÃ³n y estado de la red.
               </p>
             </div>
           </div>

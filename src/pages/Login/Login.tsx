@@ -1,9 +1,9 @@
-import React, { useState } from "react"
+﻿import React, { useState } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/ui/card"
-import { Button } from "../../common/ui/button"
-import { Input } from "../../common/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/utils/ui/card"
+import { Button } from "../../common/utils/ui/button"
+import { Input } from "../../common/utils/ui/input"
 
 const success_route = '/';
 
@@ -35,7 +35,7 @@ export const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-2">
-                    <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
+                    <CardTitle className="text-2xl font-bold">Iniciar SesiÃ³n</CardTitle>
                     <CardDescription>Ingresa tus credenciales para acceder</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -61,7 +61,7 @@ export const Login = () => {
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium">
-                                Contraseña
+                                ContraseÃ±a
                             </label>
                             <Input
                                 id="password"
@@ -69,7 +69,7 @@ export const Login = () => {
                                 name="password"
                                 value={userForm.password}
                                 onChange={handleChange}
-                                placeholder="Ingresa tu contraseña"
+                                placeholder="Ingresa tu contraseÃ±a"
                                 disabled={loading}
                             />
                         </div>
@@ -78,10 +78,10 @@ export const Login = () => {
                             className="w-full"
                             disabled={loading || !userForm.name || !userForm.password}
                         >
-                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                            {loading ? "Iniciando sesiÃ³n..." : "Iniciar SesiÃ³n"}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">
-                            ¿No tienes una cuenta?{" "}
+                            Â¿No tienes una cuenta?{" "}
                             <Button asChild variant="link" className="h-auto p-0 text-sm font-medium">
                                 <Link to="/register">Crear cuenta</Link>
                             </Button>

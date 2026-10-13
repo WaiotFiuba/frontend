@@ -40,4 +40,27 @@ describe('MapVisual', () => {
         fireEvent.click(screen.getByTitle(/Mostrar\/ocultar perfiles de zona/i))
         expect(onToggleZoneProfiles).toHaveBeenCalledTimes(1)
     })
+
+    it('disables unavailable waste filter buttons when not in availableWasteTypes', () => {
+        const onWasteFilterChange = vi.fn()
+
+        render(
+            <MapVisual
+                fullContainersCount={0}
+                simulatedClock="12:00"
+                wasteFilter="all"
+                onWasteFilterChange={onWasteFilterChange}
+                zoneProfilesVisible={false}
+                zoneProfilesLoading={false}
+                onToggleZoneProfiles={vi.fn()}
+                availableWasteTypes={['organico']}
+            />
+        )
+
+        const reciclablesBtn = screen.getByRole('button', { name: /Reciclables/i })
+        expect(reciclablesBtn).toBeDisabled()
+
+        const humedosBtn = screen.getByRole('button', { name: /Húmedos/i })
+        expect(humedosBtn).not.toBeDisabled()
+    })
 })

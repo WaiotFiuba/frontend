@@ -1,4 +1,10 @@
-import { Button } from "@/common/ui/button"
+﻿import { Button } from "@/common/utils/ui/button"
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/common/utils/ui/tooltip"
 import {
     Clock,
     Layers,
@@ -18,6 +24,7 @@ export interface MapVisualProps {
     zoneProfilesVisible: boolean
     zoneProfilesLoading: boolean
     onToggleZoneProfiles: () => void
+    availableWasteTypes?: string[]
     onZoomIn?: () => void
     onZoomOut?: () => void
     className?: string
@@ -31,13 +38,14 @@ export default function MapVisual({
     zoneProfilesVisible,
     zoneProfilesLoading,
     onToggleZoneProfiles,
+    availableWasteTypes,
     className = "",
 }: MapVisualProps) {
     return (
         <div className={`absolute top-3 left-14 z-[1000] flex flex-wrap items-center gap-3 ${className}`}>
-            {/* Pestaña flotante: Contenedores al 100% */}
+            {/* PestaÃ±a flotante: Contenedores al 100% */}
             <div
-                className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
+                className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:bg-slate-100 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all select-none cursor-default"
                 title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
             >
                 <div className="relative flex items-center justify-center">
@@ -71,7 +79,7 @@ export default function MapVisual({
             <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                     <Clock className="w-2.5 h-2.5 text-sky-600" />
-                    Reloj de Simulación
+                    Reloj de SimulaciÃ³n
                 </p>
                 <p className="font-semibold text-slate-900 leading-tight">
                     {simulatedClock}
@@ -85,30 +93,59 @@ export default function MapVisual({
                 onToggle={onToggleZoneProfiles}
             />
 
-            {/* Filtros dinámicos de tipo de residuo */}
-            <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-md backdrop-blur flex items-center gap-1">
-                {[
-                    { value: 'all', label: 'Todos', icon: Layers },
-                    { value: 'organico', label: 'Húmedos', icon: Trash2 },
-                    { value: 'reciclaje', label: 'Reciclables', icon: Recycle },
-                ].map(({ value, label, icon: Icon }) => (
-                    <Button
-                        key={value}
-                        type="button"
-                        size="sm"
-                        variant={wasteFilter === value ? 'default' : 'ghost'}
-                        onClick={() => onWasteFilterChange(value as MapWasteFilter)}
-                        className={`h-7 px-2.5 text-xs font-semibold gap-1 rounded-lg cursor-pointer ${
-                            wasteFilter === value
-                                ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sm'
-                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                        }`}
-                    >
-                        <Icon className="w-3 h-3" />
-                        {label}
-                    </Button>
-                ))}
-            </div>
+            {/* Filtros dinÃ¡micos de tipo de residuo */}
+            <TooltipProvider delayDuration={150}>
+                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-md backdrop-blur flex items-center gap-1">
+                    {[
+                        { value: 'all', label: 'Todos', icon: Layers },
+                        { value: 'organico', label: 'HÃºmedos', icon: Trash2 },
+                        { value: 'reciclaje', label: 'Reciclables', icon: Recycle },
+                    ].map(({ value, label, icon: Icon }) => {
+                        const isDisabled =
+                            value !== 'all' &&
+                            availableWasteTypes != null &&
+                            !availableWasteTypes.includes(value)
+
+                        const buttonNode = (
+                            <Button
+                                key={value}
+                                type="button"
+                                size="sm"
+                                disabled={isDisabled}
+                                variant={wasteFilter === value ? 'default' : 'ghost'}
+                                onClick={() => onWasteFilterChange(value as MapWasteFilter)}
+                                className={`h-7 px-2.5 text-xs font-semibold gap-1 rounded-lg transition-all ${
+                                    isDisabled
+                                        ? 'opacity-40 cursor-not-allowed text-slate-400 pointer-events-none'
+                                        : wasteFilter === value
+                                        ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sm cursor-pointer'
+                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                                }`}
+                            >
+                                <Icon className="w-3 h-3" />
+                                {label}
+                            </Button>
+                        )
+
+                        if (isDisabled) {
+                            return (
+                                <Tooltip key={value}>
+                                    <TooltipTrigger asChild>
+                                        <span className="inline-flex cursor-not-allowed" tabIndex={0}>
+                                            {buttonNode}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="text-xs font-medium">
+                                        No hay contenedores de tipo {label.toLowerCase()} disponibles en esta red
+                                    </TooltipContent>
+                                </Tooltip>
+                            )
+                        }
+
+                        return buttonNode
+                    })}
+                </div>
+            </TooltipProvider>
         </div>
     )
 }

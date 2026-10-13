@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
-import { Button } from '@/common/ui/button'
+﻿import { useState, useEffect, useCallback } from 'react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
+import { Button } from '@/common/utils/ui/button'
 import {
   Table,
   TableHeader,
@@ -8,14 +8,14 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from '@/common/ui/table'
+} from '@/common/utils/ui/table'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from '@/common/ui/select'
+} from '@/common/utils/ui/select'
 import {
   Search,
   AlertTriangle,
@@ -107,7 +107,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
           <div>
             <CardTitle className="text-xl font-bold text-slate-950">Lista de Contenedores</CardTitle>
             <CardDescription className="text-slate-500 mt-1">
-              Muestra la información geográfica y el estado actual de cada unidad.
+              Muestra la informaciÃ³n geogrÃ¡fica y el estado actual de cada unidad.
             </CardDescription>
           </div>
 
@@ -115,9 +115,9 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             {showOnlyAlerts && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold px-2.5 py-1.5 animate-fade-in shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                Solo ≥80%
+                Solo â‰¥80%
                 <button onClick={() => handleToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
-                  ×
+                  Ã—
                 </button>
               </span>
             )}
@@ -162,7 +162,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
               {totalItems === 0 && !debouncedSearch && selectedType === 'all' && !showOnlyAlerts
                 ? "No hay contenedores registrados en la base de datos."
-                : 'Ningún contenedor coincide con la búsqueda o el filtro seleccionado.'}
+                : 'NingÃºn contenedor coincide con la bÃºsqueda o el filtro seleccionado.'}
             </p>
           </div>
         ) : (
@@ -175,7 +175,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                   <TableHead className="px-6 py-4">Tipo</TableHead>
                   <TableHead className="px-6 py-4">Estado</TableHead>
                   <TableHead className="px-6 py-4 w-64">Nivel de Llenado</TableHead>
-                  <TableHead className="px-6 py-4 text-right">Acción</TableHead>
+                  <TableHead className="px-6 py-4 text-right">AcciÃ³n</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -203,7 +203,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                       <TableCell className="px-6 py-4 text-slate-600">{container.zone || 'Sin asignar'}</TableCell>
                       <TableCell className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                          {container.container_type?.name || 'Genérico'}
+                          {container.container_type?.name || 'GenÃ©rico'}
                         </span>
                       </TableCell>
                       <TableCell className="px-6 py-4">
@@ -261,7 +261,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-xs font-bold text-slate-700">
-              Página {currentPage} de {totalPages}
+              PÃ¡gina {currentPage} de {totalPages}
             </div>
             <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} className="h-8 w-8 p-0">
               <ChevronRight className="h-4 w-4" />

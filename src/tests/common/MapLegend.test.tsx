@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import MapLegend from '@/common/MapLegend'
+import MapLegend from '@/pages/Map/components/MapLegend'
 
 describe('MapLegend', () => {
     it('renders two dropdown selectors and allows toggling them', () => {

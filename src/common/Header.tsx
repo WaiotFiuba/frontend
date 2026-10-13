@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom'
-import { Button } from "@/common/ui/button"
+﻿import { useNavigate } from 'react-router-dom'
+import { Button } from "@/common/utils/ui/button"
 import { useAuthContext } from '../context/AuthContext'
 
 export default function Header({ className }: { className?: string }) {
@@ -28,13 +28,13 @@ export default function Header({ className }: { className?: string }) {
                             Mapa
                         </button>
                         <button onClick={() => navigate('/optimization')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Optimización
+                            OptimizaciÃ³n
                         </button>
                         <button onClick={() => navigate('/forecast-evaluation')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Predicciones
                         </button>
                         <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            Gestión
+                            GestiÃ³n
                         </button>
                         <button onClick={() => navigate('/configurations')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
                             Configuraciones
@@ -50,7 +50,7 @@ export default function Header({ className }: { className?: string }) {
                         )}
                         {accessToken ? (
                             <Button variant="outline" onClick={() => logout()} className="cursor-pointer">
-                                Cerrar Sesión
+                                Cerrar SesiÃ³n
                             </Button>
                         ) : (
                             <Button variant="outline" onClick={() => navigate('/login')} className="cursor-pointer">

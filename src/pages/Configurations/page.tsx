@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
-import { Button } from '@/common/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
+import { Button } from '@/common/utils/ui/button'
 import {
   Settings,
   Plus,
@@ -48,7 +48,7 @@ const CABA_FALLBACK_NEIGHBORHOODS = [
   'Agronomia', 'Almagro', 'Balvanera', 'Barracas', 'Belgrano', 'Boedo',
   'Caballito', 'Chacarita', 'Coghlan', 'Colegiales', 'Constitucion', 'Flores',
   'Floresta', 'La Boca', 'Liniers', 'Mataderos', 'Monserrat', 'Monte Castro',
-  'Nueva Pompeya', 'Nuñez', 'Palermo', 'Parque Avellaneda', 'Parque Chacabuco',
+  'Nueva Pompeya', 'NuÃ±ez', 'Palermo', 'Parque Avellaneda', 'Parque Chacabuco',
   'Parque Chas', 'Parque Patricios', 'Paternal', 'Puerto Madero', 'Recoleta',
   'Retiro', 'Saavedra', 'San Cristobal', 'San Nicolas', 'San Telmo',
   'Velez Sarsfield', 'Versalles', 'Villa Crespo', 'Villa Del Parque',
@@ -63,10 +63,10 @@ const DEFAULT_COLLECTION_DAYS = [0, 1, 2, 3, 4]
 const WEEKDAYS = [
   { id: 0, label: 'Lunes', short: 'Lun' },
   { id: 1, label: 'Martes', short: 'Mar' },
-  { id: 2, label: 'Miércoles', short: 'Mié' },
+  { id: 2, label: 'MiÃ©rcoles', short: 'MiÃ©' },
   { id: 3, label: 'Jueves', short: 'Jue' },
   { id: 4, label: 'Viernes', short: 'Vie' },
-  { id: 5, label: 'Sábado', short: 'Sáb' },
+  { id: 5, label: 'SÃ¡bado', short: 'SÃ¡b' },
   { id: 6, label: 'Domingo', short: 'Dom' },
 ]
 
@@ -229,14 +229,14 @@ export default function ConfigurationsPage() {
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    setSuccess(`Configuración "${item.name}" cargada en el editor.`)
+    setSuccess(`ConfiguraciÃ³n "${item.name}" cargada en el editor.`)
     setTimeout(() => setSuccess(null), 4000)
   }
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!configName.trim()) {
-      setError('Por favor ingrese un nombre para la configuración.')
+      setError('Por favor ingrese un nombre para la configuraciÃ³n.')
       return
     }
 
@@ -253,10 +253,10 @@ export default function ConfigurationsPage() {
     try {
       if (editingId) {
         await api.put(`/digital-twin/configurations/${editingId}`, payload)
-        setSuccess(`Configuración "${payload.name}" actualizada con éxito.`)
+        setSuccess(`ConfiguraciÃ³n "${payload.name}" actualizada con Ã©xito.`)
       } else {
         await api.post('/digital-twin/configurations', payload)
-        setSuccess(`Configuración "${payload.name}" guardada con éxito.`)
+        setSuccess(`ConfiguraciÃ³n "${payload.name}" guardada con Ã©xito.`)
       }
       setTimeout(() => setSuccess(null), 5000)
       await fetchConfigs()
@@ -264,24 +264,24 @@ export default function ConfigurationsPage() {
     } catch (err: unknown) {
       console.error(err)
       const msg = err instanceof Error ? err.message : String(err)
-      setError('Error al guardar configuración: ' + msg)
+      setError('Error al guardar configuraciÃ³n: ' + msg)
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteConfig = async (id: number, name: string) => {
-    if (!window.confirm(`¿Está seguro de eliminar la configuración "${name}"?`)) return
+    if (!window.confirm(`Â¿EstÃ¡ seguro de eliminar la configuraciÃ³n "${name}"?`)) return
     try {
       await api.delete(`/digital-twin/configurations/${id}`)
-      setSuccess(`Configuración "${name}" eliminada correctamente.`)
+      setSuccess(`ConfiguraciÃ³n "${name}" eliminada correctamente.`)
       setTimeout(() => setSuccess(null), 4000)
       if (editingId === id) resetForm()
       await fetchConfigs()
     } catch (err: unknown) {
       console.error(err)
       const msg = err instanceof Error ? err.message : String(err)
-      setError('Error al eliminar configuración: ' + msg)
+      setError('Error al eliminar configuraciÃ³n: ' + msg)
     }
   }
 
@@ -358,7 +358,7 @@ export default function ConfigurationsPage() {
               Configuraciones
             </h1>
             <p className="text-slate-600 mt-1">
-              Cree, gestione y almacene configuraciones de simulación asociadas a su usuario.
+              Cree, gestione y almacene configuraciones de simulaciÃ³n asociadas a su usuario.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -395,26 +395,26 @@ export default function ConfigurationsPage() {
           <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-r-xl shadow-sm text-sm flex items-center gap-2 animate-in fade-in duration-200">
             <Check className="h-5 w-5 text-emerald-600 shrink-0" />
             <div>
-              <p className="font-bold">Operación Exitosa</p>
+              <p className="font-bold">OperaciÃ³n Exitosa</p>
               <p className="text-emerald-700">{success}</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* COLUMNA 1: Formulario de Creación / Edición */}
+          {/* COLUMNA 1: Formulario de CreaciÃ³n / EdiciÃ³n */}
           <div className="xl:col-span-8 space-y-6">
             <Card className="border-slate-200/80 shadow-md bg-white rounded-2xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 bg-slate-50/70 p-6 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
                     <Edit3 className="h-5 w-5 text-sky-600" />
-                    {editingId ? 'Editar Configuración' : 'Nueva Configuración de Simulación'}
+                    {editingId ? 'Editar ConfiguraciÃ³n' : 'Nueva ConfiguraciÃ³n de SimulaciÃ³n'}
                   </CardTitle>
                   <CardDescription className="text-slate-500 mt-1">
                     {editingId
-                      ? 'Modifique los parámetros y guarde los cambios en la base de datos.'
-                      : 'Configure los parámetros y almacénelos en su cuenta.'}
+                      ? 'Modifique los parÃ¡metros y guarde los cambios en la base de datos.'
+                      : 'Configure los parÃ¡metros y almacÃ©nelos en su cuenta.'}
                   </CardDescription>
                 </div>
                 {editingId && (
@@ -425,24 +425,24 @@ export default function ConfigurationsPage() {
                     onClick={resetForm}
                     className="text-xs text-rose-600 hover:bg-rose-50 font-semibold"
                   >
-                    Cancelar Edición
+                    Cancelar EdiciÃ³n
                   </Button>
                 )}
               </CardHeader>
 
               <CardContent className="p-6">
                 <form onSubmit={handleSaveConfig} className="space-y-6">
-                  {/* Datos Básicos */}
+                  {/* Datos BÃ¡sicos */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <FileCode className="h-3.5 w-3.5 text-sky-600" />
-                      Identificación de la Configuración
+                      IdentificaciÃ³n de la ConfiguraciÃ³n
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 uppercase">
-                          Nombre de la Configuración *
+                          Nombre de la ConfiguraciÃ³n *
                         </label>
                         <input
                           type="text"
@@ -455,11 +455,11 @@ export default function ConfigurationsPage() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 uppercase">
-                          Descripción (Opcional)
+                          DescripciÃ³n (Opcional)
                         </label>
                         <input
                           type="text"
-                          placeholder="Ej: Recolección solo nocturna con refuerzo en Palermo"
+                          placeholder="Ej: RecolecciÃ³n solo nocturna con refuerzo en Palermo"
                           value={configDescription}
                           onChange={(e) => setConfigDescription(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
@@ -468,7 +468,7 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÓN: Tiempos y Velocidad */}
+                  {/* SECCIÃ“N: Tiempos y Velocidad */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-sky-600" />
@@ -477,7 +477,7 @@ export default function ConfigurationsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Aceleración *</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">AceleraciÃ³n *</label>
                         <input
                           type="number"
                           step="any"
@@ -536,7 +536,7 @@ export default function ConfigurationsPage() {
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                             }`}
                           >
-                            {isEndUndefined ? '✓ Sin definir' : 'Sin definir'}
+                            {isEndUndefined ? 'âœ“ Sin definir' : 'Sin definir'}
                           </button>
                         </div>
 
@@ -569,13 +569,13 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÓN: Franja Horaria de Recolección */}
+                  {/* SECCIÃ“N: Franja Horaria de RecolecciÃ³n */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                           <Truck className="h-3.5 w-3.5 text-sky-600" />
-                          Franja Horaria y Días de Recolección (Truck Engine)
+                          Franja Horaria y DÃ­as de RecolecciÃ³n (Truck Engine)
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -640,7 +640,7 @@ export default function ConfigurationsPage() {
                           >
                             <span>{String(hour).padStart(2, '0')}:00</span>
                             <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
-                              {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+                              {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'DÃ­a'}
                             </span>
                           </button>
                         )
@@ -669,7 +669,7 @@ export default function ConfigurationsPage() {
                                 isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
                               }`}
                             >
-                              {isSelected ? 'Activo' : 'Sin recolección'}
+                              {isSelected ? 'Activo' : 'Sin recolecciÃ³n'}
                             </span>
                           </button>
                         )
@@ -677,7 +677,7 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÓN: Demanda Global y por Barrio */}
+                  {/* SECCIÃ“N: Demanda Global y por Barrio */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5 text-sky-600" />
@@ -720,7 +720,7 @@ export default function ConfigurationsPage() {
 
                       {zoneOverrides.length === 0 ? (
                         <div className="p-3 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                          Sin excepciones por barrio. Se aplicará la demanda global (
+                          Sin excepciones por barrio. Se aplicarÃ¡ la demanda global (
                           <strong>{globalDemandMultiplier}x</strong>).
                         </div>
                       ) : (
@@ -786,7 +786,7 @@ export default function ConfigurationsPage() {
                       ) : (
                         <>
                           <Save className="h-4 w-4" />
-                          {editingId ? 'Actualizar Configuración' : 'Guardar Configuración'}
+                          {editingId ? 'Actualizar ConfiguraciÃ³n' : 'Guardar ConfiguraciÃ³n'}
                         </>
                       )}
                     </Button>
@@ -807,7 +807,7 @@ export default function ConfigurationsPage() {
                       Mis Configuraciones
                     </CardTitle>
                     <CardDescription className="text-slate-500 mt-1">
-                      {configs.length} configuración{configs.length !== 1 ? 'es' : ''} guardada
+                      {configs.length} configuraciÃ³n{configs.length !== 1 ? 'es' : ''} guardada
                       {configs.length !== 1 ? 's' : ''} en su usuario.
                     </CardDescription>
                   </div>
@@ -829,7 +829,7 @@ export default function ConfigurationsPage() {
                   <div className="mt-3">
                     <input
                       type="text"
-                      placeholder="Buscar por nombre o descripción..."
+                      placeholder="Buscar por nombre o descripciÃ³n..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
@@ -849,7 +849,7 @@ export default function ConfigurationsPage() {
                     <FolderOpen className="h-8 w-8 text-slate-300 mx-auto" />
                     <p className="text-sm font-bold text-slate-600">No posee configuraciones guardadas</p>
                     <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                      Complete el formulario de la izquierda y presione "Guardar Configuración" para
+                      Complete el formulario de la izquierda y presione "Guardar ConfiguraciÃ³n" para
                       almacenarla.
                     </p>
                   </div>
@@ -874,7 +874,7 @@ export default function ConfigurationsPage() {
                               {item.name}
                               {editingId === item.id && (
                                 <span className="bg-sky-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase">
-                                  En edición
+                                  En ediciÃ³n
                                 </span>
                               )}
                             </h4>
@@ -897,7 +897,7 @@ export default function ConfigurationsPage() {
                           </span>
                           {item.config?.scenario?.collection_hours && (
                             <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-semibold">
-                              {item.config.scenario.collection_hours.length} hs recolección
+                              {item.config.scenario.collection_hours.length} hs recolecciÃ³n
                             </span>
                           )}
                           {item.config?.zone_overrides?.length > 0 && (
@@ -952,7 +952,7 @@ export default function ConfigurationsPage() {
                               size="icon"
                               onClick={() => handleDeleteConfig(item.id, item.name)}
                               className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
-                              title="Eliminar configuración"
+                              title="Eliminar configuraciÃ³n"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -977,7 +977,7 @@ export default function ConfigurationsPage() {
                 <FileCode className="h-5 w-5 text-sky-600" />
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">{showJsonModal.name}</h3>
-                  <p className="text-xs text-slate-500">Estructura JSON completa de la configuración</p>
+                  <p className="text-xs text-slate-500">Estructura JSON completa de la configuraciÃ³n</p>
                 </div>
               </div>
               <Button
@@ -998,7 +998,7 @@ export default function ConfigurationsPage() {
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                {showJsonModal.id ? `ID #${showJsonModal.id}` : 'Previsualización'}
+                {showJsonModal.id ? `ID #${showJsonModal.id}` : 'PrevisualizaciÃ³n'}
               </span>
               <div className="flex items-center gap-2">
                 <Button

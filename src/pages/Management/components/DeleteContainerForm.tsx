@@ -1,6 +1,6 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/common/utils/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/common/ui/dialog'
+} from '@/common/utils/ui/dialog'
 import { api } from '@/lib/api'
 import { BackendContainer } from './types'
 
@@ -48,7 +48,7 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             <DialogHeader className="p-0">
               <DialogTitle className="text-lg font-bold text-slate-900">Eliminar Contenedor</DialogTitle>
               <DialogDescription className="text-sm text-slate-500 leading-relaxed mt-1">
-                ¿Está seguro de que desea eliminar el contenedor{' '}
+                Â¿EstÃ¡ seguro de que desea eliminar el contenedor{' '}
                 <span className="font-mono font-bold text-slate-800">{container.site_id}</span>{' '}
                 ({container.site_name || 'Sin Nombre'})?
               </DialogDescription>

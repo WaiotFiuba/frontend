@@ -1,9 +1,9 @@
-import { useState, type ChangeEvent, type FormEvent } from "react"
+﻿import { useState, type ChangeEvent, type FormEvent } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuthContext } from "../../context/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/ui/card"
-import { Button } from "../../common/ui/button"
-import { Input } from "../../common/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/utils/ui/card"
+import { Button } from "../../common/utils/ui/button"
+import { Input } from "../../common/utils/ui/input"
 
 type RegisterForm = {
     name: string
@@ -107,7 +107,7 @@ export default function Register() {
                                 placeholder="Ingresa tu nombre"
                                 disabled={loading}
                             />
-                            {nameError && <p className="text-sm text-destructive">El nombre no puede estar vacío.</p>}
+                            {nameError && <p className="text-sm text-destructive">El nombre no puede estar vacÃ­o.</p>}
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="email" className="text-sm font-medium">
@@ -127,12 +127,12 @@ export default function Register() {
                                 className={`overflow-hidden text-sm text-destructive transition-all duration-200 ease-out ${emailError ? "max-h-5 opacity-100 mt-1" : "max-h-0 opacity-0"
                                     }`}
                             >
-                                Ingresá un email válido.
+                                IngresÃ¡ un email vÃ¡lido.
                             </p>
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium">
-                                Contraseña
+                                ContraseÃ±a
                             </label>
                             <Input
                                 id="password"
@@ -140,7 +140,7 @@ export default function Register() {
                                 name="password"
                                 value={form.password}
                                 onChange={handleChange}
-                                placeholder="Crea una contraseña"
+                                placeholder="Crea una contraseÃ±a"
                                 disabled={loading}
                             />
                             <p
@@ -153,7 +153,7 @@ export default function Register() {
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="confirmPassword" className="text-sm font-medium">
-                                Confirmar contraseña
+                                Confirmar contraseÃ±a
                             </label>
                             <Input
                                 id="confirmPassword"
@@ -161,12 +161,12 @@ export default function Register() {
                                 name="confirmPassword"
                                 value={form.confirmPassword}
                                 onChange={handleChange}
-                                placeholder="Repite tu contraseña"
+                                placeholder="Repite tu contraseÃ±a"
                                 disabled={loading}
                             />
                             <div className="min-h-5">
                                 {confirmPasswordError && (
-                                    <p className="text-sm text-destructive">Las contraseñas deben coincidir.</p>
+                                    <p className="text-sm text-destructive">Las contraseÃ±as deben coincidir.</p>
                                 )}
                             </div>
                         </div>
@@ -174,9 +174,9 @@ export default function Register() {
                             {loading ? "Registrando..." : "Registrarse"}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">
-                            ¿Ya tienes una cuenta?{" "}
+                            Â¿Ya tienes una cuenta?{" "}
                             <Button asChild variant="link" className="h-auto p-0 text-sm font-medium">
-                                <Link to="/login">Volver a iniciar sesión</Link>
+                                <Link to="/login">Volver a iniciar sesiÃ³n</Link>
                             </Button>
                         </p>
                     </form>

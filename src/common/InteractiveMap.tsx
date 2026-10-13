@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react"
+﻿import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
@@ -19,8 +19,8 @@ import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
-import { Button } from "@/common/ui/button"
-import { Badge } from "@/common/ui/badge"
+import { Button } from "@/common/utils/ui/button"
+import { Badge } from "@/common/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
@@ -53,12 +53,6 @@ function MapViewportController({
     onZoomChange?: (zoom: number) => void
 }) {
     const map = useMapEvents({
-        zoom: () => {
-            mapRef.current = map
-            if (onZoomChange) {
-                onZoomChange(map.getZoom())
-            }
-        },
         moveend: () => {
             mapRef.current = map
             if (onZoomChange) {
@@ -132,6 +126,7 @@ interface MapConfigResponse {
     center: { lat: number; lng: number }
     default_zoom: number
     bounds: [[number, number], [number, number]] | null
+    available_waste_types?: string[]
 }
 
 function MapConfigController({
@@ -365,25 +360,39 @@ export default function InteractiveMap({
         }
     }, [])
 
-    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
+    const simDebounceRef = useRef<number | null>(null)
+    // Refrescar automÃ¡ticamente los contenedores visibles cuando avanza la simulaciÃ³n con debounce
     useEffect(() => {
         if (!mapRef.current) return
-        const map = mapRef.current
-        const bounds = map.getBounds()
-        const sw = bounds.getSouthWest()
-        const ne = bounds.getNorthEast()
-        const zoom = map.getZoom()
-        const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
-        const latPadding = (ne.lat - sw.lat) * boundsPadding
-        const lngPadding = (ne.lng - sw.lng) * boundsPadding
 
-        void fetchForBounds(
-            sw.lat - latPadding,
-            ne.lat + latPadding,
-            sw.lng - lngPadding,
-            ne.lng + lngPadding,
-            zoom
-        )
+        if (simDebounceRef.current) {
+            window.clearTimeout(simDebounceRef.current)
+        }
+        simDebounceRef.current = window.setTimeout(() => {
+            if (!mapRef.current) return
+            const map = mapRef.current
+            const bounds = map.getBounds()
+            const sw = bounds.getSouthWest()
+            const ne = bounds.getNorthEast()
+            const zoom = map.getZoom()
+            const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
+            const latPadding = (ne.lat - sw.lat) * boundsPadding
+            const lngPadding = (ne.lng - sw.lng) * boundsPadding
+
+            void fetchForBounds(
+                sw.lat - latPadding,
+                ne.lat + latPadding,
+                sw.lng - lngPadding,
+                ne.lng + lngPadding,
+                zoom
+            )
+        }, 600)
+
+        return () => {
+            if (simDebounceRef.current) {
+                window.clearTimeout(simDebounceRef.current)
+            }
+        }
     }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds])
 
     const simulatedClock = useMemo(
@@ -391,7 +400,7 @@ export default function InteractiveMap({
         [activeSimulation?.simulated_time]
     )
 
-    // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
+    // Sitios a desplegar: cuando el zoom es el mÃ¡s alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
         if (!sites || sites.length === 0) return []
 
@@ -493,6 +502,7 @@ export default function InteractiveMap({
                 currentZoom={currentZoom}
                 wasteFilter={wasteFilter}
                 onWasteFilterChange={setWasteFilter}
+                availableWasteTypes={mapConfig?.available_waste_types}
                 zoneProfilesVisible={zoneProfiles.visible}
                 zoneProfilesLoading={zoneProfiles.loading}
                 onToggleZoneProfiles={zoneProfiles.toggle}
@@ -567,7 +577,7 @@ export default function InteractiveMap({
                         }
                     }
                     const siteKey = site.id
-                    const markerKey = `${siteKey}-z${currentZoom}`
+                    const markerKey = siteKey
                     if (!isCluster) {
                         return (
                             <Marker
