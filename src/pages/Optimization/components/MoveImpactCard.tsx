@@ -7,6 +7,7 @@ import {
   Truck,
   X,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { RedistributionMove } from '../types'
 
 interface MoveImpactCardProps {
@@ -20,6 +21,7 @@ export default function MoveImpactCard({
   onClose,
   className = '',
 }: MoveImpactCardProps) {
+  const { t } = useTranslation()
   const rBefore = move.receiver_fill_before ?? null
   const rAfter = move.receiver_fill_after ?? null
   const dBefore = move.donor_fill_before ?? null
@@ -41,7 +43,7 @@ export default function MoveImpactCard({
   return (
     <div
       role="region"
-      aria-label="Detalle de impacto del traslado"
+      aria-label={t('optimization.move_impact_desc')}
       onClick={(e) => e.stopPropagation()}
       className={`absolute top-4 right-4 z-[1001] pointer-events-auto w-80 sm:w-96 max-w-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl p-4 sm:p-5 space-y-3.5 transition-all ${className}`}
     >
@@ -57,11 +59,11 @@ export default function MoveImpactCard({
                 #{move.container_id}
               </span>
               <h4 className="text-xs font-bold text-slate-900 tracking-tight">
-                Traslado Seleccionado
+                {t('optimization.selected_move')}
               </h4>
             </div>
             <p className="text-[11px] text-slate-500">
-              Impacto y descongestión de carga entre sitios
+              {t('optimization.move_impact_desc')}
             </p>
           </div>
         </div>
@@ -96,7 +98,7 @@ export default function MoveImpactCard({
             </div>
             <div>
               <span className="text-[11px] font-semibold text-slate-600 block">
-                Descongestión Neta del Par
+                {t('optimization.net_pair_relief')}
               </span>
               <span className="text-sm font-black tracking-tight text-emerald-700">
                 {netDecongestion > 0 ? `+${netDecongestion}%` : `${netDecongestion}%`}
@@ -104,7 +106,7 @@ export default function MoveImpactCard({
             </div>
           </div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 border border-emerald-300">
-            Suma de ambos sitios
+            {t('optimization.both_sites_sum')}
           </span>
         </div>
       )}
@@ -116,11 +118,11 @@ export default function MoveImpactCard({
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-rose-700 flex items-center gap-1">
               <ArrowDownRight className="h-3.5 w-3.5" />
-              Destino (Receptor Saturado)
+              {t('optimization.dest_receiver')}
             </span>
             {rRelief != null && (
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                {rRelief}% saturación
+                {rRelief}% {t('optimization.saturation')}
               </span>
             )}
           </div>
@@ -129,7 +131,7 @@ export default function MoveImpactCard({
           </p>
           {rBefore != null && rAfter != null && (
             <div className="flex items-center gap-1 text-[11px] text-slate-600">
-              <span>Llenado:</span>
+              <span>{t('optimization.fill_label')}</span>
               <span className="font-mono font-bold text-rose-600">{rBefore}%</span>
               <ArrowRight className="h-3 w-3 text-slate-400" />
               <span className="font-mono font-bold text-emerald-600">{rAfter}%</span>
@@ -142,11 +144,11 @@ export default function MoveImpactCard({
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-sky-700 flex items-center gap-1">
               <ArrowUpRight className="h-3.5 w-3.5" />
-              Origen (Donante con Holgura)
+              {t('optimization.origin_donor')}
             </span>
             {dDelta != null && (
               <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">
-                +{dDelta}% carga segura
+                +{dDelta}% {t('optimization.safe_load')}
               </span>
             )}
           </div>
@@ -155,7 +157,7 @@ export default function MoveImpactCard({
           </p>
           {dBefore != null && dAfter != null && (
             <div className="flex items-center gap-1 text-[11px] text-slate-600">
-              <span>Llenado:</span>
+              <span>{t('optimization.fill_label')}</span>
               <span className="font-mono font-bold text-sky-600">{dBefore}%</span>
               <ArrowRight className="h-3 w-3 text-slate-400" />
               <span className="font-mono font-bold text-slate-700">{dAfter}%</span>
@@ -168,7 +170,7 @@ export default function MoveImpactCard({
       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
         <div className="flex items-center gap-1">
           <MapPin className="h-3.5 w-3.5 text-slate-400" />
-          <span>Distancia:</span>
+          <span>{t('optimization.th_distance')}:</span>
           <span className="font-mono font-bold text-slate-700">
             {move.distance_km.toFixed(2)} km
           </span>
@@ -181,7 +183,7 @@ export default function MoveImpactCard({
           onClick={onClose}
           className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
         >
-          Ocultar
+          {t('optimization.hide')}
         </button>
       </div>
     </div>

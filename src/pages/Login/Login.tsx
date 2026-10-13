@@ -1,9 +1,10 @@
 import React, { useState } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { useAuthContext } from "../../context/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../common/ui/card"
-import { Button } from "../../common/ui/button"
-import { Input } from "../../common/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/utils/ui/card"
+import { Button } from "@/utils/ui/button"
+import { Input } from "@/utils/ui/input"
 
 const success_route = '/';
 
@@ -11,6 +12,7 @@ export const Login = () => {
     const [userForm, setUserForm] = useState({ name: "prueba@gmail.com", password: "prueba123456" })
     const { user, login, loading, error } = useAuthContext();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     if (user) {
         return <Navigate to={success_route} replace />
@@ -35,8 +37,8 @@ export const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-2">
-                    <CardTitle className="text-2xl font-bold">Iniciar Sesión</CardTitle>
-                    <CardDescription>Ingresa tus credenciales para acceder</CardDescription>
+                    <CardTitle className="text-2xl font-bold">{t('auth.login_title')}</CardTitle>
+                    <CardDescription>{t('auth.login_subtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -47,7 +49,7 @@ export const Login = () => {
                         )}
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium">
-                                Email
+                                {t('auth.email')}
                             </label>
                             <Input
                                 id="name"
@@ -55,13 +57,13 @@ export const Login = () => {
                                 name="name"
                                 value={userForm.name}
                                 onChange={handleChange}
-                                placeholder="Ingresa tu email"
+                                placeholder={t('auth.email_placeholder')}
                                 disabled={loading}
                             />
                         </div>
                         <div className="space-y-2">
                             <label htmlFor="password" className="text-sm font-medium">
-                                Contraseña
+                                {t('auth.password')}
                             </label>
                             <Input
                                 id="password"
@@ -69,21 +71,21 @@ export const Login = () => {
                                 name="password"
                                 value={userForm.password}
                                 onChange={handleChange}
-                                placeholder="Ingresa tu contraseña"
+                                placeholder={t('auth.password_placeholder')}
                                 disabled={loading}
                             />
                         </div>
                         <Button
                             type="submit"
-                            className="w-full"
+                            className="w-full cursor-pointer"
                             disabled={loading || !userForm.name || !userForm.password}
                         >
-                            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                            {loading ? t('auth.logging_in') : t('auth.login_submit')}
                         </Button>
                         <p className="text-center text-sm text-muted-foreground">
-                            ¿No tienes una cuenta?{" "}
-                            <Button asChild variant="link" className="h-auto p-0 text-sm font-medium">
-                                <Link to="/register">Crear cuenta</Link>
+                            {t('auth.no_account')}{" "}
+                            <Button asChild variant="link" className="h-auto p-0 text-sm font-medium cursor-pointer">
+                                <Link to="/register">{t('auth.create_account')}</Link>
                             </Button>
                         </p>
                     </form>

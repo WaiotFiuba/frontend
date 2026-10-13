@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { NetworkMetricsData, UtilizationCategory } from './types'
 
 interface KpiDistributionBarProps {
@@ -66,6 +67,7 @@ export function KpiDistributionBar({
   onSelectCategory,
   className = '',
 }: KpiDistributionBarProps) {
+  const { t } = useTranslation()
   const total = metrics.total_sites || 1
 
   const items: Array<{ id: UtilizationCategory; count: number }> = [
@@ -86,15 +88,15 @@ export function KpiDistributionBar({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-slate-700">
-            Distribución de Capacidad de Sitios
+            {t('kpi.distribution_title')}
           </span>
           <span className="text-[11px] text-slate-400 font-mono">
-            ({metrics.total_sites} sitios analizados)
+            {t('kpi.sites_analyzed', { count: metrics.total_sites })}
           </span>
         </div>
         {metrics.window_start && (
           <span className="text-slate-400 text-[11px]">
-            Ventana desde {new Date(metrics.window_start).toLocaleDateString()}
+            {t('kpi.window_from', { date: new Date(metrics.window_start).toLocaleDateString() })}
           </span>
         )}
       </div>
@@ -103,6 +105,7 @@ export function KpiDistributionBar({
       <div className="h-2.5 w-full rounded-full bg-slate-100 flex overflow-hidden">
         {items.map(({ id, count }) => {
           const cfg = CATEGORY_DEFINITIONS[id]
+          const label = t(`kpi.category_${id}`, { defaultValue: cfg.label })
           const pct = (count / total) * 100
           if (pct === 0) return null
 
@@ -116,7 +119,7 @@ export function KpiDistributionBar({
               className={`${cfg.barColor} transition-all duration-300 ${
                 isDimmed ? 'opacity-30' : 'opacity-100'
               }`}
-              title={`${cfg.label}: ${count} (${pct.toFixed(1)}%)`}
+              title={`${label}: ${count} (${pct.toFixed(1)}%)`}
             />
           )
         })}
@@ -134,12 +137,13 @@ export function KpiDistributionBar({
                 : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
             }`}
           >
-            Todos ({metrics.total_sites})
+            {t('kpi.all_sites_count', { count: metrics.total_sites, defaultValue: `Todos (${metrics.total_sites})` })}
           </button>
         )}
 
         {items.map(({ id, count }) => {
           const cfg = CATEGORY_DEFINITIONS[id]
+          const label = t(`kpi.category_${id}`, { defaultValue: cfg.label })
           const pct = ((count / total) * 100).toFixed(0)
           const isSelected = selectedCategory === id
 
@@ -160,7 +164,7 @@ export function KpiDistributionBar({
               <span
                 className={`h-2 w-2 rounded-full ${cfg.barColor} shrink-0`}
               />
-              <span>{cfg.label}</span>
+              <span>{label}</span>
               <span className="font-mono font-semibold tabular-nums text-slate-800">
                 {count}
               </span>

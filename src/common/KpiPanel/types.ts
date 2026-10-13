@@ -34,7 +34,7 @@ export interface KpiCardProps {
   title: string
   value: string | number
   subvalue?: string
-  icon: ComponentType<{ className?: string }>
+  icon?: ComponentType<{ className?: string }>
   iconColor?: string
   tooltip?: string
   progressPct?: number
