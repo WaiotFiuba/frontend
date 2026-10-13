@@ -1,9 +1,10 @@
-﻿import { useCallback, useEffect, useMemo, useState, useRef } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
-import { labels } from "./utils/types"
-import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "./utils/types"
+import { labels } from "@/utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "@/utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -12,15 +13,15 @@ import {
     calculateBearing,
     colorForLevel,
     formatSimulatedTime,
-} from "./utils/functions"
+} from "@/utils/functions"
 import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
-import { Button } from "@/common/utils/ui/button"
-import { Badge } from "@/common/utils/ui/badge"
+import { Button } from "@/utils/ui/button"
+import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
@@ -236,6 +237,7 @@ export default function InteractiveMap({
     highlightedMoveId,
     isPlayground = false,
 }: InteractiveMapProps) {
+    const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
@@ -361,7 +363,7 @@ export default function InteractiveMap({
     }, [])
 
     const simDebounceRef = useRef<number | null>(null)
-    // Refrescar automÃ¡ticamente los contenedores visibles cuando avanza la simulaciÃ³n con debounce
+    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación con debounce
     useEffect(() => {
         if (!mapRef.current) return
 
@@ -400,7 +402,7 @@ export default function InteractiveMap({
         [activeSimulation?.simulated_time]
     )
 
-    // Sitios a desplegar: cuando el zoom es el mÃ¡s alejado posible (zoom <= 10), se agrupan en uno solo
+    // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
         if (!sites || sites.length === 0) return []
 
@@ -593,7 +595,7 @@ export default function InteractiveMap({
                                                 <div className="flex items-center gap-1.5">
                                                     <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
                                                     <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
-                                                        {site.name || `Sitio #${site.id}`}
+                                                        {site.name || t('map.site_number', { id: site.id, defaultValue: `Sitio #${site.id}` })}
                                                     </h3>
                                                 </div>
                                                 {site.address && site.address !== site.name && (
@@ -606,10 +608,10 @@ export default function InteractiveMap({
                                                         #{site.id}
                                                     </Badge>
                                                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium">
-                                                        {labels[site.type as ContainerType] || labels.indiferenciado}
+                                                        {t(`map.types.${site.type}`, { defaultValue: labels[site.type as ContainerType] || labels.indiferenciado })}
                                                     </Badge>
                                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
-                                                        {containerCount} cont.
+                                                        {t('map.container_count_short', { count: containerCount, defaultValue: `${containerCount} cont.` })}
                                                     </Badge>
                                                 </div>
                                             </div>
@@ -617,7 +619,7 @@ export default function InteractiveMap({
 
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-600 font-medium">Nivel promedio:</span>
+                                                <span className="text-slate-600 font-medium">{t('map.avg_level', { defaultValue: 'Nivel promedio:' })}</span>
                                                 <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel) }}>
                                                     {siteLevel}%
                                                 </span>
@@ -635,7 +637,7 @@ export default function InteractiveMap({
 
                                         <div className="border-t pt-2">
                                             <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                                Contenedores
+                                                {t('map.containers', { defaultValue: 'Contenedores' })}
                                             </p>
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
                                                 {site.containers.map((container: Container) => {
@@ -673,7 +675,7 @@ export default function InteractiveMap({
                                             onClick={() => navigate(`/map/sites/${site.id}`)}
                                             className="mt-2 w-full h-8 text-xs font-bold bg-blue-200 hover:bg-blue-300 text-blue-950 border border-blue-300/80 gap-1.5 shadow-xs"
                                         >
-                                            Ver detalle del sitio
+                                            {t('map.view_site_detail', { defaultValue: 'Ver detalle del sitio' })}
                                             <ExternalLink className="w-3 h-3 text-blue-900" />
                                         </Button>
                                     </div>

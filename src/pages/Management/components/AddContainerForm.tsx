@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
-import { Button } from '@/common/utils/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
+import { Button } from '@/utils/ui/button'
 import { RefreshCw } from 'lucide-react'
 import { api } from '@/lib/api'
 
@@ -63,7 +63,7 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
   return (
     <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden rounded-2xl">
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
-        <CardTitle className="text-xl font-bold text-slate-950">AÃ±adir Nuevo Contenedor</CardTitle>
+        <CardTitle className="text-xl font-bold text-slate-950">Añadir Nuevo Contenedor</CardTitle>
         <CardDescription className="text-slate-500 mt-1">
           Registre una unidad individual localizada en el sistema.
         </CardDescription>
@@ -82,7 +82,7 @@ export default function AddContainerForm({ containerTypes, onContainerCreated, o
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-500 uppercase">DirecciÃ³n (Opcional)</label>
+            <label className="text-xs font-bold text-slate-500 uppercase">Dirección (Opcional)</label>
             <input type="text" placeholder="Ej: Av. Callao 400" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium" />
           </div>
 

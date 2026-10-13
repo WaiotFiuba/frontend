@@ -1,7 +1,7 @@
 import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Container, Site, ContainerType, MapWasteFilter, ZoneProfileCollection, ZoneType } from "./types"
-import { api } from "../../lib/api"
+import { api } from "../lib/api"
 
 // Colores por tipo de zona para la capa de perfiles de zona del mapa.
 // Solo los zone_type que realmente aparecen clasificados en
@@ -89,7 +89,7 @@ export const containerTypeForWaste = (rawType?: string | null, rawWaste?: string
     if (value.includes("seca") || value.includes("recicl") || value.includes("verde")) {
         return "reciclaje"
     }
-    if (value.includes("humeda") || value.includes("húmeda") || value.includes("hÃºmeda") || value.includes("organico")) {
+    if (value.includes("humeda") || value.includes("húmeda") || value.includes("organico")) {
         return "organico"
     }
     return "indiferenciado"

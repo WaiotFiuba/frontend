@@ -1,4 +1,5 @@
-﻿import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Activity,
   AlertCircle,
@@ -15,8 +16,8 @@ import {
   Target,
 } from 'lucide-react'
 
-import { Button } from '@/common/utils/ui/button'
-import { Input } from '@/common/utils/ui/input'
+import { Button } from '@/utils/ui/button'
+import { Input } from '@/utils/ui/input'
 import { api } from '@/lib/api'
 
 interface EvaluationMetric {
@@ -109,16 +110,16 @@ const metricCards = [
   },
   {
     key: 'threshold_precision',
-    label: 'PrecisiÃ³n crÃ­tico',
-    detail: 'Alertas crÃ­ticas acertadas',
+    label: 'Precisión crítico',
+    detail: 'Alertas críticas acertadas',
     icon: Target,
     percent: true,
     tone: 'amber',
   },
   {
     key: 'threshold_recall',
-    label: 'Recall crÃ­tico',
-    detail: 'CrÃ­ticos reales detectados',
+    label: 'Recall crítico',
+    detail: 'Críticos reales detectados',
     icon: LineChart,
     percent: true,
     tone: 'emerald',
@@ -267,8 +268,8 @@ function SiteMetricsTable({ sites }: { sites: SiteMetric[] }) {
               <th className="px-4 py-3 text-left font-semibold text-slate-600">ID de Sitio</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">MAE</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">RMSE</th>
-              <th className="px-4 py-3 text-right font-semibold text-slate-600">Error crÃ­tico</th>
-              <th className="px-4 py-3 text-right font-semibold text-slate-600">PrecisiÃ³n</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-600">Error crítico</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-600">Precisión</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Recall</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Muestras</th>
             </tr>
@@ -294,7 +295,7 @@ function SiteMetricsTable({ sites }: { sites: SiteMetric[] }) {
             {sites.length === 0 && (
               <tr>
                 <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
-                  No hay mÃ©tricas por sitio para mostrar.
+                  No hay métricas por sitio para mostrar.
                 </td>
               </tr>
             )}
@@ -332,7 +333,7 @@ const buildReportHtml = (report: EvaluationReport) => {
     <!doctype html>
     <html>
       <head>
-        <title>Informe evaluaciÃ³n ${report.id}</title>
+        <title>Informe evaluación ${report.id}</title>
         <style>
           body { font-family: Arial, sans-serif; color: #0f172a; margin: 32px; }
           h1 { margin: 0 0 8px; }
@@ -350,25 +351,25 @@ const buildReportHtml = (report: EvaluationReport) => {
       </head>
       <body>
         <button onclick="window.print()">Guardar como PDF</button>
-        <h1>Informe de evaluaciÃ³n de proyecciÃ³n</h1>
-        <p>Modelo: <strong>${escapeHtml(report.model_key)}</strong> Â· EvaluaciÃ³n #${report.id}</p>
+        <h1>Informe de evaluación de proyección</h1>
+        <p>Modelo: <strong>${escapeHtml(report.model_key)}</strong> · Evaluación #${report.id}</p>
         <div class="meta">
           <div class="card"><div class="label">Estado</div><div>${escapeHtml(report.status)}</div></div>
           <div class="card"><div class="label">Finalizada</div><div>${formatDateTime(report.completed_at)}</div></div>
           <div class="card"><div class="label">Sitios evaluados</div><div>${escapeHtml(report.summary?.site_count ?? report.site_metrics.length)}</div></div>
           <div class="card"><div class="label">Puntos comparados</div><div>${escapeHtml(report.summary?.compared_points ?? 'N/A')}</div></div>
         </div>
-        <h2>MÃ©tricas globales</h2>
+        <h2>Métricas globales</h2>
         <div class="cards">
           <div class="card"><div class="label">MAE</div><div class="value">${formatNumber(report.global_metrics.mae, ' pts')}</div></div>
           <div class="card"><div class="label">RMSE</div><div class="value">${formatNumber(report.global_metrics.rmse, ' pts')}</div></div>
-          <div class="card"><div class="label">PrecisiÃ³n crÃ­tico</div><div class="value">${formatPercent(report.global_metrics.threshold_precision)}</div></div>
-          <div class="card"><div class="label">Recall crÃ­tico</div><div class="value">${formatPercent(report.global_metrics.threshold_recall)}</div></div>
+          <div class="card"><div class="label">Precisión crítico</div><div class="value">${formatPercent(report.global_metrics.threshold_precision)}</div></div>
+          <div class="card"><div class="label">Recall crítico</div><div class="value">${formatPercent(report.global_metrics.threshold_recall)}</div></div>
         </div>
-        <h2>MÃ©tricas por sitio</h2>
+        <h2>Métricas por sitio</h2>
         <table>
           <thead>
-            <tr><th>Site ID</th><th>MAE</th><th>RMSE</th><th>Error crÃ­tico</th><th>PrecisiÃ³n</th><th>Recall</th><th>Samples</th></tr>
+            <tr><th>Site ID</th><th>MAE</th><th>RMSE</th><th>Error crítico</th><th>Precisión</th><th>Recall</th><th>Samples</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -377,6 +378,7 @@ const buildReportHtml = (report: EvaluationReport) => {
 }
 
 export default function ForecastEvaluation() {
+  const { t } = useTranslation()
   const [selectedModel, setSelectedModel] = useState<string>('baseline_operational')
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([
     { key: 'baseline_operational', name: 'Baseline operativo' },
@@ -433,7 +435,7 @@ export default function ForecastEvaluation() {
       setEvaluation(created)
       setReport(generatedReport)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'No se pudo ejecutar la evaluaciÃ³n.'
+      const message = err instanceof Error ? err.message : 'No se pudo ejecutar la evaluación.'
       setError(message)
     } finally {
       setLoading(false)
@@ -444,7 +446,7 @@ export default function ForecastEvaluation() {
     if (!report) return
     const popup = window.open('', '_blank', 'width=1024,height=768')
     if (!popup) {
-      setError('El navegador bloqueÃ³ la ventana del informe.')
+      setError('El navegador bloqueó la ventana del informe.')
       return
     }
     popup.document.open()
@@ -461,10 +463,10 @@ export default function ForecastEvaluation() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900">
-              EvaluaciÃ³n del Forecaster
+              {t('forecast.title')}
             </h1>
             <p className="text-slate-600 mt-1">
-              Backtesting de proyecciones de llenado para medir error y detecciÃ³n de sitios crÃ­ticos.
+              {t('forecast.subtitle')}
             </p>
           </div>
           <Button
@@ -475,7 +477,7 @@ export default function ForecastEvaluation() {
             className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer gap-2"
           >
             <Download className="h-4 w-4" />
-            Descargar informe
+            {t('forecast.download_report')}
           </Button>
         </div>
 
@@ -490,7 +492,7 @@ export default function ForecastEvaluation() {
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-xs">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <span>
-              EvaluaciÃ³n #{evaluation.id} completada con {evaluation.site_count} sitios. Cutoff calculado:{' '}
+              Evaluación #{evaluation.id} completada con {evaluation.site_count} sitios. Cutoff calculado:{' '}
               <strong>{formatDateTime(evaluation.cutoff)}</strong>.
             </span>
           </div>
@@ -498,29 +500,29 @@ export default function ForecastEvaluation() {
 
         <form onSubmit={handleRunEvaluation}>
           <Panel
-            title="ParÃ¡metros de EvaluaciÃ³n"
-            description={`ConfiguraciÃ³n del backtesting temporal para el modelo ${availableModels.find((m) => m.key === selectedModel)?.name || selectedModel}`}
+            title={t('forecast.evaluation_parameters')}
+            description={t('forecast.backtesting_config', {
+              model: availableModels.find((m) => m.key === selectedModel)?.name || selectedModel,
+            })}
             actions={
               <Button
                 type="submit"
                 disabled={loading}
                 className="text-xs font-bold px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-xs cursor-pointer transition-all"
               >
-                {loading ? 'Evaluando Modelo...' : 'Ejecutar EvaluaciÃ³n'}
+                {loading ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
               </Button>
             }
           >
             <div className="flex items-center gap-2 text-xs text-slate-600 bg-sky-50/60 p-2.5 rounded-xl border border-sky-100">
               <Info className="h-4 w-4 text-sky-600 shrink-0" />
-              <span>
-                El backend calcula automÃ¡ticamente el cutoff como <strong>Ãºltima mediciÃ³n disponible menos horizonte</strong>. El intervalo de comparaciÃ³n es fijo: <strong>60 minutos</strong>.
-              </span>
+              <span>{t('forecast.cutoff_info')}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <ParameterField
-                label="Cantidad de sitios"
-                hint="Muestra aleatoria entre sitios con mediciones antes y despuÃ©s del cutoff calculado."
+                label={t('forecast.site_count')}
+                hint={t('forecast.site_count_hint')}
               >
                 <Input
                   type="number"
@@ -533,8 +535,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Horizonte de predicciÃ³n"
-                hint="Horas futuras a predecir desde el cutoff automÃ¡tico. Requiere datos reales posteriores."
+                label={t('forecast.horizon')}
+                hint={t('forecast.horizon_hint')}
               >
                 <Input
                   type="number"
@@ -547,8 +549,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Umbral crÃ­tico"
-                hint="Nivel usado para medir precisiÃ³n y recall de alertas de desborde."
+                label={t('forecast.critical_threshold')}
+                hint={t('forecast.critical_threshold_hint')}
               >
                 <Input
                   type="number"
@@ -561,8 +563,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Lookback histÃ³rico"
-                hint="DÃ­as previos al cutoff usados para aprender patrones horarios y semanales."
+                label={t('forecast.historical_lookback')}
+                hint={t('forecast.historical_lookback_hint')}
               >
                 <Input
                   type="number"
@@ -575,21 +577,21 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="AgregaciÃ³n del sitio"
-                hint="Promedio resume el sitio completo; mÃ¡ximo prioriza el contenedor mÃ¡s lleno."
+                label={t('forecast.aggregation')}
+                hint={t('forecast.aggregation_hint')}
               >
                 <select
                   value={levelAggregation}
                   onChange={(event) => setLevelAggregation(event.target.value as 'avg' | 'max')}
                   className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="avg">Promedio del sitio</option>
-                  <option value="max">MÃ¡ximo del sitio</option>
+                  <option value="avg">{t('forecast.aggregation_avg')}</option>
+                  <option value="max">{t('forecast.aggregation_max')}</option>
                 </select>
               </ParameterField>
 
               <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
-                <span className="text-xs font-semibold text-slate-700 block">Modelo</span>
+                <span className="text-xs font-semibold text-slate-700 block">{t('forecast.model')}</span>
                 <select
                   value={selectedModel}
                   onChange={(event) => setSelectedModel(event.target.value)}
@@ -612,8 +614,8 @@ export default function ForecastEvaluation() {
               {metricCards.map((card) => (
                 <MetricCard
                   key={card.key}
-                  label={card.label}
-                  detail={card.detail}
+                  label={card.key === 'threshold_precision' ? t('forecast.precision_label') : card.key === 'threshold_recall' ? t('forecast.recall_label') : card.label}
+                  detail={t(`forecast.${card.key === 'threshold_precision' ? 'precision_detail' : card.key === 'threshold_recall' ? 'recall_detail' : `${card.key}_detail`}`)}
                   value={report.global_metrics[card.key]}
                   icon={card.icon}
                   suffix={card.suffix}
@@ -624,30 +626,30 @@ export default function ForecastEvaluation() {
             </div>
 
             <Panel
-              title="Resumen de Corrida"
-              description="Contexto usado para interpretar las mÃ©tricas obtenidas"
+              title={t('forecast.run_summary')}
+              description={t('forecast.run_summary_desc')}
               icon={Database}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <SummaryCard label="Sitios evaluados" value={evaluatedSites} icon={Layers} />
-                <SummaryCard label="Puntos comparados" value={comparedPoints} icon={BarChart3} />
-                <SummaryCard label="Cutoff calculado" value={formatDateTime(evaluation?.cutoff)} icon={Clock3} />
-                <SummaryCard label="Modelo" value={report.model_key} icon={Activity} />
+                <SummaryCard label={t('forecast.evaluated_sites')} value={evaluatedSites} icon={Layers} />
+                <SummaryCard label={t('forecast.compared_points')} value={comparedPoints} icon={BarChart3} />
+                <SummaryCard label={t('forecast.calculated_cutoff')} value={formatDateTime(evaluation?.cutoff)} icon={Clock3} />
+                <SummaryCard label={t('forecast.model')} value={report.model_key} icon={Activity} />
               </div>
             </Panel>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Panel
-                title="Mejor Predichos"
-                description="Sitios con menor MAE dentro de la evaluaciÃ³n"
+                title={t('forecast.best_predicted')}
+                description={t('forecast.best_predicted_desc')}
                 icon={CheckCircle2}
               >
                 <SiteMetricsTable sites={report.best_predicted_sites.slice(0, 5)} />
               </Panel>
 
               <Panel
-                title="Peor Predichos"
-                description="Sitios prioritarios para revisar datos, recolecciones o patrÃ³n de demanda"
+                title={t('forecast.worst_predicted')}
+                description={t('forecast.worst_predicted_desc')}
                 icon={AlertCircle}
               >
                 <SiteMetricsTable sites={report.worst_predicted_sites.slice(0, 5)} />
@@ -655,8 +657,8 @@ export default function ForecastEvaluation() {
             </div>
 
             <Panel
-              title="MÃ©tricas por Sitio"
-              description="Se muestran hasta 50 sitios para mantener la vista liviana"
+              title={t('forecast.site_metrics')}
+              description={t('forecast.site_metrics_desc')}
               icon={FileText}
             >
               <SiteMetricsTable sites={displayedSiteMetrics} />

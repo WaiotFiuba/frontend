@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
-import { Button } from '@/common/utils/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
+import { Button } from '@/utils/ui/button'
 import {
   Play,
   Pause,
@@ -21,7 +22,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { formatSimulatedTime } from '@/common/utils/functions'
+import { formatSimulatedTime } from '@/utils/functions'
 
 interface UpdateLog {
   id: number
@@ -88,13 +89,13 @@ const DEFAULT_COLLECTION_HOURS = [21, 22, 23, 0, 1, 2, 3, 4, 5]
 const DEFAULT_COLLECTION_DAYS = [0, 1, 2, 3, 4]
 
 const WEEKDAYS = [
-  { id: 0, label: 'Lunes', short: 'Lun' },
-  { id: 1, label: 'Martes', short: 'Mar' },
-  { id: 2, label: 'Miércoles', short: 'Mié' },
-  { id: 3, label: 'Jueves', short: 'Jue' },
-  { id: 4, label: 'Viernes', short: 'Vie' },
-  { id: 5, label: 'Sábado', short: 'Sáb' },
-  { id: 6, label: 'Domingo', short: 'Dom' },
+  { id: 0, key: 'mon', label: 'Lunes', short: 'Lun' },
+  { id: 1, key: 'tue', label: 'Martes', short: 'Mar' },
+  { id: 2, key: 'wed', label: 'Miércoles', short: 'Mié' },
+  { id: 3, key: 'thu', label: 'Jueves', short: 'Jue' },
+  { id: 4, key: 'fri', label: 'Viernes', short: 'Vie' },
+  { id: 5, key: 'sat', label: 'Sábado', short: 'Sáb' },
+  { id: 6, key: 'sun', label: 'Domingo', short: 'Dom' },
 ]
 
 interface SimulationControlProps {
@@ -124,6 +125,7 @@ const getNowRoundedHourArgentina = (offsetHours = 0): string => {
 }
 
 export default function SimulationControl({ onSimulationStateChange }: SimulationControlProps) {
+  const { t } = useTranslation()
   const [activeSim, setActiveSim] = useState<SimulationRead | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -647,19 +649,19 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         </div>
       )}
 
-      <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-row items-center justify-between">
+      <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="text-xl font-bold text-slate-950 flex items-center gap-2">
             <Activity className="h-5 w-5 text-blue-600" />
-            Control del Gemelo Digital
+            {t('simulation.control_title')}
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
             {activeSim
-              ? 'Monitoree y gestione los parámetros de la simulación activa en tiempo real.'
-              : 'Configure las fechas, franjas horarias de recolección de camiones, velocidad y demanda por barrio.'}
+              ? t('simulation.control_desc_active')
+              : t('simulation.control_desc_idle')}
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
           {activeSim && (
             <span
               className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${activeSim.status === 'running'
@@ -677,9 +679,28 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               {activeSim.status === 'running' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               )}
-              {activeSim.status === 'pending' ? 'GENERANDO' : activeSim.status.toUpperCase()}
+              {activeSim.status === 'pending' ? t('simulation.generating') : activeSim.status.toUpperCase()}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer select-none shadow-2xs h-8"
+            aria-expanded={!isCollapsed}
+            title={isCollapsed ? t('simulation.more_params') : t('simulation.less_params')}
+          >
+            {isCollapsed ? (
+              <>
+                <span className="font-medium">{t('simulation.more_params')}</span>
+                <ChevronDown className="h-3.5 w-3.5" />
+              </>
+            ) : (
+              <>
+                <span className="font-medium">{t('simulation.less_params')}</span>
+                <ChevronUp className="h-3.5 w-3.5" />
+              </>
+            )}
+          </button>
         </div>
       </CardHeader>
 
@@ -696,28 +717,28 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           <div className="space-y-6 mb-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulation ID</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.simulation_id')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">#{activeSim.id}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mediciones Enviadas</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.measurements_sent')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">{activeSim.measurements_sent.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Períodos (Ticks)</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.periods_ticks')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">
                   {activeSim.current_period}
                   {activeSim.total_periods > 0 ? ` / ${activeSim.total_periods}` : ''}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reloj Simulado</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.simulated_clock')}</p>
                 <p className="text-sm font-bold text-blue-900 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
                   {formatSimulatedTime(activeSim.simulated_time)}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiempo Real Transcurrido</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.real_elapsed')}</p>
                 <p className="text-sm font-bold text-blue-900 mt-1.5 truncate">
                   {formatElapsed(realElapsedMs)}
                 </p>
@@ -726,7 +747,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
             {/* Quick Status Actions */}
             <div className="flex flex-wrap gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100 items-center justify-between">
-              <span className="text-sm font-bold text-slate-700">Controles de Ejecución:</span>
+              <span className="text-sm font-bold text-slate-700">{t('simulation.exec_controls')}</span>
               <div className="flex gap-2">
                 {activeSim.status === 'running' ? (
                   <Button
@@ -736,7 +757,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     className="border-amber-200 text-amber-700 hover:bg-amber-50 gap-2 h-9 px-3 text-xs font-bold"
                   >
                     <Pause className="h-3.5 w-3.5" />
-                    Pausar
+                    {t('simulation.pause')}
                   </Button>
                 ) : (
                   <Button
@@ -745,7 +766,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     className="!bg-emerald-600 hover:!bg-emerald-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play className="h-3.5 w-3.5" />
-                    Reanudar
+                    {t('simulation.resume')}
                   </Button>
                 )}
                 <Button
@@ -754,7 +775,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   className="!bg-red-600 hover:!bg-red-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Square className="h-3.5 w-3.5" />
-                  Detener
+                  {t('simulation.stop')}
                 </Button>
               </div>
             </div>
@@ -767,22 +788,22 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  Intervalo entre Sets de Telemetría
+                  {t('simulation.telemetry_interval')}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">
-                    Tiempo transcurrido: {timeSinceLastSet}s
+                    {t('simulation.time_elapsed_label', { time: timeSinceLastSet })}
                   </span>
                   {updateLogs.filter((log) => log.duration !== null).length > 0 && (
                     <span className="text-[11px] font-bold text-emerald-950 bg-emerald-200 border border-emerald-300 px-2 py-0.5 rounded-full">
-                      Promedio:{' '}
-                      {(
-                        updateLogs
-                          .filter((log) => log.duration !== null)
-                          .reduce((acc, log) => acc + (log.duration || 0), 0) /
-                        updateLogs.filter((log) => log.duration !== null).length
-                      ).toFixed(1)}
-                      s
+                      {t('simulation.avg_label', {
+                        avg: (
+                          updateLogs
+                            .filter((log) => log.duration !== null)
+                            .reduce((acc, log) => acc + (log.duration || 0), 0) /
+                          updateLogs.filter((log) => log.duration !== null).length
+                        ).toFixed(1),
+                      })}
                     </span>
                   )}
                 </div>
@@ -790,12 +811,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
               {updateLogs.length === 0 ? (
                 <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                  Esperando el primer set de telemetría de la simulación activa...
+                  {t('simulation.telemetry_waiting')}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Historial de actualizaciones
+                    {t('simulation.update_history')}
                   </span>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                     {updateLogs.map((log) => (
@@ -838,14 +859,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             <div className="absolute inset-0 bg-slate-600/10 rounded-2xl flex items-center justify-center z-10 cursor-not-allowed backdrop-blur-[0.5px]">
               <div className="bg-slate-900/95 backdrop-blur text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                Debe detener la simulación para editar parámetros
+                {t('simulation.must_stop_to_edit')}
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-5">
             <span className="text-sm font-bold text-slate-800">
-              Parámetros del Escenario de Simulación
+              {t('simulation.scenario_params')}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -855,30 +876,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 onClick={handleOpenLoadModal}
                 disabled={!!activeSim}
                 className="text-xs bg-blue-100 border-blue-200 text-blue-950 hover:bg-blue-200 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
-                title="Cargar una configuración guardada en su cuenta"
+                title={t('simulation.load_saved_configs_hint')}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Carga configuraciones
+                {t('simulation.load_saved_configs')}
               </Button>
-              <button
-                type="button"
-                onClick={() => setIsCollapsed((prev) => !prev)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer select-none shadow-2xs h-8"
-                aria-expanded={!isCollapsed}
-                title={isCollapsed ? 'Más parámetros' : 'Menos parámetros'}
-              >
-                {isCollapsed ? (
-                  <>
-                    <span className='font-medium'>Más parámetros</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </>
-                ) : (
-                  <>
-                    <span className='font-medium'>Menos parámetros</span>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  </>
-                )}
-              </button>
               <Button
                 type="button"
                 variant="ghost"
@@ -886,10 +888,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 onClick={resetToDefaults}
                 disabled={!!activeSim}
                 className="text-xs text-slate-500 hover:text-blue-700 flex items-center gap-1 h-8 px-2 cursor-pointer"
-                title="Restablecer valores por defecto"
+                title={t('simulation.reset_defaults_hint')}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Restablecer Valores
+                {t('simulation.reset_defaults')}
               </Button>
             </div>
           </div>
@@ -899,12 +901,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-blue-600" />
-                Tiempos, Períodos y Velocidad
+                {t('simulation.times_speed')}
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Aceleración *</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">{t('simulation.speedup')}</label>
                   <input
                     type="number"
                     step="any"
@@ -915,23 +917,23 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     disabled={!!activeSim}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
-                  <p className="text-[10px] text-slate-400">Multiplicador de velocidad (defecto: 1000x).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.speedup_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Frecuencia (minutos)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">{t('simulation.frequency')}</label>
                   <input
                     type="number"
                     value={frequencyMinutes}
                     disabled={true}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-500 font-bold cursor-not-allowed"
                   />
-                  <p className="text-[10px] text-slate-400">Frecuencia fija de 60 min (1 tick = 1 hora).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.frequency_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-slate-500" /> Fecha de Inicio *
+                    <Calendar className="h-3 w-3 text-slate-500" /> {t('simulation.start_date')}
                   </label>
                   <input
                     type="datetime-local"
@@ -941,13 +943,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     disabled={!!activeSim}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
-                  <p className="text-[10px] text-slate-400">Hora actual de Argentina (redondeada a hora en punto).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.start_date_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-slate-500" /> Fecha de Fin
+                      <Calendar className="h-3 w-3 text-slate-500" /> {t('simulation.end_date')}
                     </label>
                     <button
                       type="button"
@@ -967,7 +969,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {isEndUndefined ? '✓ Sin definir' : 'Sin definir'}
+                      {isEndUndefined ? `✓ ${t('simulation.undefined')}` : t('simulation.undefined')}
                     </button>
                   </div>
 
@@ -983,8 +985,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }`}
                       title="Haga click para desbloquear e introducir fecha de fin"
                     >
-                      <span>Sin definir</span>
-                      <span className="text-[10px] text-blue-700 font-semibold">Definir fecha</span>
+                      <span>{t('simulation.undefined')}</span>
+                      <span className="text-[10px] text-blue-700 font-semibold">{t('simulation.define_date')}</span>
                     </div>
                   ) : (
                     <input
@@ -1002,8 +1004,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   )}
                   <p className="text-[10px] text-slate-400">
                     {isEndUndefined
-                      ? 'Sin fecha de corte (ejecución continua).'
-                      : 'Fecha límite de corte de la simulación.'}
+                      ? t('simulation.no_end_date_hint')
+                      : t('simulation.end_date_limit_hint')}
                   </p>
                 </div>
               </div>
@@ -1018,15 +1020,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     <div>
                       <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                         <Truck className="h-3.5 w-3.5 text-blue-600" />
-                        Franja Horaria de Recolección de Camiones
+                        {t('simulation.truck_hours')}
                       </span>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Define las horas en las que los camiones de recolección salen del depósito y descargan los contenedores.
+                        {t('simulation.truck_hours_desc')}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
-                        {collectionHours.length} hs seleccionadas
+                        {t('simulation.hours_selected', { count: collectionHours.length })}
                       </span>
                       <div className="flex gap-1">
                         <Button
@@ -1037,7 +1039,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           disabled={!!activeSim}
                           className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                         >
-                          Noche + Refuerzo
+                          {t('simulation.preset_night_boost')}
                         </Button>
                         <Button
                           type="button"
@@ -1047,7 +1049,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           disabled={!!activeSim}
                           className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                         >
-                          Solo Noche
+                          {t('simulation.preset_night_only')}
                         </Button>
                         <Button
                           type="button"
@@ -1057,7 +1059,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           disabled={!!activeSim}
                           className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                         >
-                          24 Horas
+                          {t('simulation.preset_24h')}
                         </Button>
                         <Button
                           type="button"
@@ -1067,7 +1069,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           disabled={!!activeSim}
                           className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
                         >
-                          Limpiar
+                          {t('simulation.preset_clear')}
                         </Button>
                       </div>
                     </div>
@@ -1090,7 +1092,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         >
                           <span>{String(hour).padStart(2, '0')}:00</span>
                           <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
-                            {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+                            {hour >= 20 || hour < 6 ? t('simulation.night') : hour >= 11 && hour <= 16 ? t('simulation.reinforcement') : t('simulation.day')}
                           </span>
                         </button>
                       )
@@ -1112,10 +1114,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                             : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
                             } disabled:opacity-60 disabled:cursor-not-allowed`}
                         >
-                          <span className="hidden sm:inline">{day.label}</span>
+                          <span className="hidden sm:inline">{t(`simulation.weekdays.${day.key}`)}</span>
                           <span className="sm:hidden">{day.short}</span>
                           <span className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'}`}>
-                            {isSelected ? 'Activo' : 'Sin recolección'}
+                            {isSelected ? t('simulation.active') : t('simulation.no_collection')}
                           </span>
                         </button>
                       )
@@ -1133,10 +1135,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
                         <div>
                           <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                            <Layers className="h-3 w-3 text-blue-600" /> Demanda Global *
+                            <Layers className="h-3 w-3 text-blue-600" /> {t('simulation.global_demand')}
                           </label>
                           <p className="text-[10px] text-slate-400">
-                            Multiplicador general para todos los contenedores (1.0 = base).
+                            {t('simulation.global_demand_hint')}
                           </p>
                         </div>
                       </div>
@@ -1160,10 +1162,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
                         <div>
                           <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras de Demanda por Barrio
+                            <MapPin className="h-3 w-3 text-emerald-600" /> {t('simulation.neighborhood_overrides')}
                           </span>
                           <p className="text-[10px] text-slate-400">
-                            Ajuste la tasa de llenado para barrios específicos (ej: Palermo 1.8x, Recoleta 1.4x, hasta 1100x).
+                            {t('simulation.neighborhood_overrides_hint')}
                           </p>
                         </div>
                         <Button
@@ -1175,13 +1177,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
                         >
                           <Plus className="h-3.5 w-3.5 text-slate-500" />
-                          Agregar Barrio
+                          {t('simulation.add_neighborhood')}
                         </Button>
                       </div>
 
                       {zoneOverrides.length === 0 ? (
                         <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                          Sin excepciones por barrio. Se aplicará la demanda global (<strong>{globalDemandMultiplier}x</strong>) a toda la ciudad.
+                          {t('simulation.no_overrides')}
                         </div>
                       ) : (
                         <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -1243,10 +1245,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 {actionLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin mr-2 inline" />
-                    Iniciando Simulación...
+                    {t('simulation.starting_sim')}
                   </>
                 ) : (
-                  'Iniciar Simulación con Parámetros'
+                  t('simulation.start_sim')
                 )}
               </Button>
             </div>

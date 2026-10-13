@@ -1,18 +1,20 @@
-﻿import { useNavigate } from 'react-router-dom'
-import { Button } from '@/common/utils/ui/button'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/utils/ui/button'
 
 export default function Home() {
     const navigate = useNavigate()
+    const { t } = useTranslation()
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center px-4">
             <div className="max-w-2xl w-full text-center space-y-8">
                 <div className="space-y-4">
                     <h1 className="text-5xl font-bold text-slate-900 tracking-tight">
-                        Â¡Bienvenido a Waiot FIUBA!
+                        {t('home.welcome')}
                     </h1>
                     <p className="text-xl text-slate-600 leading-relaxed">
-                        Primeros pasos en soluciones de gemelos digitales.
+                        {t('home.subtitle')}
                     </p>
                 </div>
 
@@ -20,12 +22,12 @@ export default function Home() {
                     <Button
                         onClick={() => navigate('/map')}
                         size="lg"
-                        className="px-8 py-6 text-base font-semibold"
+                        className="px-8 py-6 text-base font-semibold cursor-pointer"
                     >
-                        Explorar Mapa
+                        {t('home.explore_map')}
                     </Button>
                 </div>
             </div>
         </div>
     )
-}
+}

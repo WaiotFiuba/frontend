@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { NetworkKpiPanel } from '@/common/KpiPanel'
-import type { NetworkMetricsData } from '@/common/KpiPanel/types'
+import { NetworkKpiPanel } from '@/common/KPIPanel'
+import type { NetworkMetricsData } from '@/common/KPIPanel/types'
 import { RedistributionImpactPanel } from '@/pages/Optimization/components/RedistributionImpactPanel'
 import type { RedistributionPlan } from '@/pages/Optimization/types'
 

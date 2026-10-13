@@ -1,7 +1,8 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
-import { Button } from '@/common/utils/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
+import { Button } from '@/utils/ui/button'
 import {
   Settings,
   Plus,
@@ -48,7 +49,7 @@ const CABA_FALLBACK_NEIGHBORHOODS = [
   'Agronomia', 'Almagro', 'Balvanera', 'Barracas', 'Belgrano', 'Boedo',
   'Caballito', 'Chacarita', 'Coghlan', 'Colegiales', 'Constitucion', 'Flores',
   'Floresta', 'La Boca', 'Liniers', 'Mataderos', 'Monserrat', 'Monte Castro',
-  'Nueva Pompeya', 'NuÃ±ez', 'Palermo', 'Parque Avellaneda', 'Parque Chacabuco',
+  'Nueva Pompeya', 'Núñez', 'Palermo', 'Parque Avellaneda', 'Parque Chacabuco',
   'Parque Chas', 'Parque Patricios', 'Paternal', 'Puerto Madero', 'Recoleta',
   'Retiro', 'Saavedra', 'San Cristobal', 'San Nicolas', 'San Telmo',
   'Velez Sarsfield', 'Versalles', 'Villa Crespo', 'Villa Del Parque',
@@ -61,13 +62,13 @@ const DEFAULT_COLLECTION_HOURS = [21, 22, 23, 0, 1, 2, 3, 4, 5]
 const DEFAULT_COLLECTION_DAYS = [0, 1, 2, 3, 4]
 
 const WEEKDAYS = [
-  { id: 0, label: 'Lunes', short: 'Lun' },
-  { id: 1, label: 'Martes', short: 'Mar' },
-  { id: 2, label: 'MiÃ©rcoles', short: 'MiÃ©' },
-  { id: 3, label: 'Jueves', short: 'Jue' },
-  { id: 4, label: 'Viernes', short: 'Vie' },
-  { id: 5, label: 'SÃ¡bado', short: 'SÃ¡b' },
-  { id: 6, label: 'Domingo', short: 'Dom' },
+  { id: 0, key: 'mon', label: 'Lunes', short: 'Lun' },
+  { id: 1, key: 'tue', label: 'Martes', short: 'Mar' },
+  { id: 2, key: 'wed', label: 'Miércoles', short: 'Mié' },
+  { id: 3, key: 'thu', label: 'Jueves', short: 'Jue' },
+  { id: 4, key: 'fri', label: 'Viernes', short: 'Vie' },
+  { id: 5, key: 'sat', label: 'Sábado', short: 'Sáb' },
+  { id: 6, key: 'sun', label: 'Domingo', short: 'Dom' },
 ]
 
 const getNowRoundedHourArgentina = (offsetHours = 0): string => {
@@ -93,6 +94,7 @@ const getNowRoundedHourArgentina = (offsetHours = 0): string => {
 
 export default function ConfigurationsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [configs, setConfigs] = useState<SavedConfigurationItem[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [neighborhoods, setNeighborhoods] = useState<string[]>([])
@@ -229,14 +231,14 @@ export default function ConfigurationsPage() {
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    setSuccess(`ConfiguraciÃ³n "${item.name}" cargada en el editor.`)
+    setSuccess(`Configuración "${item.name}" cargada en el editor.`)
     setTimeout(() => setSuccess(null), 4000)
   }
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!configName.trim()) {
-      setError('Por favor ingrese un nombre para la configuraciÃ³n.')
+      setError('Por favor ingrese un nombre para la configuración.')
       return
     }
 
@@ -253,10 +255,10 @@ export default function ConfigurationsPage() {
     try {
       if (editingId) {
         await api.put(`/digital-twin/configurations/${editingId}`, payload)
-        setSuccess(`ConfiguraciÃ³n "${payload.name}" actualizada con Ã©xito.`)
+        setSuccess(`Configuración "${payload.name}" actualizada con éxito.`)
       } else {
         await api.post('/digital-twin/configurations', payload)
-        setSuccess(`ConfiguraciÃ³n "${payload.name}" guardada con Ã©xito.`)
+        setSuccess(`Configuración "${payload.name}" guardada con éxito.`)
       }
       setTimeout(() => setSuccess(null), 5000)
       await fetchConfigs()
@@ -264,24 +266,24 @@ export default function ConfigurationsPage() {
     } catch (err: unknown) {
       console.error(err)
       const msg = err instanceof Error ? err.message : String(err)
-      setError('Error al guardar configuraciÃ³n: ' + msg)
+      setError('Error al guardar configuración: ' + msg)
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteConfig = async (id: number, name: string) => {
-    if (!window.confirm(`Â¿EstÃ¡ seguro de eliminar la configuraciÃ³n "${name}"?`)) return
+    if (!window.confirm(`¿Está seguro de eliminar la configuración "${name}"?`)) return
     try {
       await api.delete(`/digital-twin/configurations/${id}`)
-      setSuccess(`ConfiguraciÃ³n "${name}" eliminada correctamente.`)
+      setSuccess(`Configuración "${name}" eliminada correctamente.`)
       setTimeout(() => setSuccess(null), 4000)
       if (editingId === id) resetForm()
       await fetchConfigs()
     } catch (err: unknown) {
       console.error(err)
       const msg = err instanceof Error ? err.message : String(err)
-      setError('Error al eliminar configuraciÃ³n: ' + msg)
+      setError('Error al eliminar configuración: ' + msg)
     }
   }
 
@@ -355,10 +357,10 @@ export default function ConfigurationsPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
               <Settings className="h-8 w-8 text-sky-600" />
-              Configuraciones
+              {t('configurations.title')}
             </h1>
             <p className="text-slate-600 mt-1">
-              Cree, gestione y almacene configuraciones de simulaciÃ³n asociadas a su usuario.
+              {t('configurations.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -368,14 +370,14 @@ export default function ConfigurationsPage() {
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
             >
               <Map className="h-4 w-4 text-sky-600" />
-              Ir al Mapa
+              {t('management.go_to_map')}
             </Button>
             <Button
               variant="outline"
               onClick={() => navigate('/')}
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
             >
-              Volver al inicio
+              {t('common.back_to_home')}
             </Button>
           </div>
         </div>
@@ -395,26 +397,26 @@ export default function ConfigurationsPage() {
           <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-r-xl shadow-sm text-sm flex items-center gap-2 animate-in fade-in duration-200">
             <Check className="h-5 w-5 text-emerald-600 shrink-0" />
             <div>
-              <p className="font-bold">OperaciÃ³n Exitosa</p>
+              <p className="font-bold">Operación Exitosa</p>
               <p className="text-emerald-700">{success}</p>
             </div>
           </div>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          {/* COLUMNA 1: Formulario de CreaciÃ³n / EdiciÃ³n */}
+          {/* COLUMNA 1: Formulario de Creación / Edición */}
           <div className="xl:col-span-8 space-y-6">
             <Card className="border-slate-200/80 shadow-md bg-white rounded-2xl overflow-hidden">
               <CardHeader className="border-b border-slate-100 bg-slate-50/70 p-6 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
                     <Edit3 className="h-5 w-5 text-sky-600" />
-                    {editingId ? 'Editar ConfiguraciÃ³n' : 'Nueva ConfiguraciÃ³n de SimulaciÃ³n'}
+                    {editingId ? t('configurations.edit_config') : t('configurations.new_config')}
                   </CardTitle>
                   <CardDescription className="text-slate-500 mt-1">
                     {editingId
-                      ? 'Modifique los parÃ¡metros y guarde los cambios en la base de datos.'
-                      : 'Configure los parÃ¡metros y almacÃ©nelos en su cuenta.'}
+                      ? t('configurations.config_desc_edit')
+                      : t('configurations.config_desc_create')}
                   </CardDescription>
                 </div>
                 {editingId && (
@@ -425,29 +427,29 @@ export default function ConfigurationsPage() {
                     onClick={resetForm}
                     className="text-xs text-rose-600 hover:bg-rose-50 font-semibold"
                   >
-                    Cancelar EdiciÃ³n
+                    {t('configurations.cancel_edit')}
                   </Button>
                 )}
               </CardHeader>
 
               <CardContent className="p-6">
                 <form onSubmit={handleSaveConfig} className="space-y-6">
-                  {/* Datos BÃ¡sicos */}
+                  {/* Datos Básicos */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <FileCode className="h-3.5 w-3.5 text-sky-600" />
-                      IdentificaciÃ³n de la ConfiguraciÃ³n
+                      {t('configurations.config_id_title')}
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 uppercase">
-                          Nombre de la ConfiguraciÃ³n *
+                          {t('configurations.config_name')}
                         </label>
                         <input
                           type="text"
                           required
-                          placeholder="Ej: Semana Normal Noche, Fin de Semana Alto"
+                          placeholder={t('configurations.config_name_placeholder')}
                           value={configName}
                           onChange={(e) => setConfigName(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 font-semibold"
@@ -455,11 +457,11 @@ export default function ConfigurationsPage() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-700 uppercase">
-                          DescripciÃ³n (Opcional)
+                          {t('configurations.config_desc')}
                         </label>
                         <input
                           type="text"
-                          placeholder="Ej: RecolecciÃ³n solo nocturna con refuerzo en Palermo"
+                          placeholder={t('configurations.config_desc_placeholder')}
                           value={configDescription}
                           onChange={(e) => setConfigDescription(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
@@ -468,16 +470,16 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÃ“N: Tiempos y Velocidad */}
+                  {/* SECCIÓN: Tiempos y Velocidad */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-sky-600" />
-                      Tiempos y Velocidad
+                      {t('configurations.times_speed')}
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">AceleraciÃ³n *</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">{t('configurations.speedup')}</label>
                         <input
                           type="number"
                           step="any"
@@ -487,23 +489,23 @@ export default function ConfigurationsPage() {
                           onChange={(e) => setSpeedup(e.target.value)}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700 font-semibold"
                         />
-                        <p className="text-[10px] text-slate-400">Multiplicador de velocidad (1000x).</p>
+                        <p className="text-[10px] text-slate-400">{t('configurations.speedup_hint')}</p>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Frecuencia (minutos)</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">{t('configurations.frequency')}</label>
                         <input
                           type="number"
                           value={60}
                           disabled={true}
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-500 font-bold cursor-not-allowed"
                         />
-                        <p className="text-[10px] text-slate-400">Frecuencia fija (1 tick = 1 hora).</p>
+                        <p className="text-[10px] text-slate-400">{t('configurations.frequency_hint')}</p>
                       </div>
 
                       <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-slate-500" /> Fecha Inicio *
+                          <Calendar className="h-3 w-3 text-slate-500" /> {t('configurations.start_date')}
                         </label>
                         <input
                           type="datetime-local"
@@ -517,7 +519,7 @@ export default function ConfigurationsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-slate-500" /> Fecha Fin
+                            <Calendar className="h-3 w-3 text-slate-500" /> {t('configurations.end_date')}
                           </label>
                           <button
                             type="button"
@@ -536,7 +538,7 @@ export default function ConfigurationsPage() {
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                             }`}
                           >
-                            {isEndUndefined ? 'âœ“ Sin definir' : 'Sin definir'}
+                            {isEndUndefined ? `✓ ${t('configurations.undefined')}` : t('configurations.undefined')}
                           </button>
                         </div>
 
@@ -549,8 +551,8 @@ export default function ConfigurationsPage() {
                             className="w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium cursor-pointer hover:border-sky-300 hover:bg-sky-50/20"
                             title="Haga click para desbloquear e introducir fecha de fin"
                           >
-                            <span>Sin definir</span>
-                            <span className="text-[10px] text-sky-600 font-semibold">Definir fecha</span>
+                            <span>{t('configurations.undefined')}</span>
+                            <span className="text-[10px] text-sky-600 font-semibold">{t('configurations.define_date')}</span>
                           </div>
                         ) : (
                           <input
@@ -569,18 +571,18 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÃ“N: Franja Horaria de RecolecciÃ³n */}
+                  {/* SECCIÓN: Franja Horaria de Recolección */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                           <Truck className="h-3.5 w-3.5 text-sky-600" />
-                          Franja Horaria y DÃ­as de RecolecciÃ³n (Truck Engine)
+                          {t('configurations.truck_hours_title')}
                         </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
-                          {collectionHours.length} hs seleccionadas
+                          {t('configurations.hours_selected', { count: collectionHours.length })}
                         </span>
                         <div className="flex flex-wrap items-center gap-1">
                           <Button
@@ -590,7 +592,7 @@ export default function ConfigurationsPage() {
                             onClick={() => setCollectionPreset('night_reinforce')}
                             className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                           >
-                            Noche + Refuerzo
+                            {t('configurations.preset_night_boost')}
                           </Button>
                           <Button
                             type="button"
@@ -599,7 +601,7 @@ export default function ConfigurationsPage() {
                             onClick={() => setCollectionPreset('night_only')}
                             className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                           >
-                            Solo Noche
+                            {t('configurations.preset_night_only')}
                           </Button>
                           <Button
                             type="button"
@@ -608,7 +610,7 @@ export default function ConfigurationsPage() {
                             onClick={() => setCollectionPreset('all')}
                             className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                           >
-                            24 Horas
+                            {t('configurations.preset_24h')}
                           </Button>
                           <Button
                             type="button"
@@ -617,7 +619,7 @@ export default function ConfigurationsPage() {
                             onClick={() => setCollectionPreset('clear')}
                             className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
                           >
-                            Limpiar
+                            {t('configurations.preset_clear')}
                           </Button>
                         </div>
                       </div>
@@ -640,7 +642,7 @@ export default function ConfigurationsPage() {
                           >
                             <span>{String(hour).padStart(2, '0')}:00</span>
                             <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
-                              {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'DÃ­a'}
+                              {hour >= 20 || hour < 6 ? t('simulation.night') : hour >= 11 && hour <= 16 ? t('simulation.reinforcement') : t('simulation.day')}
                             </span>
                           </button>
                         )
@@ -662,14 +664,14 @@ export default function ConfigurationsPage() {
                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
                             }`}
                           >
-                            <span className="hidden sm:inline">{day.label}</span>
+                            <span className="hidden sm:inline">{t(`simulation.weekdays.${day.key}`)}</span>
                             <span className="sm:hidden">{day.short}</span>
                             <span
                               className={`text-[9px] ${
                                 isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
                               }`}
                             >
-                              {isSelected ? 'Activo' : 'Sin recolecciÃ³n'}
+                              {isSelected ? t('simulation.active') : t('simulation.no_collection')}
                             </span>
                           </button>
                         )
@@ -677,16 +679,16 @@ export default function ConfigurationsPage() {
                     </div>
                   </div>
 
-                  {/* SECCIÃ“N: Demanda Global y por Barrio */}
+                  {/* SECCIÓN: Demanda Global y por Barrio */}
                   <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
                     <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5 text-sky-600" />
-                      Demanda Global y Multiplicadores por Barrio
+                      {t('configurations.global_demand_section')}
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Demanda Global *</label>
+                        <label className="text-xs font-bold text-slate-600 uppercase">{t('simulation.global_demand')}</label>
                         <input
                           type="number"
                           step="0.1"
@@ -704,7 +706,7 @@ export default function ConfigurationsPage() {
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                         <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-emerald-600" /> Sobrescrituras por Barrio
+                          <MapPin className="h-3 w-3 text-emerald-600" /> {t('configurations.overrides_by_neighborhood')}
                         </span>
                         <Button
                           type="button"
@@ -714,14 +716,13 @@ export default function ConfigurationsPage() {
                           className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
                         >
                           <Plus className="h-3.5 w-3.5 text-slate-500" />
-                          Agregar Barrio
+                          {t('configurations.add_neighborhood')}
                         </Button>
                       </div>
 
                       {zoneOverrides.length === 0 ? (
                         <div className="p-3 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                          Sin excepciones por barrio. Se aplicarÃ¡ la demanda global (
-                          <strong>{globalDemandMultiplier}x</strong>).
+                          {t('configurations.no_overrides_short')}
                         </div>
                       ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -781,12 +782,12 @@ export default function ConfigurationsPage() {
                       {saving ? (
                         <>
                           <RefreshCw className="h-4 w-4 animate-spin inline" />
-                          Guardando...
+                          {t('configurations.saving')}
                         </>
                       ) : (
                         <>
                           <Save className="h-4 w-4" />
-                          {editingId ? 'Actualizar ConfiguraciÃ³n' : 'Guardar ConfiguraciÃ³n'}
+                          {editingId ? t('configurations.update_config') : t('configurations.save_config')}
                         </>
                       )}
                     </Button>
@@ -804,11 +805,12 @@ export default function ConfigurationsPage() {
                   <div>
                     <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <FolderOpen className="h-5 w-5 text-sky-600" />
-                      Mis Configuraciones
+                      {t('configurations.my_configs')}
                     </CardTitle>
                     <CardDescription className="text-slate-500 mt-1">
-                      {configs.length} configuraciÃ³n{configs.length !== 1 ? 'es' : ''} guardada
-                      {configs.length !== 1 ? 's' : ''} en su usuario.
+                      {configs.length === 1
+                        ? t('configurations.configs_saved_count', { count: configs.length })
+                        : t('configurations.configs_saved_count_plural', { count: configs.length })}
                     </CardDescription>
                   </div>
                   <Button
@@ -818,10 +820,10 @@ export default function ConfigurationsPage() {
                     onClick={fetchConfigs}
                     disabled={loadingList}
                     className="h-8 px-2.5 text-xs text-slate-600 gap-1.5 cursor-pointer"
-                    title="Recargar lista"
+                    title={t('configurations.refresh_title')}
                   >
                     <RefreshCw className={`h-3.5 w-3.5 ${loadingList ? 'animate-spin' : ''}`} />
-                    Actualizar
+                    {t('configurations.refresh')}
                   </Button>
                 </div>
 
@@ -829,7 +831,7 @@ export default function ConfigurationsPage() {
                   <div className="mt-3">
                     <input
                       type="text"
-                      placeholder="Buscar por nombre o descripciÃ³n..."
+                      placeholder={t('configurations.search_placeholder')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-700"
@@ -842,20 +844,19 @@ export default function ConfigurationsPage() {
                 {loadingList ? (
                   <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin text-sky-600" />
-                    <span className="text-xs font-semibold">Cargando configuraciones...</span>
+                    <span className="text-xs font-semibold">{t('configurations.loading_configs')}</span>
                   </div>
                 ) : configs.length === 0 ? (
                   <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center space-y-2 bg-slate-50/50">
                     <FolderOpen className="h-8 w-8 text-slate-300 mx-auto" />
-                    <p className="text-sm font-bold text-slate-600">No posee configuraciones guardadas</p>
+                    <p className="text-sm font-bold text-slate-600">{t('configurations.no_saved_configs')}</p>
                     <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                      Complete el formulario de la izquierda y presione "Guardar ConfiguraciÃ³n" para
-                      almacenarla.
+                      {t('configurations.no_saved_configs_desc')}
                     </p>
                   </div>
                 ) : filteredConfigs.length === 0 ? (
                   <div className="p-6 text-center text-xs text-slate-400">
-                    No se encontraron configuraciones que coincidan con "{searchTerm}".
+                    {t('configurations.no_matching_configs', { term: searchTerm })}
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
@@ -874,7 +875,7 @@ export default function ConfigurationsPage() {
                               {item.name}
                               {editingId === item.id && (
                                 <span className="bg-sky-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase">
-                                  En ediciÃ³n
+                                  {t('configurations.in_editing')}
                                 </span>
                               )}
                             </h4>
@@ -897,12 +898,12 @@ export default function ConfigurationsPage() {
                           </span>
                           {item.config?.scenario?.collection_hours && (
                             <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-semibold">
-                              {item.config.scenario.collection_hours.length} hs recolecciÃ³n
+                              {t('configurations.hours_collection_badge', { count: item.config.scenario.collection_hours.length })}
                             </span>
                           )}
                           {item.config?.zone_overrides?.length > 0 && (
                             <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md font-semibold">
-                              {item.config.zone_overrides.length} barrios personalizados
+                              {t('configurations.neighborhoods_custom_badge', { count: item.config.zone_overrides.length })}
                             </span>
                           )}
                         </div>
@@ -919,7 +920,7 @@ export default function ConfigurationsPage() {
                               title="Inspeccionar JSON"
                             >
                               <FileCode className="h-3.5 w-3.5" />
-                              Ver JSON
+                              {t('configurations.view_json')}
                             </Button>
                             <Button
                               type="button"
@@ -930,7 +931,7 @@ export default function ConfigurationsPage() {
                               title="Cargar en editor para modificar"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
-                              Editar
+                              {t('configurations.edit_btn')}
                             </Button>
                           </div>
 
@@ -944,7 +945,7 @@ export default function ConfigurationsPage() {
                               title="Cargar en el Mapa y simular"
                             >
                               <Map className="h-3.5 w-3.5" />
-                              Usar en Mapa
+                              {t('configurations.use_in_map')}
                             </Button>
                             <Button
                               type="button"
@@ -952,7 +953,7 @@ export default function ConfigurationsPage() {
                               size="icon"
                               onClick={() => handleDeleteConfig(item.id, item.name)}
                               className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
-                              title="Eliminar configuraciÃ³n"
+                              title="Eliminar configuración"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -977,7 +978,7 @@ export default function ConfigurationsPage() {
                 <FileCode className="h-5 w-5 text-sky-600" />
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">{showJsonModal.name}</h3>
-                  <p className="text-xs text-slate-500">Estructura JSON completa de la configuraciÃ³n</p>
+                  <p className="text-xs text-slate-500">Estructura JSON completa de la configuración</p>
                 </div>
               </div>
               <Button
@@ -998,7 +999,7 @@ export default function ConfigurationsPage() {
 
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                {showJsonModal.id ? `ID #${showJsonModal.id}` : 'PrevisualizaciÃ³n'}
+                {showJsonModal.id ? `ID #${showJsonModal.id}` : 'Previsualización'}
               </span>
               <div className="flex items-center gap-2">
                 <Button

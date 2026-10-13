@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next"
 import { Layers, Loader2 } from "lucide-react"
 
 interface ZoneProfilesControlsProps {
@@ -10,12 +11,14 @@ interface ZoneProfilesControlsProps {
 // Pensado para ubicarse como un ítem más dentro de la fila de badges
 // flotante del mapa (no lleva posicionamiento propio).
 export default function ZoneProfilesControls({ visible, loading, onToggle }: ZoneProfilesControlsProps) {
+    const { t } = useTranslation()
+
     return (
         <button
             type="button"
             onClick={onToggle}
             disabled={loading}
-            title="Mostrar/ocultar perfiles de zona por radio censal"
+            title={t('zone_profiles.toggle_tooltip')}
             className={`cursor-pointer disabled:cursor-not-allowed rounded-xl border px-3.5 py-1.5 text-sm shadow-md backdrop-blur transition-all flex flex-col items-start select-none ${
                 visible
                     ? "bg-sky-600 border-sky-600 text-white hover:bg-sky-700 shadow-sm"
@@ -28,10 +31,10 @@ export default function ZoneProfilesControls({ visible, loading, onToggle }: Zon
                 ) : (
                     <Layers className="w-2.5 h-2.5" />
                 )}
-                Perfiles de zona
+                {t('map.zone_profiles')}
             </span>
             <span className={`font-semibold leading-tight text-xs mt-0.5 ${visible ? "text-white font-bold" : "text-slate-800"}`}>
-                {loading ? "Cargando…" : visible ? "Activado" : "Desactivado"}
+                {loading ? t('zone_profiles.loading') : visible ? t('zone_profiles.active') : t('zone_profiles.inactive')}
             </span>
         </button>
     )

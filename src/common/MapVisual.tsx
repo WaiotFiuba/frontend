@@ -1,10 +1,11 @@
-﻿import { Button } from "@/common/utils/ui/button"
+import { useTranslation } from "react-i18next"
+import { Button } from "@/utils/ui/button"
 import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from "@/common/utils/ui/tooltip"
+} from "@/utils/ui/tooltip"
 import {
     Clock,
     Layers,
@@ -13,7 +14,7 @@ import {
     AlertTriangle,
 } from "lucide-react"
 import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
-import type { MapWasteFilter } from "./utils/types"
+import type { MapWasteFilter } from "@/utils/types"
 
 export interface MapVisualProps {
     fullContainersCount: number
@@ -41,12 +42,14 @@ export default function MapVisual({
     availableWasteTypes,
     className = "",
 }: MapVisualProps) {
+    const { t } = useTranslation()
+
     return (
         <div className={`absolute top-3 left-14 z-[1000] flex flex-wrap items-center gap-3 ${className}`}>
-            {/* PestaÃ±a flotante: Contenedores al 100% */}
+            {/* Pestaña flotante: Contenedores al 100% */}
             <div
                 className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:bg-slate-100 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all select-none cursor-default"
-                title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
+                title={t('map.full_alert_tooltip')}
             >
                 <div className="relative flex items-center justify-center">
                     <span className="flex h-2.5 w-2.5 relative">
@@ -63,7 +66,7 @@ export default function MapVisual({
                 <div className="flex flex-col">
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                         {fullContainersCount > 0 && <AlertTriangle className="w-2.5 h-2.5 text-red-500" />}
-                        Al 100%
+                        {t('map.full_alert')}
                     </span>
                     <span
                         className={`text-base font-extrabold leading-tight ${
@@ -79,7 +82,7 @@ export default function MapVisual({
             <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                     <Clock className="w-2.5 h-2.5 text-sky-600" />
-                    Reloj de SimulaciÃ³n
+                    {t('map.simulated_clock')}
                 </p>
                 <p className="font-semibold text-slate-900 leading-tight">
                     {simulatedClock}
@@ -93,13 +96,13 @@ export default function MapVisual({
                 onToggle={onToggleZoneProfiles}
             />
 
-            {/* Filtros dinÃ¡micos de tipo de residuo */}
+            {/* Filtros dinámicos de tipo de residuo */}
             <TooltipProvider delayDuration={150}>
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-md backdrop-blur flex items-center gap-1">
                     {[
-                        { value: 'all', label: 'Todos', icon: Layers },
-                        { value: 'organico', label: 'HÃºmedos', icon: Trash2 },
-                        { value: 'reciclaje', label: 'Reciclables', icon: Recycle },
+                        { value: 'all', label: t('common.all'), icon: Layers },
+                        { value: 'organico', label: t('map.organic'), icon: Trash2 },
+                        { value: 'reciclaje', label: t('map.recyclable'), icon: Recycle },
                     ].map(({ value, label, icon: Icon }) => {
                         const isDisabled =
                             value !== 'all' &&
@@ -136,7 +139,7 @@ export default function MapVisual({
                                         </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="bottom" className="text-xs font-medium">
-                                        No hay contenedores de tipo {label.toLowerCase()} disponibles en esta red
+                                        {t('map.waste_type_unavailable', { type: label.toLowerCase() })}
                                     </TooltipContent>
                                 </Tooltip>
                             )

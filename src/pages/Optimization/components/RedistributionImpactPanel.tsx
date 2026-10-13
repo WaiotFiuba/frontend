@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Activity,
   Scale,
@@ -5,7 +6,7 @@ import {
   TrendingDown,
 } from 'lucide-react'
 import type { RedistributionPlan } from '../types'
-import type { NetworkMetricsData } from '@/common/KpiPanel/types'
+import type { NetworkMetricsData } from '@/common/KPIPanel/types'
 
 interface RedistributionImpactPanelProps {
   plan: RedistributionPlan | null
@@ -20,6 +21,7 @@ export function RedistributionImpactPanel({
   loading = false,
   className = '',
 }: RedistributionImpactPanelProps) {
+  const { t } = useTranslation()
   if (loading) {
     return (
       <div
@@ -80,15 +82,15 @@ export function RedistributionImpactPanel({
         <div className="flex items-center gap-2">
           <div>
             <h3 className="font-bold text-slate-900 text-sm">
-              Comparativa de Balanceo What-If (Demanda Histórica vs Redistribución)
+              {t('optimization.impact_title')}
             </h3>
             <p className="text-[11px] text-slate-500">
-              Evaluación del impacto del plan sobre la dispersión y capacidad histórica de la red
+              {t('optimization.impact_subtitle')}
             </p>
           </div>
         </div>
         <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-          Simulación What-If Activa
+          {t('optimization.whatif_sim_active')}
         </span>
       </div>
 
@@ -99,17 +101,17 @@ export function RedistributionImpactPanel({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Activity className="h-4 w-4 text-blue-600" />
-              Llenado Promedio Histórico
+              {t('optimization.mean_fill_title')}
             </span>
             <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-              Ventana histórica
+              {t('optimization.hist_window')}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs">
               <span className="text-[11px] text-slate-500 font-medium block">
-                Histórico Base
+                {t('optimization.hist_base')}
               </span>
               <span className="text-xl font-bold font-mono tabular-nums text-slate-800">
                 {origMean.toFixed(1)}%
@@ -117,7 +119,7 @@ export function RedistributionImpactPanel({
             </div>
             <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-2xs">
               <span className="text-[11px] text-blue-600 font-semibold block">
-                Proyectado
+                {t('optimization.projected')}
               </span>
               <span className="text-xl font-bold font-mono tabular-nums text-blue-700">
                 {optMean.toFixed(1)}%
@@ -126,8 +128,7 @@ export function RedistributionImpactPanel({
           </div>
 
           <p className="text-[11px] text-slate-500">
-            El volumen total de residuos se conserva, repartiéndose de forma
-            equitativa entre sitios.
+            {t('optimization.volume_conserved')}
           </p>
         </div>
 
@@ -136,16 +137,16 @@ export function RedistributionImpactPanel({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Scale className="h-4 w-4 text-indigo-600" />
-              Dispersión Histórica (σ)
+              {t('optimization.std_title')}
             </span>
             {improved ? (
               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full ring-1 ring-emerald-600/20 flex items-center gap-1">
                 <TrendingDown className="h-3 w-3" />
-                -{reductionPct}% dispersión
+                {t('optimization.reduction_dispersion', { pct: reductionPct })}
               </span>
             ) : (
               <span className="text-[11px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                Sin variación
+                {t('optimization.no_variation')}
               </span>
             )}
           </div>
@@ -153,7 +154,7 @@ export function RedistributionImpactPanel({
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs">
               <span className="text-[11px] text-slate-500 font-medium block">
-                Histórica Base
+                {t('optimization.hist_base')}
               </span>
               <span className="text-xl font-bold font-mono tabular-nums text-slate-800">
                 &plusmn;{origStd.toFixed(1)}%
@@ -161,7 +162,7 @@ export function RedistributionImpactPanel({
             </div>
             <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-2xs">
               <span className="text-[11px] text-emerald-600 font-semibold block">
-                Proyectada
+                {t('optimization.projected')}
               </span>
               <span className="text-xl font-bold font-mono tabular-nums text-emerald-700">
                 &plusmn;{optStd.toFixed(1)}%
@@ -171,8 +172,8 @@ export function RedistributionImpactPanel({
 
           <p className="text-[11px] text-slate-500">
             {improved
-              ? `La reducción del desvío estándar de ±${origStd.toFixed(1)}% a ±${optStd.toFixed(1)}% homogeniza la demanda histórica de la red, previniendo desbordes en sitios críticos.`
-              : 'La dispersión de la red se mantiene estable con los parámetros definidos.'}
+              ? t('optimization.dispersion_reduction_desc', { orig: origStd.toFixed(1), opt: optStd.toFixed(1) })
+              : t('optimization.dispersion_stable_desc')}
           </p>
         </div>
       </div>
@@ -181,11 +182,10 @@ export function RedistributionImpactPanel({
       <div className="bg-gradient-to-r from-slate-50 via-indigo-50/30 to-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
         <div className="flex justify-between items-center text-[11px] text-slate-600 font-semibold">
           <span>
-            Rango típico de ocupación (Banda de 1 desvío estándar &mu; &plusmn;
-            &sigma;)
+            {t('optimization.range_typical')}
           </span>
           <span className="font-mono text-[10px] text-slate-400">
-            0% a 100%
+            {t('optimization.range_0_100')}
           </span>
         </div>
 
@@ -193,9 +193,9 @@ export function RedistributionImpactPanel({
         <div className="space-y-1">
           <div className="flex justify-between text-[10px] text-slate-500">
             <span>
-              Histórico Base: {origMin.toFixed(0)}% a {origMax.toFixed(0)}%
+              {t('optimization.hist_base_range', { min: origMin.toFixed(0), max: origMax.toFixed(0) })}
             </span>
-            <span>Dispersión amplia</span>
+            <span>{t('optimization.wide_dispersion')}</span>
           </div>
           <div className="h-2 w-full bg-slate-200/80 rounded-full relative overflow-hidden">
             <div
@@ -212,9 +212,9 @@ export function RedistributionImpactPanel({
         <div className="space-y-1 pt-1">
           <div className="flex justify-between text-[10px] text-emerald-700 font-semibold">
             <span>
-              Proyectado: {optMin.toFixed(0)}% a {optMax.toFixed(0)}%
+              {t('optimization.projected_range', { min: optMin.toFixed(0), max: optMax.toFixed(0) })}
             </span>
-            <span>Banda concentrada y balanceada</span>
+            <span>{t('optimization.concentrated_band')}</span>
           </div>
           <div className="h-2 w-full bg-slate-200/80 rounded-full relative overflow-hidden">
             <div
@@ -233,44 +233,44 @@ export function RedistributionImpactPanel({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
             <span className="text-[11px] text-slate-500 font-semibold block">
-              Contenedores
+              {t('kpi.containers_label')}
             </span>
             <span className="text-xl font-bold font-mono tabular-nums text-blue-700">
               {plan.total_containers_moved}
             </span>
-            <span className="text-[10px] text-slate-400 block">a reubicar</span>
+            <span className="text-[10px] text-slate-400 block">{t('optimization.to_relocate')}</span>
           </div>
           <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
             <span className="text-[11px] text-slate-500 font-semibold block">
-              Distancia Media
+              {t('optimization.avg_distance')}
             </span>
             <span className="text-xl font-bold font-mono tabular-nums text-indigo-700">
               {plan.avg_distance_km.toFixed(2)} km
             </span>
             <span className="text-[10px] text-slate-400 block">
-              por traslado
+              {t('optimization.per_move')}
             </span>
           </div>
           <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
             <span className="text-[11px] text-slate-500 font-semibold block">
-              Sitios Donantes
+              {t('optimization.donor_sites')}
             </span>
             <span className="text-xl font-bold font-mono tabular-nums text-sky-700">
               {plan.sites_donating}
             </span>
             <span className="text-[10px] text-slate-400 block">
-              ceden exceso
+              {t('optimization.give_excess')}
             </span>
           </div>
           <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
             <span className="text-[11px] text-slate-500 font-semibold block">
-              Sitios Receptores
+              {t('optimization.receiver_sites')}
             </span>
             <span className="text-xl font-bold font-mono tabular-nums text-rose-700">
               {plan.sites_receiving}
             </span>
             <span className="text-[10px] text-slate-400 block">
-              descongestionados
+              {t('optimization.decongested')}
             </span>
           </div>
         </div>

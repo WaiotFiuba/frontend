@@ -1,17 +1,19 @@
-﻿import 'leaflet/dist/leaflet.css'
-import { Button } from '@/common/utils/ui/button'
-import { Card, CardContent } from '@/common/utils/ui/card'
+import 'leaflet/dist/leaflet.css'
+import { Button } from '@/utils/ui/button'
+import { Card, CardContent } from '@/utils/ui/card'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import MapLegend from './components/MapLegend'
 import { useState } from 'react'
 import SimulationControl from './components/SimulationControl'
 import { ArrowLeft, MapPin } from 'lucide-react'
-import { NetworkKpiPanel } from '@/common/KpiPanel'
+import { NetworkKpiPanel } from '@/common/KPIPanel'
 import { useCityConfig } from '@/context/CityConfigContext'
+import { useTranslation } from 'react-i18next'
 
 export default function Map() {
     const navigate = useNavigate()
+    const { t } = useTranslation()
     const [refreshTrigger, setRefreshTrigger] = useState(0)
     const { cityName } = useCityConfig()
 
@@ -24,25 +26,28 @@ export default function Map() {
                             <MapPin className="w-8 h-8 text-sky-600 shrink-0" />
                             <div>
                                 <h1 className="text-3xl font-extrabold text-slate-900">
-                                    Mapa Interactivo
+                                    {t('map.title')}
                                 </h1>
                                 <p className="text-slate-600 text-sm mt-0.5">
-                                    Monitoreo geogrÃ¡fico de sitios, niveles de llenado y telemetrÃ­a de contenedores{cityName ? ` en ${cityName}` : ''}.
+                                    {t('map.subtitle')}
+                                    {cityName ? t('map.in_city', { city: cityName }) : ''}.
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <Button
-                        variant="outline"
-                        onClick={() => navigate('/')}
-                        className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Volver al inicio
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate('/')}
+                            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            {t('common.back_to_home')}
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Panel de MÃ©tricas Operativas de la Red */}
+                {/* Panel de Métricas Operativas de la Red */}
                 <NetworkKpiPanel refreshTrigger={refreshTrigger} />
 
                 {/* Hero Map Full-Width con Leyenda Flotante Superpuesta */}

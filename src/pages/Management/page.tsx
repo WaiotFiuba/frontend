@@ -1,6 +1,7 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/common/utils/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/utils/ui/button'
 import { ContainerStats } from './components/types'
 import ManagementStats from './components/ManagementStats'
 import ContainersTable from './components/ContainersTable'
@@ -13,6 +14,7 @@ import { api } from '@/lib/api'
 
 export default function Management() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   // const [localError, setLocalError] = useState<string | null>(null)
   // const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [containerToRemove, setContainerToRemove] = useState<BackendContainer | null>(null)
@@ -72,10 +74,10 @@ export default function Management() {
             <Database className="h-8 w-8 text-sky-600 shrink-0" />
             <div className="space-y-0.5">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-                GestiÃ³n de Contenedores
+                {t('management.title')}
               </h1>
               <p className="text-slate-500 text-sm md:text-base">
-                AdministraciÃ³n y monitoreo de unidades de recolecciÃ³n y estado de la red.
+                {t('management.subtitle')}
               </p>
             </div>
           </div>
@@ -87,17 +89,18 @@ export default function Management() {
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
             >
               <Map className="h-4 w-4 text-sky-600" />
-              Ir al Mapa
+              {t('management.go_to_map')}
             </Button>
             <Button
               variant="outline"
               onClick={() => navigate('/')}
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
             >
-              Volver al inicio
+              {t('common.back_to_home')}
             </Button>
           </div>
         </div>
+
 
         {/* 
         {localError && (

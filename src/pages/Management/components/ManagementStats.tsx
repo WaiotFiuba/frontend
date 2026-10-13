@@ -1,4 +1,5 @@
-﻿import { Card, CardContent } from '@/common/utils/ui/card'
+import { useTranslation } from 'react-i18next'
+import { Card, CardContent } from '@/utils/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { ContainerStats } from './types'
 
@@ -9,6 +10,7 @@ interface ManagementStatsProps {
 }
 
 export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
+  const { t } = useTranslation()
   const statsValues = stats || { total: 0, available: 0, avg_fill: 0, alert_level: 0 }
 
 
@@ -19,7 +21,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Total Contenedores
+              {t('management.total_containers')}
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.total}</h3>
           </div>
@@ -34,7 +36,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Disponibles / Activos
+              {t('management.available_active')}
             </p>
             <h3 className="text-3xl font-extrabold text-emerald-600">{statsValues.available}</h3>
           </div>
@@ -49,7 +51,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Nivel Promedio de Llenado
+              {t('management.avg_fill')}
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.avg_fill}%</h3>
           </div>
@@ -63,7 +65,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Alertas de Desborde
+              {t('management.critical_alert')}
             </p>
             <h3 className="text-3xl font-extrabold text-amber-600">{statsValues.alert_level}</h3>
           </div>
@@ -75,3 +77,4 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
     </div>
   )
 }
+

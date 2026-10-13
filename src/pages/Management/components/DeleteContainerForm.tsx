@@ -1,6 +1,7 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { Button } from '@/common/utils/ui/button'
+import { Button } from '@/utils/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -8,7 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/common/utils/ui/dialog'
+} from '@/utils/ui/dialog'
 import { api } from '@/lib/api'
 import { BackendContainer } from './types'
 
@@ -19,6 +20,7 @@ interface DeleteContainerFormProps {
 }
 
 export default function DeleteContainerForm({ container, onClose, onConfirm }: DeleteContainerFormProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,9 +48,9 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
           </div>
           <div className="space-y-2 w-full">
             <DialogHeader className="p-0">
-              <DialogTitle className="text-lg font-bold text-slate-900">Eliminar Contenedor</DialogTitle>
+              <DialogTitle className="text-lg font-bold text-slate-900">{t('management.delete_title')}</DialogTitle>
               <DialogDescription className="text-sm text-slate-500 leading-relaxed mt-1">
-                Â¿EstÃ¡ seguro de que desea eliminar el contenedor{' '}
+                {t('management.delete_confirm')}{' '}
                 <span className="font-mono font-bold text-slate-800">{container.site_id}</span>{' '}
                 ({container.site_name || 'Sin Nombre'})?
               </DialogDescription>
@@ -67,7 +69,7 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             disabled={loading}
             className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
           >
-            Cancelar
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleConfirmDelete}
@@ -77,10 +79,10 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
             {loading ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                Eliminando...
+                {t('common.loading')}
               </>
             ) : (
-              'Eliminar Contenedor'
+              t('common.delete')
             )}
           </Button>
         </DialogFooter>
@@ -88,3 +90,4 @@ export default function DeleteContainerForm({ container, onClose, onConfirm }: D
     </Dialog>
   )
 }
+

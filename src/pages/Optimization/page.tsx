@@ -1,13 +1,14 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
-import { Button } from '@/common/utils/ui/button'
-import { Card, CardContent } from '@/common/utils/ui/card'
-import { Switch } from '@/common/utils/ui/switch'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/utils/ui/button'
+import { Card, CardContent } from '@/utils/ui/card'
+import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } from './services/optimizationApi'
 import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
-import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
+import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KPIPanel'
 import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
 import {
@@ -16,22 +17,20 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronUp,
-  Cpu,
   Download,
   MapPin,
   RotateCcw,
   Sliders,
-  Sparkles,
-  Zap,
 } from 'lucide-react'
 
 export default function Optimization() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
-  // Filtro de categorÃ­a de utilizaciÃ³n
+  // Filtro de categoría de utilización
   const [selectedCategory, setSelectedCategory] = useState<UtilizationCategory | 'all'>('all')
 
-  // ConfiguraciÃ³n de parÃ¡metros unificada
+  // Configuración de parámetros unificada
   const [config, setConfig] = useState<OptimizationConfig>({
     max_distance_km: 2.0,
     window_days: null,
@@ -82,7 +81,7 @@ export default function Optimization() {
           }
         }
       } catch (err) {
-        console.warn('Error al cargar datos iniciales de optimizaciÃ³n:', err)
+        console.warn('Error al cargar datos iniciales de optimización:', err)
       } finally {
         if (isMounted) setLoadingMetrics(false)
       }
@@ -111,13 +110,13 @@ export default function Optimization() {
       }
       if (generated.total_containers_moved > 0) {
         setSuccessMsg(
-          `RedistribuciÃ³n What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
+          `Redistribución What-If activa: ${generated.total_containers_moved} traslados calculados (distancia prom. ${generated.avg_distance_km.toFixed(2)} km).`
         )
       } else {
-        setSuccessMsg('La red se encuentra balanceada con los parÃ¡metros seleccionados (0 movimientos necesarios).')
+        setSuccessMsg('La red se encuentra balanceada con los parámetros seleccionados (0 movimientos necesarios).')
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribuciÃ³n'
+      const message = err instanceof Error ? err.message : 'Error al generar el plan de redistribución'
       setErrorMsg(message)
     } finally {
       setGenerating(false)
@@ -126,7 +125,7 @@ export default function Optimization() {
 
   const handleExportCsv = () => {
     if (!plan?.moves.length) return
-    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', 'DescongestiÃ³n Neta %']
+    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', 'Descongestión Neta %']
     const rows = plan.moves.map((m) => [
       m.container_id,
       `"${m.from_site_name.replace(/"/g, '""')}"`,
@@ -158,10 +157,10 @@ export default function Optimization() {
               <Sliders className="w-8 h-8 text-sky-600 shrink-0" />
               <div>
                 <h1 className="text-3xl font-extrabold text-slate-900">
-                  RedistribuciÃ³n de Contenedores
+                  {t('optimization.title')}
                 </h1>
                 <p className="text-slate-600 text-sm mt-0.5">
-                  OptimizaciÃ³n y balanceo de carga entre sitios segÃºn demanda y uso histÃ³rico.
+                  {t('optimization.subtitle')}
                 </p>
               </div>
             </div>
@@ -173,7 +172,7 @@ export default function Optimization() {
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-xs cursor-pointer"
             >
               <MapPin className="w-4 h-4 text-sky-600" />
-              Ver Mapa General
+              {t('management.go_to_map')}
             </Button>
             <Button
               variant="outline"
@@ -181,12 +180,12 @@ export default function Optimization() {
               className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              Volver al inicio
+              {t('common.back_to_home')}
             </Button>
           </div>
         </div>
 
-        {/* 1. Panel de MÃ©tricas de la Red (What-If en Playground de SimulaciÃ³n) */}
+        {/* 1. Panel de Métricas de la Red (What-If en Playground de Simulación) */}
         <NetworkKpiPanel
           metrics={networkMetrics}
           loading={loadingMetrics}
@@ -195,7 +194,7 @@ export default function Optimization() {
           whatif={true}
         />
 
-        {/* 2. Panel Complementario de Impacto What-If (EspecÃ­fico de redistribuciÃ³n) */}
+        {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}
         <RedistributionImpactPanel
           plan={plan}
           baselineMetrics={baselineMetrics}
@@ -249,7 +248,7 @@ export default function Optimization() {
                 isPlayground
               />
 
-              {/* Tarjeta flotante de impacto de descongestiÃ³n */}
+              {/* Tarjeta flotante de impacto de descongestión */}
               {selectedMove && (
                 <MoveImpactCard
                   move={selectedMove}
@@ -258,7 +257,7 @@ export default function Optimization() {
                 />
               )}
 
-              {/* Panel Flotante RetrÃ¡ctil (Superpuesto en esquina superior derecha) */}
+              {/* Panel Flotante Retráctil (Superpuesto en esquina superior derecha) */}
               {isPanelOpen ? (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
@@ -270,25 +269,25 @@ export default function Optimization() {
                   <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80">
                     <div className="flex items-center gap-2">
                       <Sliders className="h-4 w-4 text-sky-600" />
-                      <h2 className="font-bold text-slate-900 text-sm">ParÃ¡metros de control</h2>
+                      <h2 className="font-bold text-slate-900 text-sm">{t('optimization.control_parameters')}</h2>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsPanelOpen(false)}
                       className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-                      title="Minimizar panel"
+                      title={t('optimization.minimize_panel')}
                     >
                       <ChevronUp className="w-4 h-4" />
                     </button>
                   </div>
 
-                  {/* Cuerpo scrollable con controles de optimizaciÃ³n */}
+                  {/* Cuerpo scrollable con controles de optimización */}
                   <div className="p-4 overflow-y-auto space-y-4 max-h-[calc(78vh-60px)]">
-                    {/* 1. Radio MÃ¡ximo */}
+                    {/* 1. Radio Máximo */}
                     <div className="space-y-1">
                       <div className="flex justify-between items-center text-xs">
                         <label htmlFor="max-dist-input" className="font-semibold text-slate-700">
-                          Radio MÃ¡ximo de Traslado
+                          {t('optimization.max_distance')}
                         </label>
                         <span className="font-mono font-bold text-sky-950 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-200">
                           {config.max_distance_km.toFixed(1)} km
@@ -305,14 +304,14 @@ export default function Optimization() {
                         className="w-full accent-slate-400 cursor-pointer"
                       />
                       <span className="text-[11px] text-slate-500 block">
-                        Distancia mÃ¡xima entre sitios donantes y receptores.
+                        {t('optimization.max_distance_hint')}
                       </span>
                     </div>
 
-                    {/* 2. Ventana HistÃ³rica */}
+                    {/* 2. Ventana Histórica */}
                     <div className="space-y-1.5">
                       <label htmlFor="window-days-select" className="text-xs font-semibold text-slate-700 block">
-                        Ventana de Historial
+                        {t('optimization.history_window_label')}
                       </label>
                       <select
                         id="window-days-select"
@@ -325,57 +324,55 @@ export default function Optimization() {
                         }
                         className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-sky-500 focus:outline-hidden"
                       >
-                        <option value="all">Todo el historial disponible</option>
-                        <option value="7">Ãšltimos 7 dÃ­as</option>
-                        <option value="15">Ãšltimos 15 dÃ­as</option>
-                        <option value="30">Ãšltimos 30 dÃ­as</option>
+                        <option value="all">{t('optimization.all_history')}</option>
+                        <option value="7">{t('optimization.days_7')}</option>
+                        <option value="15">{t('optimization.days_15')}</option>
+                        <option value="30">{t('optimization.days_30')}</option>
                       </select>
                       <span className="text-[11px] text-slate-500 block">
-                        PerÃ­odo para evaluar la saturaciÃ³n de cada sitio.
+                        {t('optimization.history_hint')}
                       </span>
                     </div>
 
                     {/* 3. Algoritmo y Capacidad Vial */}
                     <div className="space-y-2 pt-1 border-t border-slate-100">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-slate-700">Algoritmo</span>
+                        <span className="font-semibold text-slate-700">{t('optimization.algorithm')}</span>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center gap-1 ${config.algorithm === 'greedy'
-                                ? 'bg-sky-600 text-white shadow-xs font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${config.algorithm === 'greedy'
+                              ? 'bg-sky-600 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                               }`}
                           >
-                            <Zap className="h-3 w-3" />
-                            Greedy
+                            {t('optimization.algo_greedy')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'lp' })}
-                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center gap-1 ${config.algorithm === 'lp'
-                                ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${config.algorithm === 'lp'
+                              ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                               }`}
                           >
-                            <Cpu className="h-3 w-3" />
-                            Prog. Lineal
+                            {t('optimization.algo_lp')}
                           </button>
                         </div>
                       </div>
 
-                      {/* Control de Capacidad MÃ¡xima Vial */}
+                      {/* Control de Capacidad Máxima Vial */}
                       <div className="flex items-center justify-between text-xs pt-1 pb-1">
                         <label
                           htmlFor="capacity-constraints-checkbox"
                           className="font-semibold text-slate-700 cursor-pointer select-none"
                         >
-                          Respetar capacidad mÃ¡xima
+                          {t('optimization.capacity_constraint')}
                         </label>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-slate-500 font-medium">
-                            {config.apply_capacity_constraints ?? true ? 'Vial activa' : 'Solo estadÃ­stica'}
+                            {config.apply_capacity_constraints ?? true ? t('optimization.capacity_active') : t('optimization.capacity_inactive')}
                           </span>
                           <Switch
                             id="capacity-constraints-checkbox"
@@ -388,17 +385,17 @@ export default function Optimization() {
                       </div>
                     </div>
 
-                    {/* Umbrales de Score de UtilizaciÃ³n */}
+                    {/* Umbrales de Score de Utilización */}
                     <div className="pt-2 border-t border-slate-100 space-y-3">
                       <span className="text-xs font-bold text-slate-700 block">
-                        Umbrales de Score de UtilizaciÃ³n
+                        {t('optimization.utilization_thresholds')}
                       </span>
 
                       {/* Score Donante */}
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <label htmlFor="donor-threshold-input" className="font-semibold text-slate-700 text-[11px]">
-                            Donante (Subutilizado)
+                            {t('optimization.donor_threshold')}
                           </label>
                           <span className="font-mono font-bold text-emerald-950 px-2 py-0.5 rounded-md bg-emerald-200 border border-emerald-300 text-[11px]">
                             {donorPct}%
@@ -422,7 +419,7 @@ export default function Optimization() {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <label htmlFor="target-utilization-input" className="font-semibold text-slate-700 text-[11px]">
-                            Objetivo (Ideal)
+                            {t('optimization.target_threshold')}
                           </label>
                           <span className="font-mono font-bold text-sky-950 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-[11px]">
                             {targetPct}%
@@ -446,7 +443,7 @@ export default function Optimization() {
                       <div className="space-y-1">
                         <div className="flex justify-between items-center text-xs">
                           <label htmlFor="receiver-threshold-input" className="font-semibold text-slate-700 text-[11px]">
-                            Receptor (Sobredemandado)
+                            {t('optimization.receiver_threshold')}
                           </label>
                           <span className="font-mono font-bold text-rose-950 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-[11px]">
                             {receiverPct}%
@@ -467,15 +464,14 @@ export default function Optimization() {
                       </div>
                     </div>
 
-                    {/* BotÃ³n Principal Generar RedistribuciÃ³n */}
+                    {/* Botón Principal Generar Redistribución (sin icono, como solicitó el usuario) */}
                     <div className="pt-2">
                       <Button
                         onClick={handleGeneratePlan}
                         disabled={generating}
-                        className="w-full text-xs font-bold !bg-sky-600 hover:!bg-sky-700 !text-white shadow-sm cursor-pointer h-10 rounded-xl flex items-center justify-center gap-2"
+                        className="w-full text-xs font-bold !bg-sky-600 hover:!bg-sky-700 !text-white shadow-sm cursor-pointer h-10 rounded-xl flex items-center justify-center"
                       >
-                        <Sparkles className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
-                        {generating ? 'Calculando RedistribuciÃ³n...' : 'Generar RedistribuciÃ³n'}
+                        {generating ? t('optimization.generating_plan') : t('optimization.generate_plan')}
                       </Button>
                     </div>
                   </div>
@@ -491,7 +487,7 @@ export default function Optimization() {
                     className="bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl hover:shadow-2xl hover:border-sky-300 text-slate-800 px-4 py-2.5 rounded-xl flex items-center gap-2.5 font-bold text-xs transition-all cursor-pointer hover:bg-sky-50/70"
                   >
                     <Sliders className="w-4 h-4 text-sky-600" />
-                    <span>ParÃ¡metros de control</span>
+                    <span>{t('optimization.control_parameters')}</span>
                     {plan && plan.moves.length > 0 && (
                       <span className="bg-sky-100 text-sky-800 text-[10px] font-black px-1.5 py-0.5 rounded-full">
                         {plan.moves.length} mov.
@@ -501,20 +497,20 @@ export default function Optimization() {
                 </div>
               )}
 
-              {/* PÃ­ldora inferior informativa si el panel estÃ¡ minimizado y hay plan */}
+              {/* Píldora inferior informativa si el panel está minimizado y hay plan */}
               {!isPanelOpen && plan && plan.moves.length > 0 && (
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
                   className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl px-4 py-2 rounded-full flex items-center gap-4 text-xs select-none"
                 >
                   <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <span className="text-sky-600 font-extrabold">{plan.total_containers_moved}</span> traslados
+                    <span className="text-sky-600 font-extrabold">{plan.total_containers_moved}</span> {t('optimization.moves_title')}
                   </div>
-                  <span className="text-slate-300">â€¢</span>
+                  <span className="text-slate-300">•</span>
                   <div className="text-slate-600">
-                    Distancia prom: <span className="font-bold text-slate-800">{plan.avg_distance_km.toFixed(2)} km</span>
+                    {t('optimization.avg_dist_short')} <span className="font-bold text-slate-800">{plan.avg_distance_km.toFixed(2)} km</span>
                   </div>
-                  <span className="text-slate-300">â€¢</span>
+                  <span className="text-slate-300">•</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -523,7 +519,7 @@ export default function Optimization() {
                     }}
                     className="font-bold text-sky-600 hover:text-sky-700 cursor-pointer underline underline-offset-2"
                   >
-                    Ver tabla
+                    {t('optimization.view_table')}
                   </button>
                 </div>
               )}
@@ -534,10 +530,10 @@ export default function Optimization() {
           {plan && plan.moves.length === 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 text-center space-y-1">
               <p className="text-xs font-semibold text-slate-700">
-                ðŸŒ± DistribuciÃ³n What-If base activa (rÃ©plica 1:1 de la red fÃ­sica).
+                {t('optimization.baseline_active')}
               </p>
               <p className="text-[11px] text-slate-500">
-                AjustÃ¡ los parÃ¡metros en el panel lateral y presionÃ¡ <strong>&ldquo;Generar RedistribuciÃ³n&rdquo;</strong> para reubicar contenedores en el playground.
+                {t('optimization.adjust_params_hint')}
               </p>
             </div>
           )}
@@ -548,10 +544,10 @@ export default function Optimization() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    Movimientos Recomendados ({plan.moves.length})
+                    {t('optimization.moves_recommended', { count: plan.moves.length })}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    {plan.sites_donating} sitios donantes ceden contenedores a {plan.sites_receiving} sitios saturados.
+                    {t('optimization.moves_subtitle', { donating: plan.sites_donating, receiving: plan.sites_receiving })}
                   </p>
                 </div>
 
@@ -563,7 +559,7 @@ export default function Optimization() {
                     className="text-xs gap-1.5 border-slate-200 cursor-pointer"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Exportar CSV
+                    {t('optimization.export_csv')}
                   </Button>
                   {highlightedMoveId && (
                     <Button
@@ -573,7 +569,7 @@ export default function Optimization() {
                       className="text-xs gap-1 text-slate-500 cursor-pointer"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
-                      Limpiar selecciÃ³n
+                      {t('optimization.clear_selection')}
                     </Button>
                   )}
                 </div>
@@ -582,28 +578,28 @@ export default function Optimization() {
               {/* Quick summary badges */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-sky-50/80 p-3 rounded-xl border border-sky-200/80">
-                  <span className="text-[11px] text-sky-700 font-semibold block">Contenedores</span>
+                  <span className="text-[11px] text-sky-700 font-semibold block">{t('common.containers')}</span>
                   <span className="text-xl font-extrabold text-sky-950">
                     {plan.total_containers_moved}
                   </span>
-                  <span className="text-[10px] text-sky-600 block">a reubicar</span>
+                  <span className="text-[10px] text-sky-600 block">{t('optimization.to_relocate')}</span>
                 </div>
                 <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
-                  <span className="text-[11px] text-emerald-700 font-semibold block">Distancia Promedio</span>
+                  <span className="text-[11px] text-emerald-700 font-semibold block">{t('optimization.avg_distance')}</span>
                   <span className="text-xl font-extrabold text-emerald-950">
                     {plan.avg_distance_km.toFixed(2)} km
                   </span>
-                  <span className="text-[10px] text-emerald-600 block">por traslado</span>
+                  <span className="text-[10px] text-emerald-600 block">{t('optimization.per_move')}</span>
                 </div>
                 <div className="bg-emerald-50/80 p-3 rounded-xl border border-emerald-200/80">
-                  <span className="text-[11px] text-emerald-700 font-semibold block">Sitios Donantes</span>
+                  <span className="text-[11px] text-emerald-700 font-semibold block">{t('optimization.donor_sites')}</span>
                   <span className="text-xl font-extrabold text-emerald-950">{plan.sites_donating}</span>
-                  <span className="text-[10px] text-emerald-600 block">ceden exceso</span>
+                  <span className="text-[10px] text-emerald-600 block">{t('optimization.give_excess')}</span>
                 </div>
                 <div className="bg-rose-50/80 p-3 rounded-xl border border-rose-200/80">
-                  <span className="text-[11px] text-rose-700 font-semibold block">Sitios Receptores</span>
+                  <span className="text-[11px] text-rose-700 font-semibold block">{t('optimization.receiver_sites')}</span>
                   <span className="text-xl font-extrabold text-rose-950">{plan.sites_receiving}</span>
-                  <span className="text-[10px] text-rose-600 block">descongestionados</span>
+                  <span className="text-[10px] text-rose-600 block">{t('optimization.decongested')}</span>
                 </div>
               </div>
 
@@ -613,13 +609,13 @@ export default function Optimization() {
                   <thead className="bg-slate-50/90 text-slate-600 font-semibold border-b border-slate-200 sticky top-0 z-10">
                     <tr>
                       <th className="p-3">#</th>
-                      <th className="p-3">Contenedor</th>
-                      <th className="p-3">Sitio Donante (Origen)</th>
+                      <th className="p-3">{t('optimization.th_container')}</th>
+                      <th className="p-3">{t('optimization.th_donor_site')}</th>
                       <th className="p-3 text-center"></th>
-                      <th className="p-3">Sitio Receptor (Destino)</th>
-                      <th className="p-3 text-right">Distancia</th>
-                      <th className="p-3 text-center">DescongestiÃ³n Neta</th>
-                      <th className="p-3 text-center">AcciÃ³n</th>
+                      <th className="p-3">{t('optimization.th_receiver_site')}</th>
+                      <th className="p-3 text-right">{t('optimization.th_distance')}</th>
+                      <th className="p-3 text-center">{t('optimization.th_net_decongestion')}</th>
+                      <th className="p-3 text-center">{t('optimization.th_action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -666,12 +662,11 @@ export default function Optimization() {
                           <td className="p-3 text-center whitespace-nowrap">
                             {m.net_decongestion_pct != null ? (
                               <span
-                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${
-                                  m.net_decongestion_pct < 0
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${m.net_decongestion_pct < 0
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                     : 'bg-sky-50 text-sky-700 border-sky-200'
-                                }`}
-                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% â†’ ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% â†’ ${m.donor_fill_after ?? '?'}%`}
+                                  }`}
+                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_before ?? '?'}%`}
                               >
                                 {m.net_decongestion_pct > 0
                                   ? `+${m.net_decongestion_pct}%`
@@ -695,11 +690,11 @@ export default function Optimization() {
                                 }
                               }}
                               className={`text-[11px] font-semibold px-2.5 py-1 rounded-md transition-all cursor-pointer ${isSelected
-                                  ? 'bg-sky-600 text-white shadow-xs'
-                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                ? 'bg-sky-600 text-white shadow-xs'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                 }`}
                             >
-                              {isSelected ? 'Seleccionado' : 'Ver en mapa'}
+                              {isSelected ? t('common.selected') : t('optimization.view_on_map')}
                             </button>
                           </td>
                         </tr>

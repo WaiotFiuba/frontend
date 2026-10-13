@@ -1,5 +1,5 @@
 ﻿import { useMemo } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/utils/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
 import { Database } from 'lucide-react'
 import { BackendContainer } from './types'
 
@@ -59,7 +59,7 @@ export default function ContainerTypesCard({ containers }: ContainerTypesCardPro
                 <div className="space-y-1">
                   <p className="font-semibold text-slate-900">{type.name}</p>
                   <p className="text-xs text-slate-500">
-                    {type.volume_m3 ? `${type.volume_m3} mÂ³` : 'Sin volumen'} â€¢{' '}
+                    {type.volume_m3 ? `${type.volume_m3} m³` : 'Sin volumen'} •{' '}
                     {type.height_cm ? `${type.height_cm} cm` : 'Sin altura'}
                   </p>
                 </div>

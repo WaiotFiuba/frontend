@@ -1,7 +1,8 @@
-﻿import { useState } from "react"
+import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Info, Layers, CheckCircle2, AlertTriangle, AlertCircle, ChevronDown, MapPin } from "lucide-react"
-import { Badge } from "@/common/utils/ui/badge"
-import { Card, CardContent } from "@/common/utils/ui/card"
+import { Badge } from "@/utils/ui/badge"
+import { Card, CardContent } from "@/utils/ui/card"
 
 interface MapLegendProps {
     className?: string
@@ -64,6 +65,7 @@ export default function MapLegend({
     defaultLevelsOpen = false,
     defaultTypesOpen = false,
 }: MapLegendProps) {
+    const { t } = useTranslation()
     const [isLevelsOpen, setIsLevelsOpen] = useState(defaultLevelsOpen)
     const [isTypesOpen, setIsTypesOpen] = useState(defaultTypesOpen)
 
@@ -86,8 +88,8 @@ export default function MapLegend({
                             <Layers className="h-4 w-4" />
                         </div>
                         <div>
-                            <span className="text-xs font-bold text-slate-800 block leading-tight">Nivel de llenado</span>
-                            <span className="text-[10px] text-slate-500 font-medium block">Rangos de capacidad y alertas</span>
+                            <span className="text-xs font-bold text-slate-800 block leading-tight">{t('map.legend.fill_level', { defaultValue: 'Nivel de llenado' })}</span>
+                            <span className="text-[10px] text-slate-500 font-medium block">{t('map.legend.fill_ranges', { defaultValue: 'Rangos de capacidad y alertas' })}</span>
                         </div>
                     </div>
                     <ChevronDown
@@ -105,11 +107,11 @@ export default function MapLegend({
                                     <span className="font-bold text-xs text-emerald-950">&lt; 50%</span>
                                     <Badge variant="success" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <CheckCircle2 className="w-2.5 h-2.5" />
-                                        Óptimo
+                                        {t('map.legend.optimal', { defaultValue: 'Óptimo' })}
                                     </Badge>
                                 </div>
                                 <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
-                                    Nivel bajo de residuos.
+                                    {t('map.legend.low_fill_desc', { defaultValue: 'Nivel bajo de residuos.' })}
                                 </p>
                             </div>
                         </div>
@@ -121,11 +123,11 @@ export default function MapLegend({
                                     <span className="font-bold text-xs text-amber-950">50% - 79%</span>
                                     <Badge variant="warning" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <AlertTriangle className="w-2.5 h-2.5" />
-                                        Medio
+                                        {t('map.legend.moderate', { defaultValue: 'Medio' })}
                                     </Badge>
                                 </div>
                                 <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
-                                    Carga moderada.
+                                    {t('map.legend.moderate_desc', { defaultValue: 'Carga moderada.' })}
                                 </p>
                             </div>
                         </div>
@@ -137,11 +139,11 @@ export default function MapLegend({
                                     <span className="font-bold text-xs text-red-950">&ge; 80%</span>
                                     <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <AlertCircle className="w-2.5 h-2.5" />
-                                        Crítico
+                                        {t('map.legend.critical', { defaultValue: 'Crítico' })}
                                     </Badge>
                                 </div>
                                 <p className="text-[11px] text-slate-600 leading-snug mt-0.5">
-                                    Prioridad alta de recolección.
+                                    {t('map.legend.critical_desc', { defaultValue: 'Prioridad alta de recolección.' })}
                                 </p>
                             </div>
                         </div>
@@ -149,8 +151,8 @@ export default function MapLegend({
                         <div className="flex items-start gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl">
                             <span className="h-2 w-2 rounded-full bg-red-500 shrink-0 mt-1" />
                             <div className="text-[11px] leading-snug">
-                                <span className="font-bold text-red-600">Al 100%:</span>
-                                <span className="text-slate-600 ml-1">Desborde hacia sitios cercanos.</span>
+                                <span className="font-bold text-red-600">{t('map.legend.at_100', { defaultValue: 'Al 100%:' })}</span>
+                                <span className="text-slate-600 ml-1">{t('map.legend.at_100_desc', { defaultValue: 'Desborde hacia sitios cercanos.' })}</span>
                             </div>
                         </div>
                     </CardContent>
@@ -169,8 +171,8 @@ export default function MapLegend({
                             <MapPin className="h-4 w-4" />
                         </div>
                         <div>
-                            <span className="text-xs font-bold text-slate-800 block leading-tight">Tipo de sitio</span>
-                            <span className="text-[10px] text-slate-500 font-medium block">Tipología de residuo y contenedor</span>
+                            <span className="text-xs font-bold text-slate-800 block leading-tight">{t('map.legend.site_type', { defaultValue: 'Tipo de sitio' })}</span>
+                            <span className="text-[10px] text-slate-500 font-medium block">{t('map.legend.site_type_desc', { defaultValue: 'Tipología de residuo y contenedor' })}</span>
                         </div>
                     </div>
                     <ChevronDown
@@ -184,9 +186,9 @@ export default function MapLegend({
                         <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80">
                             <PinPreview fill="#10b981" accent="#111827" count={1} label="H" size={46} />
                             <div className="min-w-0">
-                                <p className="font-bold text-xs text-slate-800">Sitio humedo</p>
+                                <p className="font-bold text-xs text-slate-800">{t('map.legend.wet_site', { defaultValue: 'Sitio humedo' })}</p>
                                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                    Borde oscuro y letra <span className="font-bold text-slate-700">H</span> (Fracción húmeda/mixta).
+                                    {t('map.legend.wet_site_desc_1', { defaultValue: 'Borde oscuro y letra ' })}<span className="font-bold text-slate-700">H</span>{t('map.legend.wet_site_desc_2', { defaultValue: ' (Fracción húmeda/mixta).' })}
                                 </p>
                             </div>
                         </div>
@@ -194,9 +196,9 @@ export default function MapLegend({
                         <div className="flex items-center gap-2.5 p-2.5 bg-slate-50/90 rounded-xl border border-slate-200/80">
                             <PinPreview fill="#10b981" accent="#047857" count={3} label="R" size={46} />
                             <div className="min-w-0">
-                                <p className="font-bold text-xs text-slate-800">Sitio reciclable</p>
+                                <p className="font-bold text-xs text-slate-800">{t('map.legend.recyclable_site', { defaultValue: 'Sitio reciclable' })}</p>
                                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                    Borde verde y letra <span className="font-bold text-emerald-700">R</span> (Materiales secos).
+                                    {t('map.legend.recyclable_site_desc_1', { defaultValue: 'Borde verde y letra ' })}<span className="font-bold text-emerald-700">R</span>{t('map.legend.recyclable_site_desc_2', { defaultValue: ' (Materiales secos).' })}
                                 </p>
                             </div>
                         </div>
@@ -204,16 +206,16 @@ export default function MapLegend({
                         <div className="flex items-center gap-2.5 p-2.5 bg-white rounded-xl border border-slate-200">
                             <PinPreview fill="#10b981" accent="#64748b" countLabel="N" label="" size={46} />
                             <div className="min-w-0">
-                                <p className="font-bold text-xs text-slate-800">Cantidad de contenedores</p>
+                                <p className="font-bold text-xs text-slate-800">{t('map.legend.container_count_label', { defaultValue: 'Cantidad de contenedores' })}</p>
                                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                    El número central <span className="font-bold text-slate-700">N</span> indica cuántos contenedores agrupa el sitio.
+                                    {t('map.legend.container_count_desc_1', { defaultValue: 'El número central ' })}<span className="font-bold text-slate-700">N</span>{t('map.legend.container_count_desc_2', { defaultValue: ' indica cuántos contenedores agrupa el sitio.' })}
                                 </p>
                             </div>
                         </div>
 
                         <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2 text-[11px] text-slate-600">
                             <Info className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                            <span>Click en pin del mapa para ver telemetría.</span>
+                            <span>{t('map.legend.click_telemetry', { defaultValue: 'Click en pin del mapa para ver telemetría.' })}</span>
                         </div>
                     </CardContent>
                 )}

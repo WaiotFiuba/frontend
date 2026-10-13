@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
   ChevronUp,
@@ -19,6 +20,7 @@ export function NetworkKpiPanel({
   defaultCollapsed = false,
   whatif = false,
 }: NetworkKpiPanelProps) {
+  const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
 
   const {
@@ -59,7 +61,7 @@ export function NetworkKpiPanel({
       <div
         className={`bg-rose-50/70 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs flex items-center justify-between ${className}`}
       >
-        <span>No se pudieron cargar las métricas de red: {error}</span>
+        <span>{t('kpi.error_loading', { error })}</span>
       </div>
     )
   }
@@ -80,18 +82,18 @@ export function NetworkKpiPanel({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-              {isWhatIf ? 'Métricas de la Red (What-If)' : 'Métricas Operativas de la Red'}
+              {isWhatIf ? t('kpi.title_whatif') : t('kpi.title_real')}
             </h2>
             {isWhatIf && (
               <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
-                Simulación What-If
+                {t('kpi.badge_whatif')}
               </span>
             )}
           </div>
           <p className="text-[11px] text-slate-500">
             {isWhatIf
-              ? 'Diagnóstico proyectado de capacidad y balance bajo redistribución What-If'
-              : 'Diagnóstico de capacidad y balance de contenedores en tiempo real'}
+              ? t('kpi.desc_whatif')
+              : t('kpi.desc_real')}
           </p>
         </div>
 
@@ -104,12 +106,12 @@ export function NetworkKpiPanel({
           >
             {isCollapsed ? (
               <>
-                <span>Expandir</span>
+                <span>{t('kpi.expand')}</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </>
             ) : (
               <>
-                <span>Minimizar</span>
+                <span>{t('kpi.minimize')}</span>
                 <ChevronUp className="h-3.5 w-3.5" />
               </>
             )}
@@ -128,32 +130,32 @@ export function NetworkKpiPanel({
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 {totalContainers}
               </span>
-              <span className="text-slate-500">contenedores</span>
+              <span className="text-slate-500">{t('kpi.containers_label')}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 {meanFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">llenado actual</span>
+              <span className="text-slate-500">{t('kpi.mean_fill_label')}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
               <span className="font-bold font-mono tabular-nums text-rose-700">
                 {metrics.critical_count}
               </span>
-              <span className="text-slate-500">críticos (&gt;85%)</span>
+              <span className="text-slate-500">{t('kpi.critical_label')}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 &plusmn;{stdFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">dispersión actual</span>
+              <span className="text-slate-500">{t('kpi.std_label')}</span>
             </div>
           </div>
           <span className="text-[11px] font-semibold text-blue-600 hover:underline">
-            Ver detalle
+            {t('kpi.view_detail')}
           </span>
         </div>
       ) : (
@@ -162,32 +164,32 @@ export function NetworkKpiPanel({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {/* 1. Contenedores Monitoreados */}
             <KpiCard
-              title="Contenedores Monitoreados"
+              title={t('kpi.monitored_containers')}
               value={totalContainers}
-              subvalue={`en ${metrics.total_sites} sitios`}
-              badgeText="Red CABA"
+              subvalue={t('kpi.in_sites', { count: metrics.total_sites })}
+              badgeText={t('kpi.badge_caba')}
               badgeVariant="info"
-              tooltip="Total de contenedores físicos y sitios georreferenciados bajo monitoreo activo en la ciudad."
+              tooltip={t('kpi.monitored_containers_tooltip')}
             />
 
             {/* 2. Llenado Actual */}
             <KpiCard
-              title="Llenado Actual"
+              title={t('kpi.current_fill')}
               value={`${meanFill.toFixed(1)}%`}
-              subvalue="telemetría en tiempo real"
+              subvalue={t('kpi.realtime_telemetry')}
               progressPct={meanFill}
               progressColor="bg-blue-600"
-              badgeText="Tiempo Real"
+              badgeText={t('kpi.badge_realtime')}
               badgeVariant="info"
-              tooltip="Nivel medio de ocupación de la red medido en este instante exacto a partir de los sensores de los contenedores."
+              tooltip={t('kpi.current_fill_tooltip')}
             />
 
             {/* 3. Sitios Críticos (>85%) */}
             <KpiCard
-              title="Sitios Críticos"
+              title={t('kpi.critical_sites')}
               value={metrics.critical_count}
-              subvalue="saturación > 85%"
-              badgeText="Desborde"
+              subvalue={t('kpi.saturation_critical')}
+              badgeText={t('kpi.badge_overflow')}
               badgeVariant="danger"
               onClick={
                 onSelectCategory
@@ -198,17 +200,17 @@ export function NetworkKpiPanel({
                   : undefined
               }
               isSelected={selectedCategory === 'critical'}
-              tooltip="Sitios con saturación superior al 85%, receptores prioritarios en redistribución o requiriendo recolección urgente."
+              tooltip={t('kpi.critical_sites_tooltip')}
             />
 
             {/* 4. Dispersión Actual */}
             <KpiCard
-              title="Dispersión Actual (σ)"
+              title={t('kpi.current_dispersion')}
               value={`±${stdFill.toFixed(1)}%`}
-              subvalue="desvío estándar actual"
-              badgeText="En vivo"
+              subvalue={t('kpi.std_dev_subvalue')}
+              badgeText={t('kpi.badge_live')}
               badgeVariant="neutral"
-              tooltip="Desvío estándar del llenado entre sitios en este momento puntual. Refleja el desbalance operativo instantáneo de la red."
+              tooltip={t('kpi.current_dispersion_tooltip')}
             />
           </div>
 

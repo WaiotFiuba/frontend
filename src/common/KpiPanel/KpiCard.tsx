@@ -3,7 +3,7 @@
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/common/utils/ui/tooltip'
+} from '@/utils/ui/tooltip'
 import type { KpiCardProps } from './types'
 
 const BADGE_STYLES: Record<NonNullable<KpiCardProps['badgeVariant']>, string> = {
@@ -39,18 +39,17 @@ export function KpiCard({
       onKeyDown={
         isClickable
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onClick?.()
-              }
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClick?.()
             }
+          }
           : undefined
       }
-      className={`relative p-3.5 rounded-xl border transition-all duration-200 select-none text-left flex flex-col justify-between ${
-        isSelected
+      className={`relative p-3.5 rounded-xl border transition-all duration-200 select-none text-left flex flex-col justify-between ${isSelected
           ? 'bg-blue-50/70 border-blue-400 ring-2 ring-blue-500/30 shadow-xs'
           : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
-      } ${isClickable ? 'cursor-pointer hover:shadow-xs hover:bg-slate-50/50' : ''} ${className}`}
+        } ${isClickable ? 'cursor-pointer hover:shadow-xs hover:bg-slate-50/50' : ''} ${className}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-1">
