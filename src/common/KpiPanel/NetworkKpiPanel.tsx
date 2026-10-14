@@ -1,11 +1,8 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
-  Activity,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Layers,
-  Scale,
 } from 'lucide-react'
 import KpiCard from './KpiCard'
 import KpiDistributionBar from './KpiDistributionBar'
@@ -24,6 +21,7 @@ export function NetworkKpiPanel({
   defaultCollapsed = false,
   whatif = false,
 }: NetworkKpiPanelProps) {
+  const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const { critical } = useLevelThresholds()
 
@@ -65,7 +63,7 @@ export function NetworkKpiPanel({
       <div
         className={`bg-rose-50/70 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs flex items-center justify-between ${className}`}
       >
-        <span>No se pudieron cargar las métricas de red: {error}</span>
+        <span>{t('kpi.error_loading', { error })}</span>
       </div>
     )
   }
@@ -83,27 +81,22 @@ export function NetworkKpiPanel({
     >
       {/* Top Header & Collapse Toggle */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-            <Activity className="h-4 w-4" />
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+              {isWhatIf ? t('kpi.title_whatif') : t('kpi.title_real')}
+            </h2>
+            {isWhatIf && (
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                {t('kpi.badge_whatif')}
+              </span>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                {isWhatIf ? 'Métricas de la Red (What-If)' : 'Métricas Operativas de la Red'}
-              </h2>
-              {isWhatIf && (
-                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
-                  Simulación What-If
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500">
-              {isWhatIf
-                ? 'Diagnóstico proyectado de capacidad y balance bajo redistribución What-If'
-                : 'Diagnóstico de capacidad y balance de contenedores en tiempo real'}
-            </p>
-          </div>
+          <p className="text-[11px] text-slate-500">
+            {isWhatIf
+              ? t('kpi.desc_whatif')
+              : t('kpi.desc_real')}
+          </p>
         </div>
 
         {collapsible && (
@@ -115,12 +108,12 @@ export function NetworkKpiPanel({
           >
             {isCollapsed ? (
               <>
-                <span>Expandir</span>
+                <span>{t('kpi.expand')}</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </>
             ) : (
               <>
-                <span>Minimizar</span>
+                <span>{t('kpi.minimize')}</span>
                 <ChevronUp className="h-3.5 w-3.5" />
               </>
             )}
@@ -136,39 +129,35 @@ export function NetworkKpiPanel({
         >
           <div className="flex flex-wrap items-center gap-4 text-slate-700">
             <div className="flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5 text-blue-600" />
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 {totalContainers}
               </span>
-              <span className="text-slate-500">contenedores</span>
+              <span className="text-slate-500">{t('kpi.containers_label')}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-emerald-600" />
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 {meanFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">llenado actual</span>
+              <span className="text-slate-500">{t('kpi.mean_fill_label')}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
               <span className="font-bold font-mono tabular-nums text-rose-700">
                 {metrics.critical_count}
               </span>
-              <span className="text-slate-500">críticos (&ge;{critical}%)</span>
+              <span className="text-slate-500">{t('kpi.critical_label', { critical })}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
-              <Scale className="h-3.5 w-3.5 text-indigo-600" />
               <span className="font-bold font-mono tabular-nums text-slate-900">
                 &plusmn;{stdFill.toFixed(1)}%
               </span>
-              <span className="text-slate-500">dispersión actual</span>
+              <span className="text-slate-500">{t('kpi.std_label')}</span>
             </div>
           </div>
           <span className="text-[11px] font-semibold text-blue-600 hover:underline">
-            Ver detalle
+            {t('kpi.view_detail')}
           </span>
         </div>
       ) : (
@@ -177,61 +166,53 @@ export function NetworkKpiPanel({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {/* 1. Contenedores Monitoreados */}
             <KpiCard
-              title="Contenedores Monitoreados"
+              title={t('kpi.monitored_containers')}
               value={totalContainers}
-              subvalue={`en ${metrics.total_sites} sitios`}
-              icon={Layers}
-              iconColor="text-blue-600"
-              badgeText="Red CABA"
+              subvalue={t('kpi.in_sites', { count: metrics.total_sites })}
+              badgeText={t('kpi.badge_caba')}
               badgeVariant="info"
-              tooltip="Total de contenedores físicos y sitios georreferenciados bajo monitoreo activo en la ciudad."
+              tooltip={t('kpi.monitored_containers_tooltip')}
             />
 
             {/* 2. Llenado Actual */}
             <KpiCard
-              title="Llenado Actual"
+              title={t('kpi.current_fill')}
               value={`${meanFill.toFixed(1)}%`}
-              subvalue="telemetría en tiempo real"
-              icon={Activity}
-              iconColor="text-blue-600"
+              subvalue={t('kpi.realtime_telemetry')}
               progressPct={meanFill}
               progressColor="bg-blue-600"
-              badgeText="Tiempo Real"
+              badgeText={t('kpi.badge_realtime')}
               badgeVariant="info"
-              tooltip="Nivel medio de ocupación de la red medido en este instante exacto a partir de los sensores de los contenedores."
+              tooltip={t('kpi.current_fill_tooltip')}
             />
 
             {/* 3. Sitios Críticos (>= umbral crítico) */}
             <KpiCard
-              title="Sitios Críticos"
+              title={t('kpi.critical_sites')}
               value={metrics.critical_count}
-              subvalue={`saturación ≥ ${critical}%`}
-              icon={AlertTriangle}
-              iconColor="text-rose-600"
-              badgeText="Desborde"
+              subvalue={t('kpi.saturation_critical', { critical })}
+              badgeText={t('kpi.badge_overflow')}
               badgeVariant="danger"
               onClick={
                 onSelectCategory
                   ? () =>
-                      onSelectCategory(
-                        selectedCategory === 'critical' ? 'all' : 'critical'
-                      )
+                    onSelectCategory(
+                      selectedCategory === 'critical' ? 'all' : 'critical'
+                    )
                   : undefined
               }
               isSelected={selectedCategory === 'critical'}
-              tooltip={`Sitios con saturación igual o superior al ${critical}%, receptores prioritarios en redistribución o requiriendo recolección urgente.`}
+              tooltip={t('kpi.critical_sites_tooltip', { critical })}
             />
 
             {/* 4. Dispersión Actual */}
             <KpiCard
-              title="Dispersión Actual (σ)"
+              title={t('kpi.current_dispersion')}
               value={`±${stdFill.toFixed(1)}%`}
-              subvalue="desvío estándar actual"
-              icon={Scale}
-              iconColor="text-indigo-600"
-              badgeText="En vivo"
+              subvalue={t('kpi.std_dev_subvalue')}
+              badgeText={t('kpi.badge_live')}
               badgeVariant="neutral"
-              tooltip="Desvío estándar del llenado entre sitios en este momento puntual. Refleja el desbalance operativo instantáneo de la red."
+              tooltip={t('kpi.current_dispersion_tooltip')}
             />
           </div>
 

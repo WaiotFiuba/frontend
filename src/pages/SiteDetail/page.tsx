@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/utils/ui/button'
 import { api } from '@/lib/api'
 import { useLevelThresholds, type LevelThresholds } from '@/context/CityConfigContext'
 import type {
@@ -10,7 +10,7 @@ import type {
   BackendSiteHistoryPoint,
   BackendSiteProjection,
   BackendSiteProjectionPoint,
-} from '@/common/utils/types'
+} from '@/utils/types'
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Sin datos'
