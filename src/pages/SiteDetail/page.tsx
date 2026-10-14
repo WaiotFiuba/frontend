@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
 import { Button } from '@/utils/ui/button'
 import { api } from '@/lib/api'
+import { useLevelThresholds, type LevelThresholds } from '@/context/CityConfigContext'
 import type {
   BackendSite,
   BackendSiteHistory,
@@ -39,9 +40,9 @@ const formatChartDate = (value: string) => (
   }).format(new Date(value))
 )
 
-const levelColorClass = (level: number) => {
-  if (level >= 80) return 'bg-red-500'
-  if (level >= 50) return 'bg-amber-500'
+const levelColorClass = (level: number, thresholds: LevelThresholds) => {
+  if (level >= thresholds.critical) return 'bg-red-500'
+  if (level >= thresholds.high) return 'bg-amber-500'
   return 'bg-emerald-500'
 }
 
@@ -309,6 +310,7 @@ function LevelHistoryChart({
 }
 
 export default function SiteDetail() {
+  const thresholds = useLevelThresholds()
   const { siteId } = useParams()
   const navigate = useNavigate()
   const [site, setSite] = useState<BackendSite | null>(null)
@@ -436,7 +438,7 @@ export default function SiteDetail() {
             <p className="text-4xl font-extrabold text-slate-900">{site.current_level}%</p>
             <div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-slate-200">
               <div
-                className={`h-full ${levelColorClass(site.current_level)}`}
+                className={`h-full ${levelColorClass(site.current_level, thresholds)}`}
                 style={{ width: `${Math.min(100, Math.max(0, site.current_level))}%` }}
               />
             </div>

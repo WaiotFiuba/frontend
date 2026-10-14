@@ -7,6 +7,7 @@ import {
 import KpiCard from './KpiCard'
 import KpiDistributionBar from './KpiDistributionBar'
 import { useNetworkKpis } from './useNetworkKpis'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 import type { NetworkKpiPanelProps } from './types'
 
 export function NetworkKpiPanel({
@@ -22,6 +23,7 @@ export function NetworkKpiPanel({
 }: NetworkKpiPanelProps) {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
+  const { critical } = useLevelThresholds()
 
   const {
     metrics: fetchedMetrics,
@@ -144,7 +146,7 @@ export function NetworkKpiPanel({
               <span className="font-bold font-mono tabular-nums text-rose-700">
                 {metrics.critical_count}
               </span>
-              <span className="text-slate-500">{t('kpi.critical_label')}</span>
+              <span className="text-slate-500">{t('kpi.critical_label', { critical })}</span>
             </div>
             <div className="h-3 w-px bg-slate-300" />
             <div className="flex items-center gap-1.5">
@@ -184,11 +186,11 @@ export function NetworkKpiPanel({
               tooltip={t('kpi.current_fill_tooltip')}
             />
 
-            {/* 3. Sitios Críticos (>85%) */}
+            {/* 3. Sitios Críticos (>= umbral crítico) */}
             <KpiCard
               title={t('kpi.critical_sites')}
               value={metrics.critical_count}
-              subvalue={t('kpi.saturation_critical')}
+              subvalue={t('kpi.saturation_critical', { critical })}
               badgeText={t('kpi.badge_overflow')}
               badgeVariant="danger"
               onClick={
@@ -200,7 +202,7 @@ export function NetworkKpiPanel({
                   : undefined
               }
               isSelected={selectedCategory === 'critical'}
-              tooltip={t('kpi.critical_sites_tooltip')}
+              tooltip={t('kpi.critical_sites_tooltip', { critical })}
             />
 
             {/* 4. Dispersión Actual */}

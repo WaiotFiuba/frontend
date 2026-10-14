@@ -2,6 +2,7 @@ import L from "leaflet"
 import { renderToStaticMarkup } from "react-dom/server"
 import { Container, Site, ContainerType, MapWasteFilter, ZoneProfileCollection, ZoneType } from "./types"
 import { api } from "../lib/api"
+import { DEFAULT_LEVEL_THRESHOLDS, type LevelThresholds } from "../context/CityConfigContext"
 
 // Colores por tipo de zona para la capa de perfiles de zona del mapa.
 // Solo los zone_type que realmente aparecen clasificados en
@@ -78,9 +79,9 @@ export const formatSimulatedTime = (isoString?: string | null): string => {
     })
 }
 
-export const colorForLevel = (level: number) => {
-    if (level >= 80) return "#ef4444"
-    if (level >= 50) return "#f59e0b"
+export const colorForLevel = (level: number, thresholds: LevelThresholds) => {
+    if (level >= thresholds.critical) return "#ef4444"
+    if (level >= thresholds.high) return "#f59e0b"
     return "#10b981"
 }
 
@@ -104,7 +105,8 @@ export const fetchSitesBBox = async (
     zoom: number,
     limit = 2000,
     distribution: 'real' | 'whatif' = 'real',
-    wasteFilter: MapWasteFilter = 'all'
+    wasteFilter: MapWasteFilter = 'all',
+    thresholds: LevelThresholds = DEFAULT_LEVEL_THRESHOLDS
 ): Promise<Site[]> => {
     try {
         const params = new URLSearchParams({
@@ -142,7 +144,7 @@ export const fetchSitesBBox = async (
                     lat: lat,
                     long: lon,
                     type: clusterType as ContainerType,
-                    color: colorForLevel(avgLevel),
+                    color: colorForLevel(avgLevel, thresholds),
                     currentLevel: avgLevel,
                     avgLevel: avgLevel,
                     containerCount: count,
@@ -168,7 +170,7 @@ export const fetchSitesBBox = async (
                     lat: lat,
                     long: lon,
                     type: type,
-                    color: colorForLevel(cLevel),
+                    color: colorForLevel(cLevel, thresholds),
                     currentLevel: cLevel,
                     level: cLevel,
                     description: String(c.container_type || 'Contenedor'),
@@ -185,7 +187,7 @@ export const fetchSitesBBox = async (
                 lat: lat,
                 long: lon,
                 type: containers.length > 0 ? containers[0].type : 'indiferenciado',
-                color: colorForLevel(avgLevel),
+                color: colorForLevel(avgLevel, thresholds),
                 currentLevel: avgLevel,
                 avgLevel: avgLevel,
                 containerCount: (s.container_count as number | undefined) ?? siteContainers.length,

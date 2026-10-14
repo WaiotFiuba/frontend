@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardContent } from '@/utils/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { ContainerStats } from './types'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 
 interface ManagementStatsProps {
   stats: ContainerStats | null
@@ -11,6 +12,7 @@ interface ManagementStatsProps {
 
 export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
   const { t } = useTranslation()
+  const { critical } = useLevelThresholds()
   const statsValues = stats || { total: 0, available: 0, avg_fill: 0, alert_level: 0 }
 
 
@@ -65,7 +67,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              {t('management.critical_alert')}
+              {t('management.critical_alert', { critical })}
             </p>
             <h3 className="text-3xl font-extrabold text-amber-600">{statsValues.alert_level}</h3>
           </div>

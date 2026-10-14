@@ -20,6 +20,7 @@ import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 import { Button } from "@/utils/ui/button"
 import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
@@ -244,6 +245,7 @@ export default function InteractiveMap({
     const [selectedRoute] = useState<RouteDetails | null>(null)
     const [currentZoom, setCurrentZoom] = useState<number>(13)
     const zoneProfiles = useZoneProfiles()
+    const thresholds = useLevelThresholds()
 
     const handleZoomChange = useCallback((newZoom: number) => {
         const rounded = Math.round(newZoom)
@@ -272,7 +274,7 @@ export default function InteractiveMap({
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
-            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter)
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter, thresholds)
             if (mountedRef.current && requestId > latestAppliedIdRef.current) {
                 latestAppliedIdRef.current = requestId
                 setSites(data)
@@ -280,7 +282,7 @@ export default function InteractiveMap({
         } catch (e) {
             console.error('Error al cargar sitios:', e)
         }
-    }, [isPlayground, wasteFilter])
+    }, [isPlayground, wasteFilter, thresholds])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -434,7 +436,7 @@ export default function InteractiveMap({
                 lat: centerLat,
                 long: centerLng,
                 type: (wasteFilter === 'all' ? 'indiferenciado' : wasteFilter) as ContainerType,
-                color: colorForLevel(avgLevel),
+                color: colorForLevel(avgLevel, thresholds),
                 currentLevel: avgLevel,
                 avgLevel: avgLevel,
                 containerCount: totalCount,
@@ -444,7 +446,7 @@ export default function InteractiveMap({
         }
 
         return sites
-    }, [sites, currentZoom, wasteFilter])
+    }, [sites, currentZoom, wasteFilter, thresholds])
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
@@ -620,7 +622,7 @@ export default function InteractiveMap({
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
                                                 <span className="text-slate-600 font-medium">{t('map.avg_level', { defaultValue: 'Nivel promedio:' })}</span>
-                                                <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel) }}>
+                                                <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel, thresholds) }}>
                                                     {siteLevel}%
                                                 </span>
                                             </div>
@@ -629,7 +631,7 @@ export default function InteractiveMap({
                                                     className="h-full rounded-full transition-all duration-300"
                                                     style={{
                                                         width: `${Math.min(100, Math.max(0, siteLevel))}%`,
-                                                        backgroundColor: colorForLevel(siteLevel),
+                                                        backgroundColor: colorForLevel(siteLevel, thresholds),
                                                     }}
                                                 />
                                             </div>
@@ -642,7 +644,7 @@ export default function InteractiveMap({
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
                                                 {site.containers.map((container: Container) => {
                                                     const cLevel = container.currentLevel ?? container.level ?? 0
-                                                    const cColor = colorForLevel(cLevel)
+                                                    const cColor = colorForLevel(cLevel, thresholds)
                                                     return (
                                                         <div
                                                             key={container.id}
