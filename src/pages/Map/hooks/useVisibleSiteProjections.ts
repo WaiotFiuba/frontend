@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { BackendSiteProjection, Site } from '@/common/utils/types'
+import type { BackendSiteProjection, Site } from '@/utils/types'
 import { fetchSiteProjections } from '../services/projectionApi'
 
 type ProjectionResult = BackendSiteProjection | null

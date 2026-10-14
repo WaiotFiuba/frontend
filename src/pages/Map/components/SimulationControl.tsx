@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
-import { Button } from '@/common/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
+import { Button } from '@/utils/ui/button'
 import {
   Play,
   Pause,
@@ -13,14 +14,15 @@ import {
   Calendar,
   Layers,
   RotateCcw,
-  Zap,
   Clock,
   MapPin,
   FolderOpen,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { formatSimulatedTime } from './utils/functions'
+import { formatSimulatedTime } from '@/utils/functions'
 
 interface UpdateLog {
   id: number
@@ -87,13 +89,13 @@ const DEFAULT_COLLECTION_HOURS = [21, 22, 23, 0, 1, 2, 3, 4, 5]
 const DEFAULT_COLLECTION_DAYS = [0, 1, 2, 3, 4]
 
 const WEEKDAYS = [
-  { id: 0, label: 'Lunes', short: 'Lun' },
-  { id: 1, label: 'Martes', short: 'Mar' },
-  { id: 2, label: 'Miércoles', short: 'Mié' },
-  { id: 3, label: 'Jueves', short: 'Jue' },
-  { id: 4, label: 'Viernes', short: 'Vie' },
-  { id: 5, label: 'Sábado', short: 'Sáb' },
-  { id: 6, label: 'Domingo', short: 'Dom' },
+  { id: 0, key: 'mon', label: 'Lunes', short: 'Lun' },
+  { id: 1, key: 'tue', label: 'Martes', short: 'Mar' },
+  { id: 2, key: 'wed', label: 'Miércoles', short: 'Mié' },
+  { id: 3, key: 'thu', label: 'Jueves', short: 'Jue' },
+  { id: 4, key: 'fri', label: 'Viernes', short: 'Vie' },
+  { id: 5, key: 'sat', label: 'Sábado', short: 'Sáb' },
+  { id: 6, key: 'sun', label: 'Domingo', short: 'Dom' },
 ]
 
 interface SimulationControlProps {
@@ -123,6 +125,7 @@ const getNowRoundedHourArgentina = (offsetHours = 0): string => {
 }
 
 export default function SimulationControl({ onSimulationStateChange }: SimulationControlProps) {
+  const { t } = useTranslation()
   const [activeSim, setActiveSim] = useState<SimulationRead | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
@@ -144,6 +147,9 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   // 4. Demanda Global y por Barrios
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
+
+  // Desplegable de parámetros avanzados (por defecto desplegado mostrando todos los parámetros)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
 
   // Stopwatch & Telemetry intervals
   const [realElapsedMs, setRealElapsedMs] = useState<number>(0)
@@ -228,6 +234,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
     setCollectionDays(DEFAULT_COLLECTION_DAYS)
     setGlobalDemandMultiplier(1.0)
     setZoneOverrides([])
+    setIsCollapsed(false)
   }
 
   // Fetch active simulation
@@ -618,7 +625,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   if (loading) {
     return (
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <RefreshCw className="h-8 w-8 animate-spin text-indigo-600 mb-2" />
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mb-2" />
         <p className="text-slate-500 font-semibold text-sm">Cargando estado del simulador...</p>
       </Card>
     )
@@ -629,7 +636,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       {activeSim && ['pending', 'stopping'].includes(activeSim.status) && (
         <div className="absolute inset-0 bg-slate-900/45 backdrop-blur-[1px] flex flex-col items-center justify-center z-30 animate-in fade-in duration-200">
           <div className="bg-white/95 border border-slate-200/80 shadow-2xl rounded-2xl p-6 flex flex-col items-center gap-3 max-w-sm mx-4 transform animate-in zoom-in-95 duration-200">
-            <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
             <p className="text-slate-800 font-bold text-sm text-center">
               {activeSim.status === 'pending' ? 'Generando simulación...' : 'Deteniendo simulación...'}
             </p>
@@ -642,30 +649,29 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
         </div>
       )}
 
-      <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-row items-center justify-between">
+      <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="text-xl font-bold text-slate-950 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-600" />
-            Digital Twin Control
+            <Activity className="h-5 w-5 text-blue-600" />
+            {t('simulation.control_title')}
           </CardTitle>
           <CardDescription className="text-slate-500 mt-1">
             {activeSim
-              ? 'Monitoree y gestione los parámetros de la simulación activa en tiempo real.'
-              : 'Configure las fechas, franjas horarias de recolección de camiones, velocidad y demanda por barrio.'}
+              ? t('simulation.control_desc_active')
+              : t('simulation.control_desc_idle')}
           </CardDescription>
         </div>
-        {activeSim && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
+          {activeSim && (
             <span
-              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
-                activeSim.status === 'running'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                  : activeSim.status === 'paused'
+              className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${activeSim.status === 'running'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : activeSim.status === 'paused'
                   ? 'bg-amber-50 border-amber-200 text-amber-700'
                   : activeSim.status === 'pending'
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-slate-50 border-slate-200 text-slate-700'
-              }`}
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}
             >
               {activeSim.status === 'pending' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-spin mr-1" />
@@ -673,10 +679,29 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               {activeSim.status === 'running' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               )}
-              {activeSim.status === 'pending' ? 'GENERANDO' : activeSim.status.toUpperCase()}
+              {activeSim.status === 'pending' ? t('simulation.generating') : activeSim.status.toUpperCase()}
             </span>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer select-none shadow-2xs h-8"
+            aria-expanded={!isCollapsed}
+            title={isCollapsed ? t('simulation.more_params') : t('simulation.less_params')}
+          >
+            {isCollapsed ? (
+              <>
+                <span className="font-medium">{t('simulation.more_params')}</span>
+                <ChevronDown className="h-3.5 w-3.5" />
+              </>
+            ) : (
+              <>
+                <span className="font-medium">{t('simulation.less_params')}</span>
+                <ChevronUp className="h-3.5 w-3.5" />
+              </>
+            )}
+          </button>
+        </div>
       </CardHeader>
 
       <CardContent className="p-6">
@@ -692,29 +717,29 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           <div className="space-y-6 mb-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Simulation ID</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.simulation_id')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">#{activeSim.id}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mediciones Enviadas</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.measurements_sent')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">{activeSim.measurements_sent.toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Períodos (Ticks)</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.periods_ticks')}</p>
                 <p className="text-lg font-bold text-slate-800 mt-0.5">
                   {activeSim.current_period}
                   {activeSim.total_periods > 0 ? ` / ${activeSim.total_periods}` : ''}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reloj Simulado</p>
-                <p className="text-sm font-bold text-indigo-700 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.simulated_clock')}</p>
+                <p className="text-sm font-bold text-blue-900 mt-1.5 truncate" title={activeSim.simulated_time || ''}>
                   {formatSimulatedTime(activeSim.simulated_time)}
                 </p>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiempo Real Transcurrido</p>
-                <p className="text-sm font-bold text-indigo-700 mt-1.5 truncate">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('simulation.real_elapsed')}</p>
+                <p className="text-sm font-bold text-blue-900 mt-1.5 truncate">
                   {formatElapsed(realElapsedMs)}
                 </p>
               </div>
@@ -722,7 +747,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
             {/* Quick Status Actions */}
             <div className="flex flex-wrap gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100 items-center justify-between">
-              <span className="text-sm font-bold text-slate-700">Controles de Ejecución:</span>
+              <span className="text-sm font-bold text-slate-700">{t('simulation.exec_controls')}</span>
               <div className="flex gap-2">
                 {activeSim.status === 'running' ? (
                   <Button
@@ -732,7 +757,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     className="border-amber-200 text-amber-700 hover:bg-amber-50 gap-2 h-9 px-3 text-xs font-bold"
                   >
                     <Pause className="h-3.5 w-3.5" />
-                    Pausar
+                    {t('simulation.pause')}
                   </Button>
                 ) : (
                   <Button
@@ -741,7 +766,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     className="!bg-emerald-600 hover:!bg-emerald-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play className="h-3.5 w-3.5" />
-                    Reanudar
+                    {t('simulation.resume')}
                   </Button>
                 )}
                 <Button
@@ -750,7 +775,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                   className="!bg-red-600 hover:!bg-red-700 !text-white gap-2 h-9 px-3 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Square className="h-3.5 w-3.5" />
-                  Detener
+                  {t('simulation.stop')}
                 </Button>
               </div>
             </div>
@@ -760,25 +785,25 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  Intervalo entre Sets de Telemetría
+                  {t('simulation.telemetry_interval')}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">
-                    Tiempo transcurrido: {timeSinceLastSet}s
+                    {t('simulation.time_elapsed_label', { time: timeSinceLastSet })}
                   </span>
                   {updateLogs.filter((log) => log.duration !== null).length > 0 && (
-                    <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                      Promedio:{' '}
-                      {(
-                        updateLogs
-                          .filter((log) => log.duration !== null)
-                          .reduce((acc, log) => acc + (log.duration || 0), 0) /
-                        updateLogs.filter((log) => log.duration !== null).length
-                      ).toFixed(1)}
-                      s
+                    <span className="text-[11px] font-bold text-emerald-950 bg-emerald-200 border border-emerald-300 px-2 py-0.5 rounded-full">
+                      {t('simulation.avg_label', {
+                        avg: (
+                          updateLogs
+                            .filter((log) => log.duration !== null)
+                            .reduce((acc, log) => acc + (log.duration || 0), 0) /
+                          updateLogs.filter((log) => log.duration !== null).length
+                        ).toFixed(1),
+                      })}
                     </span>
                   )}
                 </div>
@@ -786,12 +811,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
               {updateLogs.length === 0 ? (
                 <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                  Esperando el primer set de telemetría de la simulación activa...
+                  {t('simulation.telemetry_waiting')}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Historial de actualizaciones
+                    {t('simulation.update_history')}
                   </span>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                     {updateLogs.map((log) => (
@@ -814,8 +839,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           <p className="font-semibold text-slate-700 text-xs">Recibido: {log.timestamp}</p>
                           <p className="text-[10px] text-slate-400 font-medium">Simulado: {log.simulatedTime}</p>
                         </div>
-                        <div className="bg-indigo-50/70 border border-indigo-100/60 rounded-lg px-2.5 py-1 text-center shrink-0 min-w-[70px] ml-2">
-                          <span className="font-extrabold text-indigo-700 text-xs block leading-tight">
+                        <div className="bg-blue-100 border border-blue-200 rounded-lg px-2.5 py-1 text-center shrink-0 min-w-[70px] ml-2">
+                          <span className="font-extrabold text-blue-900 text-xs block leading-tight">
                             {log.duration !== null ? `+${log.duration.toFixed(1)}s` : 'Inicio'}
                           </span>
                         </div>
@@ -834,14 +859,14 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             <div className="absolute inset-0 bg-slate-600/10 rounded-2xl flex items-center justify-center z-10 cursor-not-allowed backdrop-blur-[0.5px]">
               <div className="bg-slate-900/95 backdrop-blur text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                 <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                Debe detener la simulación para editar parámetros
+                {t('simulation.must_stop_to_edit')}
               </div>
             </div>
           )}
 
           <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-5">
-            <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-indigo-600" /> Parámetros del Escenario de Simulación
+            <span className="text-sm font-bold text-slate-800">
+              {t('simulation.scenario_params')}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -850,11 +875,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 size="sm"
                 onClick={handleOpenLoadModal}
                 disabled={!!activeSim}
-                className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
-                title="Cargar una configuración guardada en su cuenta"
+                className="text-xs bg-blue-100 border-blue-200 text-blue-950 hover:bg-blue-200 flex items-center gap-1.5 h-8 px-2.5 font-bold shadow-xs cursor-pointer"
+                title={t('simulation.load_saved_configs_hint')}
               >
                 <FolderOpen className="h-3.5 w-3.5" />
-                Load Config
+                {t('simulation.load_saved_configs')}
               </Button>
               <Button
                 type="button"
@@ -862,11 +887,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                 size="sm"
                 onClick={resetToDefaults}
                 disabled={!!activeSim}
-                className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 h-8 px-2 cursor-pointer"
-                title="Restablecer valores por defecto"
+                className="text-xs text-slate-500 hover:text-blue-700 flex items-center gap-1 h-8 px-2 cursor-pointer"
+                title={t('simulation.reset_defaults_hint')}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Restablecer Valores
+                {t('simulation.reset_defaults')}
               </Button>
             </div>
           </div>
@@ -875,13 +900,13 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             {/* SECCIÓN 1: Tiempos, Velocidad y Frecuencia */}
             <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-indigo-600" />
-                Tiempos, Períodos y Velocidad
+                <Clock className="h-3.5 w-3.5 text-blue-600" />
+                {t('simulation.times_speed')}
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Speed Up *</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">{t('simulation.speedup')}</label>
                   <input
                     type="number"
                     step="any"
@@ -890,25 +915,25 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     value={speedup}
                     onChange={(e) => setSpeedup(e.target.value)}
                     disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
-                  <p className="text-[10px] text-slate-400">Multiplicador de velocidad (defecto: 1000x).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.speedup_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Frequency Minutes</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase">{t('simulation.frequency')}</label>
                   <input
                     type="number"
                     value={frequencyMinutes}
                     disabled={true}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-500 font-bold cursor-not-allowed"
                   />
-                  <p className="text-[10px] text-slate-400">Frecuencia fija de 60 min (1 tick = 1 hora).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.frequency_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-slate-500" /> Fecha de Inicio *
+                    <Calendar className="h-3 w-3 text-slate-500" /> {t('simulation.start_date')}
                   </label>
                   <input
                     type="datetime-local"
@@ -916,15 +941,15 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
                     disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                   />
-                  <p className="text-[10px] text-slate-400">Hora actual de Argentina (redondeada a hora en punto).</p>
+                  <p className="text-[10px] text-slate-400">{t('simulation.start_date_hint')}</p>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-slate-500" /> Fecha de Fin
+                      <Calendar className="h-3 w-3 text-slate-500" /> {t('simulation.end_date')}
                     </label>
                     <button
                       type="button"
@@ -939,13 +964,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }
                       }}
                       disabled={!!activeSim}
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${
-                        isEndUndefined
-                          ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 ${isEndUndefined
+                        ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {isEndUndefined ? '✓ Sin definir' : 'Sin definir'}
+                      {isEndUndefined ? `✓ ${t('simulation.undefined')}` : t('simulation.undefined')}
                     </button>
                   </div>
 
@@ -957,13 +981,12 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                           setEndTime(getNowRoundedHourArgentina(0))
                         }
                       }}
-                      className={`w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium ${
-                        !activeSim ? 'cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/20' : 'cursor-not-allowed'
-                      }`}
+                      className={`w-full px-3 py-2 border border-dashed border-slate-200 rounded-lg text-xs flex items-center justify-between bg-slate-50 text-slate-400 font-medium ${!activeSim ? 'cursor-pointer hover:border-blue-300 hover:bg-blue-50/20' : 'cursor-not-allowed'
+                        }`}
                       title="Haga click para desbloquear e introducir fecha de fin"
                     >
-                      <span>Sin definir</span>
-                      <span className="text-[10px] text-indigo-600 font-semibold">Definir fecha</span>
+                      <span>{t('simulation.undefined')}</span>
+                      <span className="text-[10px] text-blue-700 font-semibold">{t('simulation.define_date')}</span>
                     </div>
                   ) : (
                     <input
@@ -976,245 +999,256 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                         }
                       }}
                       disabled={!!activeSim}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
                     />
                   )}
                   <p className="text-[10px] text-slate-400">
                     {isEndUndefined
-                      ? 'Sin fecha de corte (ejecución continua).'
-                      : 'Fecha límite de corte de la simulación.'}
+                      ? t('simulation.no_end_date_hint')
+                      : t('simulation.end_date_limit_hint')}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* SECCIÓN 2: Franja Horaria de Recolección (TruckEngine) */}
-            <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Truck className="h-3.5 w-3.5 text-indigo-600" />
-                    Franja Horaria de Recolección de Camiones (Truck Engine)
-                  </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Define las horas en las que los camiones de recolección salen del depósito y descargan los contenedores.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                    {collectionHours.length} hs seleccionadas
-                  </span>
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('night_reinforce')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
-                    >
-                      Noche + Refuerzo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('night_only')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
-                    >
-                      Solo Noche
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('all')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold"
-                    >
-                      24 Horas
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCollectionPreset('clear')}
-                      disabled={!!activeSim}
-                      className="h-7 px-2 text-[10px] font-semibold text-rose-600"
-                    >
-                      Limpiar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Selector interactivo de 24 horas */}
-              <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-2">
-                {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
-                  const isSelected = collectionHours.includes(hour)
-                  return (
-                    <button
-                      key={hour}
-                      type="button"
-                      onClick={() => toggleCollectionHour(hour)}
-                      disabled={!!activeSim}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      <span>{String(hour).padStart(2, '0')}:00</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
-                        {hour >= 20 || hour < 6 ? 'Noche' : hour >= 11 && hour <= 16 ? 'Refuerzo' : 'Día'}
+            {/* Opciones Avanzadas Desplegables (Franja de camiones y Demanda por barrio) */}
+            {!isCollapsed && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* SECCIÓN 2: Franja Horaria de Recolección */}
+                <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Truck className="h-3.5 w-3.5 text-blue-600" />
+                        {t('simulation.truck_hours')}
                       </span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Selector interactivo de Días de la Semana (directamente debajo de las horas) */}
-              <div className="grid grid-cols-7 gap-1.5 pt-2 border-t border-slate-200/70">
-                {WEEKDAYS.map((day) => {
-                  const isSelected = collectionDays.includes(day.id)
-                  return (
-                    <button
-                      key={day.id}
-                      type="button"
-                      onClick={() => toggleCollectionDay(day.id)}
-                      disabled={!!activeSim}
-                      className={`py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
-                      } disabled:opacity-60 disabled:cursor-not-allowed`}
-                    >
-                      <span className="hidden sm:inline">{day.label}</span>
-                      <span className="sm:hidden">{day.short}</span>
-                      <span className={`text-[9px] ${isSelected ? 'text-indigo-200 font-semibold' : 'text-slate-400'}`}>
-                        {isSelected ? 'Activo' : 'Sin recolección'}
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {t('simulation.truck_hours_desc')}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-sky-950 bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md">
+                        {t('simulation.hours_selected', { count: collectionHours.length })}
                       </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* SECCIÓN 3: Demanda Global y Ajustes Específicos por Barrio */}
-            <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-indigo-600" />
-                Demanda Global y Multiplicadores por Barrio
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase">Demanda Global *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    max="1100"
-                    required
-                    value={globalDemandMultiplier}
-                    onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
-                    disabled={!!activeSim}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                  />
-                  <p className="text-[10px] text-slate-400">Multiplicador general para todos los contenedores (1.0 = base).</p>
-                </div>
-              </div>
-
-              {/* Ajustes por Barrio */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-indigo-600" /> Sobrescrituras de Demanda por Barrio
-                    </span>
-                    <p className="text-[10px] text-slate-400">
-                      Ajuste la tasa de llenado para barrios específicos (ej: Palermo 1.8x, Recoleta 1.4x, hasta 1100x).
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addZoneOverride}
-                    disabled={!!activeSim}
-                    className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="h-3.5 w-3.5 text-slate-500" />
-                    Agregar Barrio
-                  </Button>
-                </div>
-
-                {zoneOverrides.length === 0 ? (
-                  <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
-                    Sin excepciones por barrio. Se aplicará la demanda global (<strong>{globalDemandMultiplier}x</strong>) a toda la ciudad.
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {zoneOverrides.map((zo, index) => (
-                      <div key={index} className="flex gap-3 items-center bg-white p-2 border border-slate-200/80 rounded-xl shadow-xs">
-                        <select
-                          value={zo.neighborhood}
-                          onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('night_reinforce')}
                           disabled={!!activeSim}
-                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
                         >
-                          {neighborhoods.map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="1100"
-                            required
-                            value={zo.multiplier}
-                            onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
-                            disabled={!!activeSim}
-                            className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                            placeholder="Multiplicador"
-                          />
-                          <span className="text-xs font-bold text-slate-500">x</span>
+                          {t('simulation.preset_night_boost')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('night_only')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                        >
+                          {t('simulation.preset_night_only')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('all')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold cursor-pointer"
+                        >
+                          {t('simulation.preset_24h')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCollectionPreset('clear')}
+                          disabled={!!activeSim}
+                          className="h-7 px-2 text-[10px] font-semibold text-rose-600 cursor-pointer"
+                        >
+                          {t('simulation.preset_clear')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selector interactivo de 24 horas */}
+                  <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-2">
+                    {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
+                      const isSelected = collectionHours.includes(hour)
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          onClick={() => toggleCollectionHour(hour)}
+                          disabled={!!activeSim}
+                          className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
+                            ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        >
+                          <span>{String(hour).padStart(2, '0')}:00</span>
+                          <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
+                            {hour >= 20 || hour < 6 ? t('simulation.night') : hour >= 11 && hour <= 16 ? t('simulation.reinforcement') : t('simulation.day')}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Selector interactivo de Días de la Semana (directamente debajo de las horas) */}
+                  <div className="grid grid-cols-7 gap-1.5 pt-2 border-t border-slate-200/70">
+                    {WEEKDAYS.map((day) => {
+                      const isSelected = collectionDays.includes(day.id)
+                      return (
+                        <button
+                          key={day.id}
+                          type="button"
+                          onClick={() => toggleCollectionDay(day.id)}
+                          disabled={!!activeSim}
+                          className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
+                            ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-sm'
+                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                        >
+                          <span className="hidden sm:inline">{t(`simulation.weekdays.${day.key}`)}</span>
+                          <span className="sm:hidden">{day.short}</span>
+                          <span className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'}`}>
+                            {isSelected ? t('simulation.active') : t('simulation.no_collection')}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* SECCIÓN 3: Demanda Global y Ajustes Específicos por Barrio */}
+                <div className="p-4 bg-slate-50/70 border border-slate-100 rounded-xl space-y-4">
+
+
+                  <div className="flex flex-col md:flex-row gap-6 items-start">
+                    {/* Demanda Global */}
+                    <div className="w-full md:w-80 lg:w-96 shrink-0 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
+                        <div>
+                          <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                            <Layers className="h-3 w-3 text-blue-600" /> {t('simulation.global_demand')}
+                          </label>
+                          <p className="text-[10px] text-slate-400">
+                            {t('simulation.global_demand_hint')}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.1"
+                          max="1100"
+                          required
+                          value={globalDemandMultiplier}
+                          onChange={(e) => setGlobalDemandMultiplier(e.target.value)}
+                          disabled={!!activeSim}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Ajustes por Barrio */}
+                    <div className="flex-1 w-full space-y-3 min-w-0">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 min-h-[42px]">
+                        <div>
+                          <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-emerald-600" /> {t('simulation.neighborhood_overrides')}
+                          </span>
+                          <p className="text-[10px] text-slate-400">
+                            {t('simulation.neighborhood_overrides_hint')}
+                          </p>
                         </div>
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeZoneOverride(index)}
+                          variant="outline"
+                          size="sm"
+                          onClick={addZoneOverride}
                           disabled={!!activeSim}
-                          className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-8 px-3 text-xs border-slate-200 font-semibold flex items-center gap-1.5 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Plus className="h-3.5 w-3.5 text-slate-500" />
+                          {t('simulation.add_neighborhood')}
                         </Button>
                       </div>
-                    ))}
+
+                      {zoneOverrides.length === 0 ? (
+                        <div className="p-4 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 bg-white">
+                          {t('simulation.no_overrides')}
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {zoneOverrides.map((zo, index) => (
+                            <div key={index} className="flex gap-3 items-center bg-white p-2 border border-slate-200/80 rounded-xl shadow-xs">
+                              <select
+                                value={zo.neighborhood}
+                                onChange={(e) => updateZoneOverride(index, 'neighborhood', e.target.value)}
+                                disabled={!!activeSim}
+                                className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                {neighborhoods.map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0.1"
+                                  max="1100"
+                                  required
+                                  value={zo.multiplier}
+                                  onChange={(e) => updateZoneOverride(index, 'multiplier', e.target.value)}
+                                  disabled={!!activeSim}
+                                  className="w-24 px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                                  placeholder="Multiplicador"
+                                />
+                                <span className="text-xs font-bold text-slate-500">x</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeZoneOverride(index)}
+                                disabled={!!activeSim}
+                                className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-2 flex items-center justify-end">
               <Button
                 type="submit"
                 disabled={actionLoading || !!activeSim}
-                className="!bg-indigo-600 hover:!bg-indigo-700 !text-white font-bold shadow-md px-6 py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-bold shadow-md px-6 py-2.5 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {actionLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin mr-2 inline" />
-                    Iniciando Simulación...
+                    {t('simulation.starting_sim')}
                   </>
                 ) : (
-                  'Iniciar Simulación con Parámetros'
+                  t('simulation.start_sim')
                 )}
               </Button>
             </div>
@@ -1235,9 +1269,9 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div className="flex items-center gap-2.5">
-                <FolderOpen className="h-5 w-5 text-indigo-600" />
+                <FolderOpen className="h-5 w-5 text-blue-600" />
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Load Configuration</h3>
+                  <h3 className="font-bold text-slate-900 text-base">Carga de Configuraciones</h3>
                   <p className="text-xs text-slate-500">Seleccione una configuración guardada para cargar en los campos</p>
                 </div>
               </div>
@@ -1252,7 +1286,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
             </div>
 
             <div className="p-5 overflow-y-auto flex-1 space-y-3">
-              <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800 flex items-start gap-2">
+              <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 flex items-start gap-2">
                 <span className="font-bold shrink-0">Tip:</span>
                 <span>
                   Aquí solo se listan los nombres de sus configuraciones. Si desea inspeccionar el contenido completo o crear nuevas variantes, visite la pestaña <strong>Configurations</strong> en la barra superior.
@@ -1261,7 +1295,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
 
               {loadingConfigs ? (
                 <div className="p-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <RefreshCw className="h-6 w-6 animate-spin text-indigo-600" />
+                  <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                   <span className="text-xs font-semibold">Buscando configuraciones guardadas...</span>
                 </div>
               ) : savedConfigs.length === 0 ? (
@@ -1278,10 +1312,10 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                     <div
                       key={item.id}
                       onClick={() => applyConfig(item.config, item.name)}
-                      className="p-3.5 border border-slate-200/80 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer flex items-center justify-between group shadow-xs"
+                      className="p-3.5 border border-slate-200/80 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all cursor-pointer flex items-center justify-between group shadow-xs"
                     >
                       <div className="space-y-0.5">
-                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">
+                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-blue-800 transition-colors">
                           {item.name}
                         </h4>
                         {item.description && (
@@ -1291,7 +1325,7 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
                       <Button
                         type="button"
                         size="sm"
-                        className="!bg-indigo-600 group-hover:!bg-indigo-700 !text-white text-xs font-bold px-3 h-8 shadow-xs shrink-0 cursor-pointer"
+                        className="!bg-blue-200 group-hover:!bg-blue-300 !text-blue-950 border border-blue-300/80 text-xs font-bold px-3 h-8 shadow-xs shrink-0 cursor-pointer"
                       >
                         Cargar
                       </Button>

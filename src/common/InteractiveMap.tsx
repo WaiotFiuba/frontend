@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
-import { labels } from "./utils/types"
-import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails, BackendSiteProjectionModels } from "./utils/types"
+import { labels } from "@/utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails, BackendSiteProjectionModels } from "@/utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -12,16 +13,19 @@ import {
     calculateBearing,
     colorForLevel,
     formatSimulatedTime,
-} from "./utils/functions"
+} from "@/utils/functions"
 import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
-import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
+import MapVisual from "./MapVisual"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
+import { Button } from "@/utils/ui/button"
+import { Badge } from "@/utils/ui/badge"
+import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
@@ -55,6 +59,9 @@ function MapViewportController({
     const map = useMapEvents({
         moveend: () => {
             mapRef.current = map
+            if (onZoomChange) {
+                onZoomChange(map.getZoom())
+            }
             fetchForMap(map)
         },
         zoomend: () => {
@@ -123,6 +130,7 @@ interface MapConfigResponse {
     center: { lat: number; lng: number }
     default_zoom: number
     bounds: [[number, number], [number, number]] | null
+    available_waste_types?: string[]
 }
 
 function MapConfigController({
@@ -177,7 +185,7 @@ function MovePolylineItem({
             <Polyline
                 positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
                 pathOptions={{
-                    color: isSelected ? '#2563eb' : '#4f46e5',
+                    color: isSelected ? '#0284c7' : '#059669',
                     weight: isSelected ? 6 : 3.5,
                     dashArray: isSelected ? undefined : '6, 8',
                     opacity: isSelected ? 1 : 0.85,
@@ -197,8 +205,8 @@ function MovePolylineItem({
                         center={[move.from_lat!, move.from_lng!]}
                         radius={7}
                         pathOptions={{
-                            color: '#1d4ed8',
-                            fillColor: '#3b82f6',
+                            color: '#0284c7',
+                            fillColor: '#38bdf8',
                             fillOpacity: 0.9,
                             weight: 3,
                         }}
@@ -232,6 +240,7 @@ export default function InteractiveMap({
     highlightedMoveId,
     isPlayground = false,
 }: InteractiveMapProps) {
+    const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
@@ -242,8 +251,6 @@ export default function InteractiveMap({
     const [draftHorizonHours, setDraftHorizonHours] = useState(24)
     const [modelKey, setModelKey] = useState('baseline_operational')
     const [projectionModels, setProjectionModels] = useState<BackendSiteProjectionModels['models']>([])
-    const zoneProfiles = useZoneProfiles()
-
     useEffect(() => {
         if (viewMode !== 'projected') return
         let cancelled = false
@@ -275,6 +282,21 @@ export default function InteractiveMap({
         setProjectionAsOf(parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString())
         setViewMode('projected')
     }
+    const [currentZoom, setCurrentZoom] = useState<number>(13)
+    const zoneProfiles = useZoneProfiles()
+
+    const handleZoomChange = useCallback((newZoom: number) => {
+        const rounded = Math.round(newZoom)
+        setCurrentZoom((prev) => (prev === rounded ? prev : rounded))
+    }, [])
+
+    const handleZoomIn = useCallback(() => {
+        mapRef.current?.zoomIn()
+    }, [])
+
+    const handleZoomOut = useCallback(() => {
+        mapRef.current?.zoomOut()
+    }, [])
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -286,7 +308,7 @@ export default function InteractiveMap({
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
         const requestId = ++latestRequestIdRef.current
-        const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
+        const { backendZoom, limit } = getContainerFetchConfigByZoom(zoom)
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
@@ -380,25 +402,39 @@ export default function InteractiveMap({
         }
     }, [])
 
-    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
+    const simDebounceRef = useRef<number | null>(null)
+    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación con debounce
     useEffect(() => {
         if (!mapRef.current) return
-        const map = mapRef.current
-        const bounds = map.getBounds()
-        const sw = bounds.getSouthWest()
-        const ne = bounds.getNorthEast()
-        const zoom = map.getZoom()
-        const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
-        const latPadding = (ne.lat - sw.lat) * boundsPadding
-        const lngPadding = (ne.lng - sw.lng) * boundsPadding
 
-        void fetchForBounds(
-            sw.lat - latPadding,
-            ne.lat + latPadding,
-            sw.lng - lngPadding,
-            ne.lng + lngPadding,
-            zoom
-        )
+        if (simDebounceRef.current) {
+            window.clearTimeout(simDebounceRef.current)
+        }
+        simDebounceRef.current = window.setTimeout(() => {
+            if (!mapRef.current) return
+            const map = mapRef.current
+            const bounds = map.getBounds()
+            const sw = bounds.getSouthWest()
+            const ne = bounds.getNorthEast()
+            const zoom = map.getZoom()
+            const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
+            const latPadding = (ne.lat - sw.lat) * boundsPadding
+            const lngPadding = (ne.lng - sw.lng) * boundsPadding
+
+            void fetchForBounds(
+                sw.lat - latPadding,
+                ne.lat + latPadding,
+                sw.lng - lngPadding,
+                ne.lng + lngPadding,
+                zoom
+            )
+        }, 600)
+
+        return () => {
+            if (simDebounceRef.current) {
+                window.clearTimeout(simDebounceRef.current)
+            }
+        }
     }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds])
 
     const simulatedClock = useMemo(
@@ -406,17 +442,56 @@ export default function InteractiveMap({
         [activeSimulation?.simulated_time]
     )
 
-    // Sitios a desplegar: usa propContainers si fueron provistos, sino los sitios del backend directamente
+    // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
+        if (!sites || sites.length === 0) return []
+
+        if (currentZoom <= 10 && sites.length > 1) {
+            let totalCount = 0
+            let sumLevel = 0
+            let sumLat = 0
+            let sumLng = 0
+            let totalWeight = 0
+
+            for (const s of sites) {
+                const count = s.containerCount ?? (s.containers?.length || 1)
+                const level = s.currentLevel ?? s.avgLevel ?? 0
+                totalCount += count
+                sumLevel += level * count
+                sumLat += s.lat * count
+                sumLng += s.long * count
+                totalWeight += count
+            }
+
+            const avgLevel = totalWeight > 0 ? Math.round(sumLevel / totalWeight) : 0
+            const centerLat = totalWeight > 0 ? sumLat / totalWeight : -34.6037
+            const centerLng = totalWeight > 0 ? sumLng / totalWeight : -58.3816
+
+            return [{
+                id: 'macro-cluster-all',
+                name: `Total Ciudad (${totalCount} contenedores)`,
+                address: null,
+                lat: centerLat,
+                long: centerLng,
+                type: (wasteFilter === 'all' ? 'indiferenciado' : wasteFilter) as ContainerType,
+                color: colorForLevel(avgLevel),
+                currentLevel: avgLevel,
+                avgLevel: avgLevel,
+                containerCount: totalCount,
+                containers: [],
+                isCluster: true,
+            }]
+        }
+
         return sites
-    }, [sites])
+    }, [sites, currentZoom, wasteFilter])
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
-        return displaySites.reduce((acc, s) => {
+        return sites.reduce((acc, s) => {
             return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
         }, 0)
-    }, [displaySites])
+    }, [sites])
 
     const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
     const [configLoading, setConfigLoading] = useState(true)
@@ -463,73 +538,20 @@ export default function InteractiveMap({
 
     return (
         <div className="h-full w-full relative">
-            <div className="absolute top-3 left-14 z-[1000] flex gap-3">
-                {/* Pestaña flotante: Contenedores al 100% */}
-                {viewMode === 'current' && <div
-                    className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
-                    title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
-                >
-                    <div className="relative flex items-center justify-center">
-                        <span className="flex h-2.5 w-2.5 relative">
-                            {fullContainersCount > 0 && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            )}
-                            <span
-                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
-                                    }`}
-                            ></span>
-                        </span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                            Al 100%
-                        </span>
-                        <span
-                            className={`text-base font-extrabold leading-tight ${fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
-                                }`}
-                        >
-                            {fullContainersCount}
-                        </span>
-                    </div>
-                </div>}
-
-                {/* Reloj de tiempo simulado */}
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Reloj de Simulación
-                    </p>
-                    <p className="font-semibold text-slate-900 leading-tight">
-                        {simulatedClock}
-                    </p>
-                </div>
-
-                <ZoneProfilesControls
-                    visible={zoneProfiles.visible}
-                    loading={zoneProfiles.loading}
-                    onToggle={zoneProfiles.toggle}
-                />
-
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-md backdrop-blur flex items-center gap-1">
-                    {[
-                        ['all', 'Todos'],
-                        ['organico', 'Húmedos'],
-                        ['reciclaje', 'Reciclables'],
-                    ].map(([value, label]) => (
-                        <button
-                            key={value}
-                            type="button"
-                            onClick={() => setWasteFilter(value as MapWasteFilter)}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-                                wasteFilter === value
-                                    ? 'bg-slate-900 text-white shadow-sm'
-                                    : 'text-slate-600 hover:bg-slate-100'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <MapVisual
+                fullContainersCount={fullContainersCount}
+                showFullContainersCount={viewMode === 'current'}
+                simulatedClock={simulatedClock}
+                currentZoom={currentZoom}
+                wasteFilter={wasteFilter}
+                onWasteFilterChange={setWasteFilter}
+                availableWasteTypes={mapConfig?.available_waste_types}
+                zoneProfilesVisible={zoneProfiles.visible}
+                zoneProfilesLoading={zoneProfiles.loading}
+                onToggleZoneProfiles={zoneProfiles.toggle}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+            />
 
             {!isPlayground && <div className="absolute bottom-4 left-3 z-[1000] max-w-[calc(100%-1.5rem)] rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-md backdrop-blur">
                 <div className="flex flex-wrap items-center gap-2">
@@ -640,6 +662,7 @@ export default function InteractiveMap({
                     mapRef={mapRef}
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
+                    onZoomChange={handleZoomChange}
                 />
 
                 <MapMoveFocusController
@@ -659,7 +682,7 @@ export default function InteractiveMap({
                     <Polyline
                         positions={selectedRoute.waypoints}
                         pathOptions={{
-                            color: "#2563eb",
+                            color: "#0284c7",
                             weight: 5,
                             opacity: 0.85,
                             dashArray: "8, 6",
@@ -690,29 +713,41 @@ export default function InteractiveMap({
                         }
                     }
                     const siteKey = site.id
+                    const markerKey = siteKey
                     if (!isCluster) {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(markerColor, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
                                     <div className="p-2 space-y-2.5 max-w-xs min-w-[220px]">
-                                        <div className="border-b pb-1.5 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-bold text-sm text-slate-900 leading-tight">
-                                                    {site.name || `Sitio #${site.id}`}
-                                                </h3>
+                                        <div className="border-b pb-1.5 flex items-start justify-between gap-1.5">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                                    <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
+                                                        {site.name || t('map.site_number', { id: site.id, defaultValue: `Sitio #${site.id}` })}
+                                                    </h3>
+                                                </div>
                                                 {site.address && site.address !== site.name && (
-                                                    <p className="text-[11px] text-slate-500 font-medium">
+                                                    <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                                                         {site.address}
                                                     </p>
                                                 )}
-                                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                                                    Sitio #{site.id} • {labels[site.type as ContainerType] || labels.indiferenciado} • {containerCount} cont.
-                                                </p>
+                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        #{site.id}
+                                                    </Badge>
+                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {t(`map.types.${site.type}`, { defaultValue: labels[site.type as ContainerType] || labels.indiferenciado })}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {t('map.container_count_short', { count: containerCount, defaultValue: `${containerCount} cont.` })}
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -739,7 +774,7 @@ export default function InteractiveMap({
 
                                         {viewMode === 'current' && <div className="border-t pt-2">
                                             <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                                Contenedores
+                                                {t('map.containers', { defaultValue: 'Contenedores' })}
                                             </p>
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
                                                 {site.containers.map((container: Container) => {
@@ -771,13 +806,15 @@ export default function InteractiveMap({
                                             </div>
                                         </div>}
 
-                                        <button
+                                        <Button
                                             type="button"
+                                            size="sm"
                                             onClick={() => navigate(`/map/sites/${site.id}`)}
-                                            className="mt-2 w-full rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-sm"
+                                            className="mt-2 w-full h-8 text-xs font-bold bg-blue-200 hover:bg-blue-300 text-blue-950 border border-blue-300/80 gap-1.5 shadow-xs"
                                         >
-                                            Ver detalle del sitio
-                                        </button>
+                                            {t('map.view_site_detail', { defaultValue: 'Ver detalle del sitio' })}
+                                            <ExternalLink className="w-3 h-3 text-blue-900" />
+                                        </Button>
                                     </div>
                                 </Popup>
                             </Marker>
@@ -786,9 +823,9 @@ export default function InteractiveMap({
                     else {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(markerColor, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom)}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )

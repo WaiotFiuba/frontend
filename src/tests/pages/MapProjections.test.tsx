@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Site } from '@/common/utils/types'
+import type { Site } from '@/utils/types'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 
 const fetchSiteProjections = vi.hoisted(() => vi.fn())

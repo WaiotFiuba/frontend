@@ -1,4 +1,4 @@
-import type { BackendSiteProjectionBatch, BackendSiteProjectionModels } from '@/common/utils/types'
+import type { BackendSiteProjectionBatch, BackendSiteProjectionModels } from '@/utils/types'
 import { api } from '@/lib/api'
 
 export const fetchProjectionModels = (): Promise<BackendSiteProjectionModels> =>

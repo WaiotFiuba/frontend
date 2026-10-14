@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/utils/ui/button'
 import { api } from '@/lib/api'
 import type {
   BackendSite,
@@ -9,7 +9,7 @@ import type {
   BackendSiteHistoryPoint,
   BackendSiteProjection,
   BackendSiteProjectionPoint,
-} from '@/common/utils/types'
+} from '@/utils/types'
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return 'Sin datos'
@@ -334,6 +334,9 @@ export default function SiteDetail() {
 
   useEffect(() => {
     let cancelled = false
+    let timeoutId: number
+    setHistory(null)
+    setProjection(null)
 
     const fetchSite = async (isBackground = false) => {
       if (!siteId) return
@@ -342,13 +345,7 @@ export default function SiteDetail() {
         setError(null)
       }
       try {
-        const [siteData, historyData, projectionData] = await Promise.all([
-          api.get<BackendSite>(`/map/sites/${siteId}`),
-          api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`),
-          api.get<BackendSiteProjection>(
-            `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60`
-          ).catch(() => null),
-        ])
+        const siteData = await api.get<BackendSite>(`/map/sites/${siteId}`)
         if (!cancelled) {
           if (siteData && (String(siteId).includes('332') || siteData.address?.includes('DEGLIOUMINI'))) {
             const frontClock = new Date().toLocaleTimeString()
@@ -364,8 +361,6 @@ export default function SiteDetail() {
             )
           }
           setSite(siteData)
-          setHistory(historyData)
-          setProjection(projectionData)
         }
       } catch (err: unknown) {
         if (!cancelled && !isBackground) {
@@ -376,17 +371,50 @@ export default function SiteDetail() {
         if (!cancelled && !isBackground) {
           setLoading(false)
         }
+        if (!cancelled) {
+          timeoutId = window.setTimeout(() => void fetchSite(true), 5000)
+        }
       }
     }
 
     void fetchSite(false)
-    const intervalId = window.setInterval(() => {
-      void fetchSite(true)
-    }, 2000)
 
     return () => {
       cancelled = true
-      window.clearInterval(intervalId)
+      window.clearTimeout(timeoutId)
+    }
+  }, [siteId])
+
+  useEffect(() => {
+    let cancelled = false
+    let timeoutId: number
+    setProjection(null)
+
+    const fetchChart = async () => {
+      if (!siteId) return
+      try {
+        const [historyData, projectionData] = await Promise.all([
+          api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`).catch(() => null),
+          api.get<BackendSiteProjection>(
+            `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60`
+          ).catch(() => null),
+        ])
+        if (!cancelled) {
+          if (historyData) setHistory(historyData)
+          setProjection(projectionData)
+        }
+      } finally {
+        if (!cancelled) {
+          timeoutId = window.setTimeout(() => void fetchChart(), 30000)
+        }
+      }
+    }
+
+    void fetchChart()
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
     }
   }, [siteId, selectedModel])
 
