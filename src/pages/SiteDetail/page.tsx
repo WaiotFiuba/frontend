@@ -442,7 +442,9 @@ export default function SiteDetail() {
     )
   }
 
-  const historyPoints = history?.points ?? []
+  const historyPoints = (history?.points ?? []).filter((point) => (
+    !projection || new Date(point.timestamp).getTime() <= new Date(projection.generated_at).getTime()
+  ))
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
