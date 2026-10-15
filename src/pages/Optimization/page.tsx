@@ -194,6 +194,7 @@ export default function Optimization() {
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           whatif={true}
+          baseline={plan ? baselineMetrics : null}
         />
 
         {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}

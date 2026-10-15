@@ -123,6 +123,24 @@ describe('NetworkKpiPanel Component Tests', () => {
     }
   })
 
+  it('shows the critical sites without the plan when it gets the real network', () => {
+    render(
+      <NetworkKpiPanel
+        metrics={mockMetrics}
+        whatif={true}
+        baseline={{ ...mockMetrics, critical_count: 21 }}
+      />
+    )
+
+    expect(screen.getByText('sin el plan: 21')).toBeInTheDocument()
+  })
+
+  it('does not compare without the real network', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
+
+    expect(screen.queryByText(/sin el plan/)).not.toBeInTheDocument()
+  })
+
   it('renders What-If badge and title when whatif prop is true', () => {
     render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
 

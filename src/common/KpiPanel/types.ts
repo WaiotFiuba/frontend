@@ -28,6 +28,8 @@ export interface NetworkKpiPanelProps {
   collapsible?: boolean
   defaultCollapsed?: boolean
   whatif?: boolean
+  // Red real para comparar con el what-if (solo con un plan activo).
+  baseline?: NetworkMetricsData | null
 }
 
 export interface KpiCardProps {
@@ -41,6 +43,8 @@ export interface KpiCardProps {
   progressColor?: string
   badgeText?: string
   badgeVariant?: 'neutral' | 'success' | 'warning' | 'danger' | 'info'
+  // Línea de comparación debajo del valor (por ejemplo, el valor sin el plan).
+  comparison?: string
   onClick?: () => void
   isSelected?: boolean
   className?: string

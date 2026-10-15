@@ -491,6 +491,7 @@
     "saturation_critical": "saturación ≥ {{critical}}%",
     "badge_overflow": "Desborde",
     "critical_sites_tooltip": "Sitios con saturación igual o superior al {{critical}}%, receptores prioritarios en redistribución o requiriendo recolección urgente.",
+    "without_plan": "sin el plan: {{value}}",
     "current_dispersion": "Dispersión Actual (σ)",
     "std_dev_subvalue": "desvío estándar actual",
     "badge_live": "En vivo",
