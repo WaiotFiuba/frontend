@@ -73,10 +73,12 @@ export default function Optimization() {
           if (baselineRes.status === 'fulfilled') {
             setBaselineMetrics(baselineRes.value)
           }
-          if (activePlanRes.status === 'fulfilled' && activePlanRes.value) {
-            setPlan(activePlanRes.value)
-            if (activePlanRes.value.config) {
-              setConfig((prev) => ({ ...prev, ...activePlanRes.value.config }))
+          // Sin plan activo el backend responde null: la pantalla queda sin plan.
+          const activePlan = activePlanRes.status === 'fulfilled' ? activePlanRes.value : null
+          if (activePlan) {
+            setPlan(activePlan)
+            if (activePlan.config) {
+              setConfig((prev) => ({ ...prev, ...activePlan.config }))
             }
           }
         }
