@@ -6,8 +6,18 @@ import { Card, CardContent } from '@/utils/ui/card'
 import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } from './services/optimizationApi'
-import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
+import {
+  generateOptimizationPlan,
+  fetchNetworkKpis,
+  fetchActiveWhatIfPlan,
+  fetchWhatIfComparison,
+} from './services/optimizationApi'
+import type {
+  OptimizationConfig,
+  RedistributionPlan,
+  OptimizationMetricsResponse,
+  WhatIfComparisonResponse,
+} from './types'
 import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
 import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
@@ -44,6 +54,7 @@ export default function Optimization() {
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
+  const [comparison, setComparison] = useState<WhatIfComparisonResponse | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
@@ -93,6 +104,22 @@ export default function Optimization() {
       isMounted = false
     }
   }, [config.window_days])
+
+  // Comparación con la red real: se pide cada vez que cambia el plan activo.
+  const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
+  useEffect(() => {
+    let isMounted = true
+    setComparison(null)
+    if (activePlanId == null) return
+    fetchWhatIfComparison(activePlanId)
+      .then((result) => {
+        if (isMounted) setComparison(result)
+      })
+      .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    return () => {
+      isMounted = false
+    }
+  }, [activePlanId])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -200,7 +227,7 @@ export default function Optimization() {
         {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}
         <RedistributionImpactPanel
           plan={plan}
-          baselineMetrics={baselineMetrics}
+          comparison={comparison}
           loading={generating}
         />
 
