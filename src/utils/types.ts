@@ -153,6 +153,7 @@ export type BackendSiteHistory = {
 export type BackendSiteProjectionPoint = {
     timestamp: string
     predicted_level: number
+    predicted_volume_m3?: number | null
     lower_bound?: number | null
     upper_bound?: number | null
     reaches_critical: boolean
@@ -166,6 +167,8 @@ export type BackendSiteProjection = {
     model_key: string
     generated_at: string
     current_level: number
+    current_volume_m3?: number | null
+    capacity_m3?: number | null
     horizon_hours: number
     interval_minutes: number
     critical_level: number
@@ -179,6 +182,25 @@ export type BackendSiteProjection = {
     full_at?: string | null
     time_to_full_hours?: number | null
     points: BackendSiteProjectionPoint[]
+    target_point?: BackendSiteProjectionPoint | null
+}
+
+export type BackendSiteProjectionBatch = {
+    model_key: string
+    generated_at: string
+    site_count: number
+    sites: BackendSiteProjection[]
+    skipped_site_ids: number[]
+    target_at: string | null
+}
+
+export type BackendSiteProjectionModels = {
+    default_model_key: string
+    models: {
+        key: string
+        name: string
+        status: string
+    }[]
 }
 
 export interface RouteDetails {

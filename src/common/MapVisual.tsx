@@ -18,6 +18,7 @@ import type { MapWasteFilter } from "@/utils/types"
 
 export interface MapVisualProps {
     fullContainersCount: number
+    showFullContainersCount?: boolean
     simulatedClock: string
     currentZoom?: number
     wasteFilter: MapWasteFilter
@@ -33,6 +34,7 @@ export interface MapVisualProps {
 
 export default function MapVisual({
     fullContainersCount,
+    showFullContainersCount = true,
     simulatedClock,
     wasteFilter,
     onWasteFilterChange,
@@ -47,7 +49,7 @@ export default function MapVisual({
     return (
         <div className={`absolute top-3 left-14 z-[1000] flex flex-wrap items-center gap-3 ${className}`}>
             {/* Pestaña flotante: Contenedores al 100% */}
-            <div
+            {showFullContainersCount && <div
                 className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:bg-slate-100 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all select-none cursor-default"
                 title={t('map.full_alert_tooltip')}
             >
@@ -76,7 +78,7 @@ export default function MapVisual({
                         {fullContainersCount}
                     </span>
                 </div>
-            </div>
+            </div>}
 
             {/* Reloj de tiempo simulado */}
             <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">

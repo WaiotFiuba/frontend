@@ -108,6 +108,12 @@
     "site_number": "Site #{{id}}",
     "container_count_short": "{{count}} cont.",
     "avg_level": "Average level:",
+    "projected_level": "Projected level:",
+    "no_data": "No data",
+    "projection_start_level": "Starting level: {{level}}%",
+    "projection_no_start_readings": "No complete readings at the start.",
+    "projection_loading": "Calculating projection...",
+    "projection_unavailable": "Projection unavailable.",
     "containers": "Containers",
     "view_site_detail": "View site details",
     "types": {
