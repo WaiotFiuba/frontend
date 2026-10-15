@@ -18,6 +18,7 @@ import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
+import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 import { useLevelThresholds } from '@/context/CityConfigContext'
@@ -155,13 +156,7 @@ function MapConfigController({
 
 
 
-function MovePolylineItem({
-    move,
-    isSelected,
-}: {
-    move: MapRedistributionMove
-    isSelected: boolean
-}) {
+function MovePolylineItem({ move }: { move: MapRedistributionMove }) {
     const bearing = useMemo(() => {
         if (
             move.from_lat == null ||
@@ -175,18 +170,17 @@ function MovePolylineItem({
     }, [move.from_lat, move.from_lng, move.to_lat, move.to_lng])
 
     const arrowIcon = useMemo(() => {
-        return createArrowIcon(bearing, isSelected)
-    }, [bearing, isSelected])
+        return createArrowIcon(bearing, true)
+    }, [bearing])
 
     return (
         <>
             <Polyline
                 positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
                 pathOptions={{
-                    color: isSelected ? '#0284c7' : '#059669',
-                    weight: isSelected ? 6 : 3.5,
-                    dashArray: isSelected ? undefined : '6, 8',
-                    opacity: isSelected ? 1 : 0.85,
+                    color: '#0284c7',
+                    weight: 6,
+                    opacity: 1,
                 }}
             />
 
@@ -194,33 +188,29 @@ function MovePolylineItem({
                 position={[move.to_lat!, move.to_lng!]}
                 icon={arrowIcon}
                 interactive={false}
-                zIndexOffset={isSelected ? 300 : 150}
+                zIndexOffset={300}
             />
 
-            {isSelected && (
-                <>
-                    <CircleMarker
-                        center={[move.from_lat!, move.from_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#0284c7',
-                            fillColor: '#38bdf8',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                    <CircleMarker
-                        center={[move.to_lat!, move.to_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#047857',
-                            fillColor: '#10b981',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                </>
-            )}
+            <CircleMarker
+                center={[move.from_lat!, move.from_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#0284c7',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
+            <CircleMarker
+                center={[move.to_lat!, move.to_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#047857',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
         </>
     )
 }
@@ -240,6 +230,8 @@ export default function InteractiveMap({
 }: InteractiveMapProps) {
     const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
+    // Zoom con el que el backend agrupó los sitios cargados (define la grilla).
+    const [sitesBackendZoom, setSitesBackendZoom] = useState<number>(10)
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
@@ -278,6 +270,7 @@ export default function InteractiveMap({
             if (mountedRef.current && requestId > latestAppliedIdRef.current) {
                 latestAppliedIdRef.current = requestId
                 setSites(data)
+                setSitesBackendZoom(backendZoom)
             }
         } catch (e) {
             console.error('Error al cargar sitios:', e)
@@ -430,7 +423,7 @@ export default function InteractiveMap({
             const centerLng = totalWeight > 0 ? sumLng / totalWeight : -58.3816
 
             return [{
-                id: 'macro-cluster-all',
+                id: MACRO_CLUSTER_ID,
                 name: `Total Ciudad (${totalCount} contenedores)`,
                 address: null,
                 lat: centerLat,
@@ -447,6 +440,19 @@ export default function InteractiveMap({
 
         return sites
     }, [sites, currentZoom, wasteFilter, thresholds])
+
+    // Cuántos contenedores salen y entran en cada pin según el plan.
+    const pinBadges = useMemo(
+        () => buildPinBadges(redistributionMoves, displaySites, sitesBackendZoom),
+        [redistributionMoves, displaySites, sitesBackendZoom]
+    )
+
+    // Solo se dibuja la flecha del movimiento seleccionado: con cientos de
+    // movimientos, todas juntas no se leen.
+    const highlightedMove = useMemo(
+        () => redistributionMoves?.find((m) => m.container_id === highlightedMoveId) ?? null,
+        [redistributionMoves, highlightedMoveId]
+    )
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
@@ -587,7 +593,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
@@ -690,24 +696,23 @@ export default function InteractiveMap({
                             <Marker
                                 key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom)}
+                                icon={createMapPinIcon(site.color, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )
                     }
                 })}
 
-                {redistributionMoves && redistributionMoves.map((m) => {
-                    if (m.from_lat == null || m.from_lng == null || m.to_lat == null || m.to_lng == null) return null
-                    const isSelected = highlightedMoveId === m.container_id
-                    return (
+                {highlightedMove &&
+                    highlightedMove.from_lat != null &&
+                    highlightedMove.from_lng != null &&
+                    highlightedMove.to_lat != null &&
+                    highlightedMove.to_lng != null && (
                         <MovePolylineItem
-                            key={`opt-move-${m.container_id}`}
-                            move={m}
-                            isSelected={isSelected}
+                            key={`opt-move-${highlightedMove.container_id}`}
+                            move={highlightedMove}
                         />
-                    )
-                })}
+                    )}
             </MapContainer>
         </div>
     )

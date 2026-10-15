@@ -262,14 +262,67 @@ const getContainerCountDisplay = (count: number): { label: string; fontSize: num
 
 const pinIconCache = new Map<string, L.DivIcon>()
 
+/** Contenedores que salen y entran en un pin según el plan de redistribución. */
+export interface PinBadge {
+    out: number
+    in: number
+}
+
+const PIN_BADGE_COLORS = { out: "#2563eb", in: "#7c3aed" }
+
+// Insignias en la esquina superior derecha del pin, fuera de la cabeza para no
+// tapar el color (estado) ni la cantidad de contenedores.
+const PinBadgePills = ({ badge }: { badge: PinBadge }) => {
+    const pills = [
+        { key: "out", label: `−${badge.out}`, count: badge.out, color: PIN_BADGE_COLORS.out },
+        { key: "in", label: `+${badge.in}`, count: badge.in, color: PIN_BADGE_COLORS.in },
+    ].filter((pill) => pill.count > 0)
+
+    return (
+        <>
+            {pills.map((pill, index) => {
+                const width = 10 + 7 * pill.label.length
+                const y = -6 + index * 17
+                return (
+                    <g key={pill.key}>
+                        <rect
+                            x={44}
+                            y={y}
+                            width={width}
+                            height={15}
+                            rx={7.5}
+                            fill={pill.color}
+                            stroke="white"
+                            strokeWidth="2"
+                        />
+                        <text
+                            x={44 + width / 2}
+                            y={y + 7.5}
+                            dominantBaseline="central"
+                            textAnchor="middle"
+                            fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+                            fontSize="11"
+                            fontWeight="800"
+                            fill="white"
+                        >
+                            {pill.label}
+                        </text>
+                    </g>
+                )
+            })}
+        </>
+    )
+}
+
 export const createMapPinIcon = (
     color: string,
     containerCount: number = 1,
     type: ContainerType = "indiferenciado",
-    zoom: number = 14
+    zoom: number = 14,
+    badge?: PinBadge
 ) => {
     const roundedZoom = Math.max(10, Math.min(21, Math.round(zoom)))
-    const cacheKey = `${color}|${containerCount}|${type}|${roundedZoom}`
+    const cacheKey = `${color}|${containerCount}|${type}|${roundedZoom}|${badge?.out ?? 0}|${badge?.in ?? 0}`
     const cached = pinIconCache.get(cacheKey)
     if (cached) {
         return cached
@@ -337,6 +390,7 @@ export const createMapPinIcon = (
                     {accent.label}
                 </text>
             )}
+            {badge && <PinBadgePills badge={badge} />}
         </svg>
     )
 

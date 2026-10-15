@@ -359,6 +359,16 @@ export default function Optimization() {
                           >
                             {t('optimization.algo_lp')}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfig({ ...config, algorithm: 'overload' })}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${config.algorithm === 'overload'
+                              ? 'bg-violet-600 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                          >
+                            {t('optimization.algo_overload')}
+                          </button>
                         </div>
                       </div>
 
@@ -385,84 +395,90 @@ export default function Optimization() {
                       </div>
                     </div>
 
-                    {/* Umbrales de Score de Utilización */}
-                    <div className="pt-2 border-t border-slate-100 space-y-3">
-                      <span className="text-xs font-bold text-slate-700 block">
-                        {t('optimization.utilization_thresholds')}
-                      </span>
+                    {/* Umbrales de Score de Utilización: solo para el modelo por score */}
+                    {config.algorithm === 'overload' ? (
+                      <p className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                        {t('optimization.overload_hint')}
+                      </p>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-100 space-y-3">
+                        <span className="text-xs font-bold text-slate-700 block">
+                          {t('optimization.utilization_thresholds')}
+                        </span>
 
-                      {/* Score Donante */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <label htmlFor="donor-threshold-input" className="font-semibold text-slate-700 text-[11px]">
-                            {t('optimization.donor_threshold')}
-                          </label>
-                          <span className="font-mono font-bold text-emerald-950 px-2 py-0.5 rounded-md bg-emerald-200 border border-emerald-300 text-[11px]">
-                            {donorPct}%
-                          </span>
+                        {/* Score Donante */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <label htmlFor="donor-threshold-input" className="font-semibold text-slate-700 text-[11px]">
+                              {t('optimization.donor_threshold')}
+                            </label>
+                            <span className="font-mono font-bold text-emerald-950 px-2 py-0.5 rounded-md bg-emerald-200 border border-emerald-300 text-[11px]">
+                              {donorPct}%
+                            </span>
+                          </div>
+                          <input
+                            id="donor-threshold-input"
+                            type="range"
+                            min="10"
+                            max={targetPct - 5}
+                            step="5"
+                            value={donorPct}
+                            onChange={(e) =>
+                              setConfig({ ...config, min_utilization_donor: Number(e.target.value) / 100 })
+                            }
+                            className="w-full accent-slate-400 cursor-pointer"
+                          />
                         </div>
-                        <input
-                          id="donor-threshold-input"
-                          type="range"
-                          min="10"
-                          max={targetPct - 5}
-                          step="5"
-                          value={donorPct}
-                          onChange={(e) =>
-                            setConfig({ ...config, min_utilization_donor: Number(e.target.value) / 100 })
-                          }
-                          className="w-full accent-slate-400 cursor-pointer"
-                        />
-                      </div>
 
-                      {/* Score Objetivo */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <label htmlFor="target-utilization-input" className="font-semibold text-slate-700 text-[11px]">
-                            {t('optimization.target_threshold')}
-                          </label>
-                          <span className="font-mono font-bold text-sky-950 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-[11px]">
-                            {targetPct}%
-                          </span>
+                        {/* Score Objetivo */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <label htmlFor="target-utilization-input" className="font-semibold text-slate-700 text-[11px]">
+                              {t('optimization.target_threshold')}
+                            </label>
+                            <span className="font-mono font-bold text-sky-950 px-2 py-0.5 rounded-md bg-sky-100 border border-sky-200 text-[11px]">
+                              {targetPct}%
+                            </span>
+                          </div>
+                          <input
+                            id="target-utilization-input"
+                            type="range"
+                            min={donorPct + 5}
+                            max={receiverPct - 5}
+                            step="5"
+                            value={targetPct}
+                            onChange={(e) =>
+                              setConfig({ ...config, target_utilization: Number(e.target.value) / 100 })
+                            }
+                            className="w-full accent-slate-400 cursor-pointer"
+                          />
                         </div>
-                        <input
-                          id="target-utilization-input"
-                          type="range"
-                          min={donorPct + 5}
-                          max={receiverPct - 5}
-                          step="5"
-                          value={targetPct}
-                          onChange={(e) =>
-                            setConfig({ ...config, target_utilization: Number(e.target.value) / 100 })
-                          }
-                          className="w-full accent-slate-400 cursor-pointer"
-                        />
-                      </div>
 
-                      {/* Score Receptor */}
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-xs">
-                          <label htmlFor="receiver-threshold-input" className="font-semibold text-slate-700 text-[11px]">
-                            {t('optimization.receiver_threshold')}
-                          </label>
-                          <span className="font-mono font-bold text-rose-950 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-[11px]">
-                            {receiverPct}%
-                          </span>
+                        {/* Score Receptor */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <label htmlFor="receiver-threshold-input" className="font-semibold text-slate-700 text-[11px]">
+                              {t('optimization.receiver_threshold')}
+                            </label>
+                            <span className="font-mono font-bold text-rose-950 px-2 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-[11px]">
+                              {receiverPct}%
+                            </span>
+                          </div>
+                          <input
+                            id="receiver-threshold-input"
+                            type="range"
+                            min={targetPct + 5}
+                            max="90"
+                            step="5"
+                            value={receiverPct}
+                            onChange={(e) =>
+                              setConfig({ ...config, min_utilization_receiver: Number(e.target.value) / 100 })
+                            }
+                            className="w-full accent-slate-400 cursor-pointer"
+                          />
                         </div>
-                        <input
-                          id="receiver-threshold-input"
-                          type="range"
-                          min={targetPct + 5}
-                          max="90"
-                          step="5"
-                          value={receiverPct}
-                          onChange={(e) =>
-                            setConfig({ ...config, min_utilization_receiver: Number(e.target.value) / 100 })
-                          }
-                          className="w-full accent-slate-400 cursor-pointer"
-                        />
                       </div>
-                    </div>
+                    )}
 
                     {/* Botón Principal Generar Redistribución (sin icono, como solicitó el usuario) */}
                     <div className="pt-2">
