@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Info, Layers, CheckCircle2, AlertTriangle, AlertCircle, ChevronDown, MapPin } from "lucide-react"
 import { Badge } from "@/utils/ui/badge"
 import { Card, CardContent } from "@/utils/ui/card"
+import { useLevelThresholds } from "@/context/CityConfigContext"
 
 interface MapLegendProps {
     className?: string
@@ -66,6 +67,7 @@ export default function MapLegend({
     defaultTypesOpen = false,
 }: MapLegendProps) {
     const { t } = useTranslation()
+    const { high, critical } = useLevelThresholds()
     const [isLevelsOpen, setIsLevelsOpen] = useState(defaultLevelsOpen)
     const [isTypesOpen, setIsTypesOpen] = useState(defaultTypesOpen)
 
@@ -104,7 +106,7 @@ export default function MapLegend({
                             <PinPreview fill="#10b981" accent="#ffffff" count={1} label="" size={46} />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-emerald-950">&lt; 50%</span>
+                                    <span className="font-bold text-xs text-emerald-950">&lt; {high}%</span>
                                     <Badge variant="success" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <CheckCircle2 className="w-2.5 h-2.5" />
                                         {t('map.legend.optimal', { defaultValue: 'Óptimo' })}
@@ -120,7 +122,7 @@ export default function MapLegend({
                             <PinPreview fill="#f59e0b" accent="#ffffff" count={1} label="" size={46} />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-amber-950">50% - 79%</span>
+                                    <span className="font-bold text-xs text-amber-950">{high}% - {critical - 1}%</span>
                                     <Badge variant="warning" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <AlertTriangle className="w-2.5 h-2.5" />
                                         {t('map.legend.moderate', { defaultValue: 'Medio' })}
@@ -136,7 +138,7 @@ export default function MapLegend({
                             <PinPreview fill="#ef4444" accent="#ffffff" count={1} label="" size={46} />
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-1">
-                                    <span className="font-bold text-xs text-red-950">&ge; 80%</span>
+                                    <span className="font-bold text-xs text-red-950">&ge; {critical}%</span>
                                     <Badge variant="destructive" className="text-[10px] px-1.5 py-0 font-bold gap-1">
                                         <AlertCircle className="w-2.5 h-2.5" />
                                         {t('map.legend.critical', { defaultValue: 'Crítico' })}

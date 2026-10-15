@@ -18,11 +18,13 @@ import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
+import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
 import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 import { Button } from "@/utils/ui/button"
 import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
@@ -157,13 +159,7 @@ function MapConfigController({
 
 
 
-function MovePolylineItem({
-    move,
-    isSelected,
-}: {
-    move: MapRedistributionMove
-    isSelected: boolean
-}) {
+function MovePolylineItem({ move }: { move: MapRedistributionMove }) {
     const bearing = useMemo(() => {
         if (
             move.from_lat == null ||
@@ -177,18 +173,17 @@ function MovePolylineItem({
     }, [move.from_lat, move.from_lng, move.to_lat, move.to_lng])
 
     const arrowIcon = useMemo(() => {
-        return createArrowIcon(bearing, isSelected)
-    }, [bearing, isSelected])
+        return createArrowIcon(bearing, true)
+    }, [bearing])
 
     return (
         <>
             <Polyline
                 positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
                 pathOptions={{
-                    color: isSelected ? '#0284c7' : '#059669',
-                    weight: isSelected ? 6 : 3.5,
-                    dashArray: isSelected ? undefined : '6, 8',
-                    opacity: isSelected ? 1 : 0.85,
+                    color: '#0284c7',
+                    weight: 6,
+                    opacity: 1,
                 }}
             />
 
@@ -196,33 +191,29 @@ function MovePolylineItem({
                 position={[move.to_lat!, move.to_lng!]}
                 icon={arrowIcon}
                 interactive={false}
-                zIndexOffset={isSelected ? 300 : 150}
+                zIndexOffset={300}
             />
 
-            {isSelected && (
-                <>
-                    <CircleMarker
-                        center={[move.from_lat!, move.from_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#0284c7',
-                            fillColor: '#38bdf8',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                    <CircleMarker
-                        center={[move.to_lat!, move.to_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#047857',
-                            fillColor: '#10b981',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                </>
-            )}
+            <CircleMarker
+                center={[move.from_lat!, move.from_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#0284c7',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
+            <CircleMarker
+                center={[move.to_lat!, move.to_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#047857',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
         </>
     )
 }
@@ -242,6 +233,8 @@ export default function InteractiveMap({
 }: InteractiveMapProps) {
     const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
+    // Zoom con el que el backend agrupó los sitios cargados (define la grilla).
+    const [sitesBackendZoom, setSitesBackendZoom] = useState<number>(10)
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
@@ -284,6 +277,7 @@ export default function InteractiveMap({
     }
     const [currentZoom, setCurrentZoom] = useState<number>(13)
     const zoneProfiles = useZoneProfiles()
+    const thresholds = useLevelThresholds()
 
     const handleZoomChange = useCallback((newZoom: number) => {
         const rounded = Math.round(newZoom)
@@ -312,15 +306,16 @@ export default function InteractiveMap({
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
-            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter)
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter, thresholds)
             if (mountedRef.current && requestId > latestAppliedIdRef.current) {
                 latestAppliedIdRef.current = requestId
                 setSites(data)
+                setSitesBackendZoom(backendZoom)
             }
         } catch (e) {
             console.error('Error al cargar sitios:', e)
         }
-    }, [isPlayground, wasteFilter])
+    }, [isPlayground, wasteFilter, thresholds])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -468,13 +463,13 @@ export default function InteractiveMap({
             const centerLng = totalWeight > 0 ? sumLng / totalWeight : -58.3816
 
             return [{
-                id: 'macro-cluster-all',
+                id: MACRO_CLUSTER_ID,
                 name: `Total Ciudad (${totalCount} contenedores)`,
                 address: null,
                 lat: centerLat,
                 long: centerLng,
                 type: (wasteFilter === 'all' ? 'indiferenciado' : wasteFilter) as ContainerType,
-                color: colorForLevel(avgLevel),
+                color: colorForLevel(avgLevel, thresholds),
                 currentLevel: avgLevel,
                 avgLevel: avgLevel,
                 containerCount: totalCount,
@@ -484,7 +479,20 @@ export default function InteractiveMap({
         }
 
         return sites
-    }, [sites, currentZoom, wasteFilter])
+    }, [sites, currentZoom, wasteFilter, thresholds])
+
+    // Cuántos contenedores salen y entran en cada pin según el plan.
+    const pinBadges = useMemo(
+        () => buildPinBadges(redistributionMoves, displaySites, sitesBackendZoom),
+        [redistributionMoves, displaySites, sitesBackendZoom]
+    )
+
+    // Solo se dibuja la flecha del movimiento seleccionado: con cientos de
+    // movimientos, todas juntas no se leen.
+    const highlightedMove = useMemo(
+        () => redistributionMoves?.find((m) => m.container_id === highlightedMoveId) ?? null,
+        [redistributionMoves, highlightedMoveId]
+    )
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
@@ -699,7 +707,7 @@ export default function InteractiveMap({
                     const projectedLevel = projection?.target_point?.predicted_level
                     const shownLevel = viewMode === 'projected' ? projectedLevel : siteLevel
                     const markerColor = viewMode === 'projected'
-                        ? shownLevel == null ? '#94a3b8' : colorForLevel(shownLevel)
+                        ? shownLevel == null ? '#94a3b8' : colorForLevel(shownLevel, thresholds)
                         : site.color
 
                     const handleMarkerClick = () => {
@@ -719,7 +727,7 @@ export default function InteractiveMap({
                             <Marker
                                 key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
@@ -753,9 +761,9 @@ export default function InteractiveMap({
 
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-600 font-medium">{viewMode === 'projected' ? 'Nivel proyectado:' : 'Nivel promedio:'}</span>
-                                                <span className="font-bold font-mono" style={{ color: shownLevel == null ? '#64748b' : colorForLevel(shownLevel) }}>
-                                                    {shownLevel == null ? 'Sin datos' : `${shownLevel}%`}
+                                                <span className="text-slate-600 font-medium">{viewMode === 'projected' ? t('map.projected_level', { defaultValue: 'Nivel proyectado:' }) : t('map.avg_level', { defaultValue: 'Nivel promedio:' })}</span>
+                                                <span className="font-bold font-mono" style={{ color: shownLevel == null ? '#64748b' : colorForLevel(shownLevel, thresholds) }}>
+                                                    {shownLevel == null ? t('map.no_data', { defaultValue: 'Sin datos' }) : `${shownLevel}%`}
                                                 </span>
                                             </div>
                                             {shownLevel != null && <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
@@ -763,12 +771,18 @@ export default function InteractiveMap({
                                                     className="h-full rounded-full transition-all duration-300"
                                                     style={{
                                                         width: `${Math.min(100, Math.max(0, shownLevel))}%`,
-                                                        backgroundColor: colorForLevel(shownLevel),
+                                                        backgroundColor: colorForLevel(shownLevel, thresholds),
                                                     }}
                                                 />
                                             </div>}
                                             {viewMode === 'projected' && <p className="text-[11px] text-slate-500">
-                                                {projection ? `Nivel al inicio: ${projection.current_level}%` : projection === null ? 'Sin lecturas completas al inicio.' : projectionsLoading ? 'Calculando proyección...' : 'Proyección no disponible.'}
+                                                {projection
+                                                    ? t('map.projection_start_level', { level: projection.current_level, defaultValue: 'Nivel al inicio: {{level}}%' })
+                                                    : projection === null
+                                                        ? t('map.projection_no_start_readings', { defaultValue: 'Sin lecturas completas al inicio.' })
+                                                        : projectionsLoading
+                                                            ? t('map.projection_loading', { defaultValue: 'Calculando proyección...' })
+                                                            : t('map.projection_unavailable', { defaultValue: 'Proyección no disponible.' })}
                                             </p>}
                                         </div>
 
@@ -779,7 +793,7 @@ export default function InteractiveMap({
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
                                                 {site.containers.map((container: Container) => {
                                                     const cLevel = container.currentLevel ?? container.level ?? 0
-                                                    const cColor = colorForLevel(cLevel)
+                                                    const cColor = colorForLevel(cLevel, thresholds)
                                                     return (
                                                         <div
                                                             key={container.id}
@@ -825,24 +839,23 @@ export default function InteractiveMap({
                             <Marker
                                 key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )
                     }
                 })}
 
-                {redistributionMoves && redistributionMoves.map((m) => {
-                    if (m.from_lat == null || m.from_lng == null || m.to_lat == null || m.to_lng == null) return null
-                    const isSelected = highlightedMoveId === m.container_id
-                    return (
+                {highlightedMove &&
+                    highlightedMove.from_lat != null &&
+                    highlightedMove.from_lng != null &&
+                    highlightedMove.to_lat != null &&
+                    highlightedMove.to_lng != null && (
                         <MovePolylineItem
-                            key={`opt-move-${m.container_id}`}
-                            move={m}
-                            isSelected={isSelected}
+                            key={`opt-move-${highlightedMove.container_id}`}
+                            move={highlightedMove}
                         />
-                    )
-                })}
+                    )}
             </MapContainer>
         </div>
     )

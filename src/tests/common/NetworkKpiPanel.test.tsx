@@ -1,6 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { NetworkKpiPanel } from '@/common/KpiPanel'
+import { categoryRangeLabel } from '@/common/KpiPanel/KpiDistributionBar'
+import { DEFAULT_LEVEL_THRESHOLDS } from '@/context/CityConfigContext'
 import type { NetworkMetricsData } from '@/common/KpiPanel/types'
 import { RedistributionImpactPanel } from '@/pages/Optimization/components/RedistributionImpactPanel'
 import type { RedistributionPlan } from '@/pages/Optimization/types'
@@ -82,6 +84,13 @@ describe('NetworkKpiPanel Component Tests', () => {
     expect(screen.getAllByText('Equilibrados').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('labels critical sites and category ranges with the level thresholds', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} />)
+
+    expect(screen.getByText('saturación ≥ 80%')).toBeInTheDocument()
+    expect(screen.getByTitle('Alto Uso: 70% - 79%')).toBeInTheDocument()
+  })
+
   it('collapses and expands cleanly when clicking the collapse button', () => {
     render(<NetworkKpiPanel metrics={mockMetrics} />)
 
@@ -147,5 +156,17 @@ describe('RedistributionImpactPanel Component Tests', () => {
 
     // Moves summary
     expect(screen.getByText('0.85 km')).toBeInTheDocument()
+  })
+})
+
+describe('categoryRangeLabel', () => {
+  it('builds each category range from the thresholds', () => {
+    const t = DEFAULT_LEVEL_THRESHOLDS
+
+    expect(categoryRangeLabel('critical', t)).toBe('≥ 80%')
+    expect(categoryRangeLabel('high', t)).toBe('70% - 79%')
+    expect(categoryRangeLabel('normal', t)).toBe('40% - 69%')
+    expect(categoryRangeLabel('low', t)).toBe('1% - 39%')
+    expect(categoryRangeLabel('idle', t)).toBe('0%')
   })
 })

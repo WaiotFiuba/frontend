@@ -9,10 +9,10 @@ describe('MapLegend', () => {
         expect(screen.getByText(/Nivel de llenado/i)).toBeInTheDocument()
         expect(screen.getByText(/Tipo de sitio/i)).toBeInTheDocument()
 
-        // Toggle Niveles de Llenado
+        // Toggle Niveles de Llenado (rangos con los umbrales por defecto: 70 y 80)
         fireEvent.click(screen.getByRole('button', { name: /Nivel de llenado/i }))
-        expect(screen.getByText(/< 50%/i)).toBeInTheDocument()
-        expect(screen.getByText(/50% - 79%/i)).toBeInTheDocument()
+        expect(screen.getByText(/< 70%/i)).toBeInTheDocument()
+        expect(screen.getByText(/70% - 79%/i)).toBeInTheDocument()
         expect(screen.getByText(/≥ 80%/i)).toBeInTheDocument()
 
         // Toggle Tipo de Sitio
