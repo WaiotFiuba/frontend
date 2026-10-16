@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react"
 import type { Path, PathOptions } from "leaflet"
-import { fetchZoneProfiles } from "../utils/functions"
-import type { ZoneProfileCollection } from "../utils/types"
+import { fetchZoneProfiles } from "@/utils/functions"
+import type { ZoneProfileCollection } from "@/utils/types"
 
 export interface SelectedZoneRef {
     layer: Path

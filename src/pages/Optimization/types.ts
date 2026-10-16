@@ -6,7 +6,9 @@ export interface OptimizationConfig {
   min_utilization_donor: number
   min_utilization_receiver: number
   target_utilization: number
-  algorithm: 'greedy' | 'lp'
+  // 'greedy' y 'lp': modelo por score. 'overload': modelo de sobrecarga.
+  algorithm: 'greedy' | 'lp' | 'overload'
+  apply_capacity_constraints?: boolean
 }
 
 export interface SiteUtilizationMetric {
@@ -15,6 +17,8 @@ export interface SiteUtilizationMetric {
   latitude: number
   longitude: number
   container_count: number
+  max_containers?: number
+  puede_ingresar?: boolean
   waste_type_id: number | null
   waste_type_name: string | null
   container_type_id: number | null
@@ -53,6 +57,14 @@ export interface RedistributionMove {
   from_lng?: number
   to_lat?: number
   to_lng?: number
+  donor_fill_before?: number | null
+  donor_fill_after?: number | null
+  receiver_fill_before?: number | null
+  receiver_fill_after?: number | null
+  net_decongestion_pct?: number | null
+  // Solo modelo 'overload': cuánto baja la sobrecarga total con este movimiento
+  // (horas en crítico + 3 x horas desbordado, en la ventana de historia).
+  overload_reduction?: number | null
 }
 
 export interface RedistributionPlan {
@@ -68,30 +80,39 @@ export interface RedistributionPlan {
   expected_improvement: number
   created_at: string
   simulation_id: number | null
+  // Usuario que generó el plan (null en planes anteriores a registrarlo).
+  created_by?: number | null
   original_mean_fill?: number
   original_std_fill?: number
   optimized_mean_fill?: number
   optimized_std_fill?: number
+  // Solo modelo 'overload': horas en la ventana de historia, sumadas sobre los
+  // sitios candidatos, con la distribución actual y con la del plan.
+  critical_hours_before?: number | null
+  critical_hours_after?: number | null
+  overflow_hours_before?: number | null
+  overflow_hours_after?: number | null
 }
 
-export interface WhatIfSiteComparison {
-  site_id: number
-  site_name: string
-  latitude: number
-  longitude: number
-  real_avg_level: number
-  optimized_avg_level: number
-  real_container_count: number
-  optimized_container_count: number
-  improvement_pct: number
+// Un valor de la red real (sin el plan) y de la red what-if (con el plan).
+export interface WhatIfMeasure {
+  real: number
+  with_plan: number
 }
 
+// Cómo le va a la red con el plan, comparada con la red real.
 export interface WhatIfComparisonResponse {
   plan_id: number
   plan_status: string
-  real_global_avg: number
-  optimized_global_avg: number
-  total_sites_improved: number
-  total_sites_worsened: number
-  sites: WhatIfSiteComparison[]
+  // Desvío del nivel entre sitios, antes y después, estimado al generar el plan.
+  dispersion: WhatIfMeasure | null
+  // Horas medidas desde que se activó el plan (0: todavía sin datos).
+  observed_hours: number
+  // Promedio del período desde la activación (null mientras no haya horas medidas).
+  avg_critical_sites: WhatIfMeasure | null
+  avg_full_containers: WhatIfMeasure | null
+  // Solo con el plan activo.
+  full_container_hours: WhatIfMeasure | null
+  critical_sites_now: WhatIfMeasure | null
+  full_containers_now: WhatIfMeasure | null
 }

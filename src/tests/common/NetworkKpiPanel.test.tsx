@@ -1,0 +1,205 @@
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { NetworkKpiPanel } from '@/common/KpiPanel'
+import { categoryRangeLabel } from '@/common/KpiPanel/KpiDistributionBar'
+import { DEFAULT_LEVEL_THRESHOLDS } from '@/context/CityConfigContext'
+import type { NetworkMetricsData } from '@/common/KpiPanel/types'
+import { RedistributionImpactPanel } from '@/pages/Optimization/components/RedistributionImpactPanel'
+import type { RedistributionPlan, WhatIfComparisonResponse } from '@/pages/Optimization/types'
+
+const mockMetrics: NetworkMetricsData = {
+  total_sites: 120,
+  total_containers: 284,
+  mean_fill_level: 62.4,
+  std_fill_level: 19.1,
+  critical_count: 14,
+  high_count: 26,
+  normal_count: 50,
+  low_count: 20,
+  idle_count: 10,
+  window_start: '2026-09-01T00:00:00Z',
+  window_end: '2026-09-30T23:59:59Z',
+}
+
+const mockPlan: RedistributionPlan = {
+  id: 1,
+  status: 'active_whatif',
+  config: {
+    max_distance_km: 2.0,
+    window_days: null,
+    algorithm: 'greedy',
+    min_utilization_donor: 0.35,
+    min_utilization_receiver: 0.65,
+    target_utilization: 0.5,
+    apply_capacity_constraints: true,
+  },
+  moves: [
+    {
+      container_id: 101,
+      from_site_id: 1,
+      from_site_name: 'Sitio A',
+      to_site_id: 2,
+      to_site_name: 'Sitio B',
+      distance_km: 0.85,
+    },
+  ],
+  total_containers_moved: 1,
+  sites_emptied: 0,
+  sites_receiving: 1,
+  sites_donating: 1,
+  avg_distance_km: 0.85,
+  expected_improvement: 15.0,
+  created_at: '2026-10-01T12:00:00Z',
+  simulation_id: null,
+  original_mean_fill: 62.4,
+  original_std_fill: 19.1,
+  optimized_mean_fill: 62.4,
+  optimized_std_fill: 12.8,
+}
+
+describe('NetworkKpiPanel Component Tests', () => {
+  it('renders all 4 essential KPI cards with correct metric values', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} />)
+
+    // Contenedores monitoreados
+    expect(screen.getByText('284')).toBeInTheDocument()
+    expect(screen.getByText('en 120 sitios')).toBeInTheDocument()
+
+    // Llenado medio
+    expect(screen.getByText('62.4%')).toBeInTheDocument()
+
+    // Foco crítico (aparece en tarjeta y en leyenda)
+    expect(screen.getAllByText('14').length).toBeGreaterThanOrEqual(1)
+
+    // Dispersión
+    expect(screen.getByText('±19.1%')).toBeInTheDocument()
+  })
+
+  it('renders the capacity distribution bar and category pills', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} />)
+
+    expect(screen.getByText('Distribución de Capacidad de Sitios')).toBeInTheDocument()
+    expect(screen.getAllByText('Críticos').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Alto Uso').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Equilibrados').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('labels critical sites and category ranges with the level thresholds', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} />)
+
+    expect(screen.getByText('saturación ≥ 80%')).toBeInTheDocument()
+    expect(screen.getByTitle('Alto Uso: 70% - 79%')).toBeInTheDocument()
+  })
+
+  it('collapses and expands cleanly when clicking the collapse button', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} />)
+
+    const toggleBtn = screen.getByRole('button', { name: /minimizar/i })
+    fireEvent.click(toggleBtn)
+
+    // En modo colapsado, debe mostrarse la píldora resumida con el texto 'Ver detalle'
+    expect(screen.getByText('Ver detalle')).toBeInTheDocument()
+
+    // Al hacer click en expandir o en la barra colapsada, vuelve al modo completo
+    fireEvent.click(screen.getByText('Ver detalle'))
+    expect(screen.getByText('Contenedores Monitoreados')).toBeInTheDocument()
+  })
+
+  it('invokes onSelectCategory when clicking a category card', () => {
+    const handleSelectCategory = vi.fn()
+    render(
+      <NetworkKpiPanel
+        metrics={mockMetrics}
+        selectedCategory="all"
+        onSelectCategory={handleSelectCategory}
+      />
+    )
+
+    // Click on critical card
+    const criticalCard = screen.getByText('Sitios Críticos').closest('div')
+    if (criticalCard) {
+      fireEvent.click(criticalCard)
+      expect(handleSelectCategory).toHaveBeenCalledWith('critical')
+    }
+  })
+
+  it('shows the critical sites without the plan when it gets the real network', () => {
+    render(
+      <NetworkKpiPanel
+        metrics={mockMetrics}
+        whatif={true}
+        baseline={{ ...mockMetrics, critical_count: 21 }}
+      />
+    )
+
+    expect(screen.getByText('sin el plan: 21')).toBeInTheDocument()
+  })
+
+  it('does not compare without the real network', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
+
+    expect(screen.queryByText(/sin el plan/)).not.toBeInTheDocument()
+  })
+
+  it('renders What-If badge and title when whatif prop is true', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
+
+    expect(screen.getByText('Métricas de la Red (What-If)')).toBeInTheDocument()
+    expect(screen.getByText('Simulación What-If')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Diagnóstico proyectado de capacidad y balance bajo redistribución What-If/i)
+    ).toBeInTheDocument()
+  })
+})
+
+describe('RedistributionImpactPanel Component Tests', () => {
+  it('renders the placeholder when there is no plan', () => {
+    render(<RedistributionImpactPanel plan={null} />)
+
+    expect(screen.getByText('Impacto Proyectado de Redistribución (What-If)')).toBeInTheDocument()
+  })
+
+  it('shows the estimated dispersion right after generating the plan', () => {
+    render(<RedistributionImpactPanel plan={mockPlan} />)
+
+    expect(screen.getByText('Impacto del plan')).toBeInTheDocument()
+    expect(screen.getByText('±19.1')).toBeInTheDocument()
+    expect(screen.getByText('±12.8')).toBeInTheDocument()
+    expect(screen.getByText('-33 %')).toBeInTheDocument()
+    // Sin mediciones todavía, las tarjetas medidas lo dicen en lugar de mostrar ceros.
+    expect(screen.getAllByText('Todavía sin datos')).toHaveLength(2)
+    expect(screen.getAllByText('Desde la activación')).toHaveLength(2)
+  })
+
+  it('shows the measured averages since the activation', () => {
+    const comparison: WhatIfComparisonResponse = {
+      plan_id: 1,
+      plan_status: 'active_whatif',
+      dispersion: { real: 19.1, with_plan: 12.8 },
+      observed_hours: 334,
+      avg_critical_sites: { real: 1587, with_plan: 1275 },
+      avg_full_containers: { real: 1384, with_plan: 1258 },
+      full_container_hours: { real: 468723, with_plan: 426880 },
+      critical_sites_now: { real: 1610, with_plan: 1290 },
+      full_containers_now: { real: 1402, with_plan: 1270 },
+    }
+    render(<RedistributionImpactPanel plan={mockPlan} comparison={comparison} />)
+
+    expect(screen.getAllByText('Desde la activación · 13 días')).toHaveLength(2)
+    expect(screen.getByText('-20 %')).toBeInTheDocument()
+    expect(screen.getByText('-9 %')).toBeInTheDocument()
+    expect(screen.queryByText('Todavía sin datos')).not.toBeInTheDocument()
+  })
+})
+
+describe('categoryRangeLabel', () => {
+  it('builds each category range from the thresholds', () => {
+    const t = DEFAULT_LEVEL_THRESHOLDS
+
+    expect(categoryRangeLabel('critical', t)).toBe('≥ 80%')
+    expect(categoryRangeLabel('high', t)).toBe('70% - 79%')
+    expect(categoryRangeLabel('normal', t)).toBe('40% - 69%')
+    expect(categoryRangeLabel('low', t)).toBe('1% - 39%')
+    expect(categoryRangeLabel('idle', t)).toBe('0%')
+  })
+})

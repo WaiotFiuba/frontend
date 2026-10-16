@@ -60,7 +60,7 @@ describe('PageRoutes', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText(/Welcome to Waiot FIUBA/i)).toBeInTheDocument()
+    expect(screen.getByText(/Bienvenido a Waiot FIUBA/i)).toBeInTheDocument()
   })
 
   it('renders Map page at /map', () => {
@@ -72,7 +72,7 @@ describe('PageRoutes', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Map/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Mapa/i })).toBeInTheDocument()
   })
 
   it('renders Forecast Evaluation page at /forecast-evaluation when authenticated', () => {
@@ -97,6 +97,19 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
   })
 
+  it.each(['/map/sites/1', '/optimization'])(
+    'redirects %s to login when there is no token',
+    (path) => {
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <PageRoutes />
+        </MemoryRouter>
+      )
+
+      expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
+    }
+  )
+
   it('redirects /configurations to login when there is no token', () => {
     render(
       <MemoryRouter initialEntries={['/configurations']}>
@@ -116,6 +129,6 @@ describe('PageRoutes', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { name: /Configurations/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Configuraciones/i })).toBeInTheDocument()
   })
 })

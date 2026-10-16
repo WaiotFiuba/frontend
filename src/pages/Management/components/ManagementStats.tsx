@@ -1,6 +1,8 @@
-import { Card, CardContent } from '@/common/ui/card'
+import { useTranslation } from 'react-i18next'
+import { Card, CardContent } from '@/utils/ui/card'
 import { Database, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { ContainerStats } from './types'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 
 interface ManagementStatsProps {
   stats: ContainerStats | null
@@ -9,21 +11,23 @@ interface ManagementStatsProps {
 }
 
 export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts, }: ManagementStatsProps) {
+  const { t } = useTranslation()
+  const { critical } = useLevelThresholds()
   const statsValues = stats || { total: 0, available: 0, avg_fill: 0, alert_level: 0 }
 
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 
-      <Card onClick={() => onToggleAlerts(false)} className={`border-slate-200/80 shadow-sm hover:shadow-md transition-all bg-white cursor-pointer hover:border-blue-400 active:scale-[0.98] ${!showOnlyAlerts ? 'ring-2 ring-blue-500/10 border-blue-400' : ''}`}>
+      <Card onClick={() => onToggleAlerts(false)} className={`border-slate-200/80 shadow-sm hover:shadow-md transition-all bg-white cursor-pointer hover:border-sky-400 active:scale-[0.98] ${!showOnlyAlerts ? 'ring-2 ring-sky-500/10 border-sky-400' : ''}`}>
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Total Containers
+              {t('management.total_containers')}
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.total}</h3>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <div className="p-3 bg-sky-50 text-sky-600 rounded-xl">
             <Database className="h-6 w-6" />
           </div>
         </CardContent>
@@ -34,7 +38,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Available / Active
+              {t('management.available_active')}
             </p>
             <h3 className="text-3xl font-extrabold text-emerald-600">{statsValues.available}</h3>
           </div>
@@ -49,7 +53,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Average Fill Level
+              {t('management.avg_fill')}
             </p>
             <h3 className="text-3xl font-extrabold text-slate-900">{statsValues.avg_fill}%</h3>
           </div>
@@ -63,7 +67,7 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
         <CardContent className="p-6 flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
-              Overflow Alerts
+              {t('management.critical_alert', { critical })}
             </p>
             <h3 className="text-3xl font-extrabold text-amber-600">{statsValues.alert_level}</h3>
           </div>
@@ -75,3 +79,4 @@ export default function ManagementStats({ stats, showOnlyAlerts, onToggleAlerts,
     </div>
   )
 }
+

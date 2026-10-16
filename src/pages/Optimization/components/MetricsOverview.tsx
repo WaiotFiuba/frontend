@@ -115,7 +115,7 @@ export default function MetricsOverview({
             <span className="text-2xl font-black text-slate-900">{metrics.total_sites}</span>
             <span className="text-xs text-slate-500 font-medium">analizados</span>
           </div>
-          <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">Red completa de CABA</p>
+          <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">Red urbana completa</p>
         </button>
 
         {/* Categories cards */}

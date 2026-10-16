@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import type { MutableRefObject } from "react"
 import { useNavigate } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 import { MapContainer, Marker, Popup, TileLayer, Polyline, CircleMarker, useMapEvents, useMap } from "react-leaflet"
-import { labels } from "./utils/types"
-import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails } from "./utils/types"
+import { labels } from "@/utils/types"
+import type { Container, Site, ContainerType, MapWasteFilter, RouteDetails, BackendSiteProjectionModels } from "@/utils/types"
 import {
     fetchSitesBBox,
     getContainerFetchConfigByZoom,
@@ -12,13 +13,21 @@ import {
     calculateBearing,
     colorForLevel,
     formatSimulatedTime,
-} from "./utils/functions"
+} from "@/utils/functions"
 import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
 import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
-import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
+import MapVisual from "./MapVisual"
+import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
 import { api } from '@/lib/api'
+import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
+import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
+import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
+import { useLevelThresholds } from '@/context/CityConfigContext'
+import { Button } from "@/utils/ui/button"
+import { Badge } from "@/utils/ui/badge"
+import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
@@ -52,6 +61,9 @@ function MapViewportController({
     const map = useMapEvents({
         moveend: () => {
             mapRef.current = map
+            if (onZoomChange) {
+                onZoomChange(map.getZoom())
+            }
             fetchForMap(map)
         },
         zoomend: () => {
@@ -115,15 +127,39 @@ function MapMoveFocusController({
     return null
 }
 
+interface MapConfigResponse {
+    city_name: string
+    center: { lat: number; lng: number }
+    default_zoom: number
+    bounds: [[number, number], [number, number]] | null
+    available_waste_types?: string[]
+}
 
-
-function MovePolylineItem({
-    move,
-    isSelected,
+function MapConfigController({
+    config,
 }: {
-    move: MapRedistributionMove
-    isSelected: boolean
+    config: MapConfigResponse | null
 }) {
+    const map = useMap()
+    const appliedRef = useRef(false)
+
+    useEffect(() => {
+        if (!config || appliedRef.current) return
+        appliedRef.current = true
+
+        if (config.bounds) {
+            map.fitBounds(config.bounds, { padding: [40, 40], maxZoom: 16 })
+        } else if (config.center) {
+            map.setView([config.center.lat, config.center.lng], config.default_zoom || 13)
+        }
+    }, [config, map])
+
+    return null
+}
+
+
+
+function MovePolylineItem({ move }: { move: MapRedistributionMove }) {
     const bearing = useMemo(() => {
         if (
             move.from_lat == null ||
@@ -137,18 +173,17 @@ function MovePolylineItem({
     }, [move.from_lat, move.from_lng, move.to_lat, move.to_lng])
 
     const arrowIcon = useMemo(() => {
-        return createArrowIcon(bearing, isSelected)
-    }, [bearing, isSelected])
+        return createArrowIcon(bearing, true)
+    }, [bearing])
 
     return (
         <>
             <Polyline
                 positions={[[move.from_lat!, move.from_lng!], [move.to_lat!, move.to_lng!]]}
                 pathOptions={{
-                    color: isSelected ? '#2563eb' : '#4f46e5',
-                    weight: isSelected ? 6 : 3.5,
-                    dashArray: isSelected ? undefined : '6, 8',
-                    opacity: isSelected ? 1 : 0.85,
+                    color: '#0284c7',
+                    weight: 6,
+                    opacity: 1,
                 }}
             />
 
@@ -156,33 +191,29 @@ function MovePolylineItem({
                 position={[move.to_lat!, move.to_lng!]}
                 icon={arrowIcon}
                 interactive={false}
-                zIndexOffset={isSelected ? 300 : 150}
+                zIndexOffset={300}
             />
 
-            {isSelected && (
-                <>
-                    <CircleMarker
-                        center={[move.from_lat!, move.from_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#1d4ed8',
-                            fillColor: '#3b82f6',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                    <CircleMarker
-                        center={[move.to_lat!, move.to_lng!]}
-                        radius={7}
-                        pathOptions={{
-                            color: '#047857',
-                            fillColor: '#10b981',
-                            fillOpacity: 0.9,
-                            weight: 3,
-                        }}
-                    />
-                </>
-            )}
+            <CircleMarker
+                center={[move.from_lat!, move.from_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#0284c7',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
+            <CircleMarker
+                center={[move.to_lat!, move.to_lng!]}
+                radius={7}
+                pathOptions={{
+                    color: '#047857',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.9,
+                    weight: 3,
+                }}
+            />
         </>
     )
 }
@@ -200,11 +231,66 @@ export default function InteractiveMap({
     highlightedMoveId,
     isPlayground = false,
 }: InteractiveMapProps) {
+    const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
+    // Zoom con el que el backend agrupó los sitios cargados (define la grilla).
+    const [sitesBackendZoom, setSitesBackendZoom] = useState<number>(10)
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
     const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
+    const [viewMode, setViewMode] = useState<'current' | 'projected'>('current')
+    const [projectionAsOf, setProjectionAsOf] = useState<string | null>(null)
+    const [horizonHours, setHorizonHours] = useState(24)
+    const [draftHorizonHours, setDraftHorizonHours] = useState(24)
+    const [modelKey, setModelKey] = useState('baseline_operational')
+    const [projectionModels, setProjectionModels] = useState<BackendSiteProjectionModels['models']>([])
+    useEffect(() => {
+        if (viewMode !== 'projected') return
+        let cancelled = false
+        fetchProjectionModels().then((response) => {
+            if (cancelled) return
+            const available = response.models.filter((model) => model.status === 'available')
+            setProjectionModels(available)
+            setModelKey((current) => available.some((model) => model.key === current)
+                ? current
+                : available.find((model) => model.key === response.default_model_key)?.key ?? available[0]?.key ?? current)
+        }).catch(() => {
+            if (!cancelled) setProjectionModels([])
+        })
+        return () => { cancelled = true }
+    }, [viewMode])
+
+    const targetAt = useMemo(() => projectionAsOf
+        ? new Date(new Date(projectionAsOf).getTime() + horizonHours * 60 * 60 * 1000).toISOString()
+        : null, [projectionAsOf, horizonHours])
+    const { projections, loading: projectionsLoading, error: projectionsError, retry: retryProjections } =
+        useVisibleSiteProjections(sites, viewMode === 'projected' ? projectionAsOf : null, targetAt, modelKey)
+
+    const enterProjectedMode = () => {
+        const simulationTime = activeSimulation?.simulated_time
+        const utcSimulationTime = simulationTime && !/(Z|[+-]\d{2}:\d{2})$/i.test(simulationTime)
+            ? `${simulationTime}Z`
+            : simulationTime
+        const parsed = utcSimulationTime ? new Date(utcSimulationTime) : null
+        setProjectionAsOf(parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString())
+        setViewMode('projected')
+    }
+    const [currentZoom, setCurrentZoom] = useState<number>(13)
     const zoneProfiles = useZoneProfiles()
+    const thresholds = useLevelThresholds()
+
+    const handleZoomChange = useCallback((newZoom: number) => {
+        const rounded = Math.round(newZoom)
+        setCurrentZoom((prev) => (prev === rounded ? prev : rounded))
+    }, [])
+
+    const handleZoomIn = useCallback(() => {
+        mapRef.current?.zoomIn()
+    }, [])
+
+    const handleZoomOut = useCallback(() => {
+        mapRef.current?.zoomOut()
+    }, [])
 
     const navigate = useNavigate()
     const mapRef = useRef<LeafletMap | null>(null)
@@ -216,19 +302,20 @@ export default function InteractiveMap({
     const fetchForBounds = useCallback(async (lat_min: number, lat_max: number, lng_min: number, lng_max: number, zoom: number) => {
 
         const requestId = ++latestRequestIdRef.current
-        const { backendZoom, limit } = { backendZoom: zoom, limit: 2000 }
+        const { backendZoom, limit } = getContainerFetchConfigByZoom(zoom)
 
         try {
             const distribution = isPlayground ? 'whatif' : 'real'
-            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter)
+            const data = await fetchSitesBBox(lat_min, lat_max, lng_min, lng_max, backendZoom, limit, distribution, wasteFilter, thresholds)
             if (mountedRef.current && requestId > latestAppliedIdRef.current) {
                 latestAppliedIdRef.current = requestId
                 setSites(data)
+                setSitesBackendZoom(backendZoom)
             }
         } catch (e) {
             console.error('Error al cargar sitios:', e)
         }
-    }, [isPlayground, wasteFilter])
+    }, [isPlayground, wasteFilter, thresholds])
 
     const fetchForMap = useCallback((map: LeafletMap) => {
         if (debounceRef.current) {
@@ -274,8 +361,6 @@ export default function InteractiveMap({
                 ne.lng + lngPadding,
                 currentZoom
             )
-        } else {
-            void fetchForBounds(-90, 90, -180, 180, 5)
         }
 
         return () => {
@@ -312,25 +397,39 @@ export default function InteractiveMap({
         }
     }, [])
 
-    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación
+    const simDebounceRef = useRef<number | null>(null)
+    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación con debounce
     useEffect(() => {
         if (!mapRef.current) return
-        const map = mapRef.current
-        const bounds = map.getBounds()
-        const sw = bounds.getSouthWest()
-        const ne = bounds.getNorthEast()
-        const zoom = map.getZoom()
-        const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
-        const latPadding = (ne.lat - sw.lat) * boundsPadding
-        const lngPadding = (ne.lng - sw.lng) * boundsPadding
 
-        void fetchForBounds(
-            sw.lat - latPadding,
-            ne.lat + latPadding,
-            sw.lng - lngPadding,
-            ne.lng + lngPadding,
-            zoom
-        )
+        if (simDebounceRef.current) {
+            window.clearTimeout(simDebounceRef.current)
+        }
+        simDebounceRef.current = window.setTimeout(() => {
+            if (!mapRef.current) return
+            const map = mapRef.current
+            const bounds = map.getBounds()
+            const sw = bounds.getSouthWest()
+            const ne = bounds.getNorthEast()
+            const zoom = map.getZoom()
+            const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
+            const latPadding = (ne.lat - sw.lat) * boundsPadding
+            const lngPadding = (ne.lng - sw.lng) * boundsPadding
+
+            void fetchForBounds(
+                sw.lat - latPadding,
+                ne.lat + latPadding,
+                sw.lng - lngPadding,
+                ne.lng + lngPadding,
+                zoom
+            )
+        }, 600)
+
+        return () => {
+            if (simDebounceRef.current) {
+                window.clearTimeout(simDebounceRef.current)
+            }
+        }
     }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds])
 
     const simulatedClock = useMemo(
@@ -338,96 +437,222 @@ export default function InteractiveMap({
         [activeSimulation?.simulated_time]
     )
 
-    // Sitios a desplegar: usa propContainers si fueron provistos, sino los sitios del backend directamente
+    // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
+        if (!sites || sites.length === 0) return []
+
+        if (currentZoom <= 10 && sites.length > 1) {
+            let totalCount = 0
+            let sumLevel = 0
+            let sumLat = 0
+            let sumLng = 0
+            let totalWeight = 0
+
+            for (const s of sites) {
+                const count = s.containerCount ?? (s.containers?.length || 1)
+                const level = s.currentLevel ?? s.avgLevel ?? 0
+                totalCount += count
+                sumLevel += level * count
+                sumLat += s.lat * count
+                sumLng += s.long * count
+                totalWeight += count
+            }
+
+            const avgLevel = totalWeight > 0 ? Math.round(sumLevel / totalWeight) : 0
+            const centerLat = totalWeight > 0 ? sumLat / totalWeight : -34.6037
+            const centerLng = totalWeight > 0 ? sumLng / totalWeight : -58.3816
+
+            return [{
+                id: MACRO_CLUSTER_ID,
+                name: `Total Ciudad (${totalCount} contenedores)`,
+                address: null,
+                lat: centerLat,
+                long: centerLng,
+                type: (wasteFilter === 'all' ? 'indiferenciado' : wasteFilter) as ContainerType,
+                color: colorForLevel(avgLevel, thresholds),
+                currentLevel: avgLevel,
+                avgLevel: avgLevel,
+                containerCount: totalCount,
+                containers: [],
+                isCluster: true,
+            }]
+        }
+
         return sites
-    }, [sites])
+    }, [sites, currentZoom, wasteFilter, thresholds])
+
+    // Cuántos contenedores salen y entran en cada pin según el plan.
+    const pinBadges = useMemo(
+        () => buildPinBadges(redistributionMoves, displaySites, sitesBackendZoom),
+        [redistributionMoves, displaySites, sitesBackendZoom]
+    )
+
+    // Solo se dibuja la flecha del movimiento seleccionado: con cientos de
+    // movimientos, todas juntas no se leen.
+    const highlightedMove = useMemo(
+        () => redistributionMoves?.find((m) => m.container_id === highlightedMoveId) ?? null,
+        [redistributionMoves, highlightedMoveId]
+    )
 
     // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
     const fullContainersCount = useMemo(() => {
-        return displaySites.reduce((acc, s) => {
+        return sites.reduce((acc, s) => {
             return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
         }, 0)
-    }, [displaySites])
+    }, [sites])
 
-    // Centro del mapa en CABA
-    const cabaCenter: [number, number] = [-34.6037, -58.3816]
+    const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
+    const [configLoading, setConfigLoading] = useState(true)
+
+    useEffect(() => {
+        let cancelled = false
+        api.get<MapConfigResponse>('/map/config')
+            .then((data) => {
+                if (!cancelled && data) {
+                    setMapConfig(data)
+                }
+            })
+            .catch((err) => {
+                console.error('Failed to load map config:', err)
+                if (!cancelled) {
+                    setMapConfig({
+                        city_name: 'Default',
+                        center: { lat: -34.6037, lng: -58.3816 },
+                        default_zoom: 13,
+                        bounds: null,
+                    })
+                }
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setConfigLoading(false)
+                }
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    if (configLoading || !mapConfig) {
+        return (
+            <div className="h-full w-full flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cargando mapa...</span>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="h-full w-full relative">
-            <div className="absolute top-3 left-14 z-[1000] flex gap-3">
-                {/* Pestaña flotante: Contenedores al 100% */}
-                <div
-                    className="bg-white/95 backdrop-blur-md border border-slate-200/80 hover:border-red-300 text-slate-800 px-3.5 py-1.5 rounded-xl shadow-md flex items-center gap-2.5 transition-all hover:shadow-lg select-none"
-                    title="Contenedores al 100% de capacidad que inician desborde hacia sitios de enfrente"
-                >
-                    <div className="relative flex items-center justify-center">
-                        <span className="flex h-2.5 w-2.5 relative">
-                            {fullContainersCount > 0 && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            )}
-                            <span
-                                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${fullContainersCount > 0 ? "bg-red-500" : "bg-emerald-500"
-                                    }`}
-                            ></span>
-                        </span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                            Al 100%
-                        </span>
-                        <span
-                            className={`text-base font-extrabold leading-tight ${fullContainersCount > 0 ? "text-red-600 font-mono" : "text-slate-700 font-mono"
-                                }`}
-                        >
-                            {fullContainersCount}
-                        </span>
-                    </div>
-                </div>
+            <MapVisual
+                fullContainersCount={fullContainersCount}
+                showFullContainersCount={viewMode === 'current'}
+                simulatedClock={simulatedClock}
+                currentZoom={currentZoom}
+                wasteFilter={wasteFilter}
+                onWasteFilterChange={setWasteFilter}
+                availableWasteTypes={mapConfig?.available_waste_types}
+                zoneProfilesVisible={zoneProfiles.visible}
+                zoneProfilesLoading={zoneProfiles.loading}
+                onToggleZoneProfiles={zoneProfiles.toggle}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+            />
 
-                {/* Reloj de tiempo simulado */}
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                        Reloj de Simulación
-                    </p>
-                    <p className="font-semibold text-slate-900 leading-tight">
-                        {simulatedClock}
-                    </p>
-                </div>
-
-                <ZoneProfilesControls
-                    visible={zoneProfiles.visible}
-                    loading={zoneProfiles.loading}
-                    onToggle={zoneProfiles.toggle}
-                />
-
-                <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1.5 shadow-md backdrop-blur flex items-center gap-1">
-                    {[
-                        ['all', 'Todos'],
-                        ['organico', 'Húmedos'],
-                        ['reciclaje', 'Reciclables'],
-                    ].map(([value, label]) => (
+            {!isPlayground && <div className="absolute bottom-4 left-3 z-[1000] max-w-[calc(100%-1.5rem)] rounded-xl border border-slate-200/80 bg-white/95 p-2 shadow-md backdrop-blur">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex rounded-lg bg-slate-100 p-0.5" role="group" aria-label="Vista del mapa">
                         <button
-                            key={value}
                             type="button"
-                            onClick={() => setWasteFilter(value as MapWasteFilter)}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-                                wasteFilter === value
-                                    ? 'bg-slate-900 text-white shadow-sm'
-                                    : 'text-slate-600 hover:bg-slate-100'
-                            }`}
+                            onClick={() => setViewMode('current')}
+                            className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${viewMode === 'current' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-white/80'}`}
+                            aria-pressed={viewMode === 'current'}
                         >
-                            {label}
+                            <Activity size={14} /> Actual
                         </button>
-                    ))}
+                        <button
+                            type="button"
+                            onClick={enterProjectedMode}
+                            className={`flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-bold transition-colors ${viewMode === 'projected' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-white/80'}`}
+                            aria-pressed={viewMode === 'projected'}
+                        >
+                            <Clock3 size={14} /> Proyectado
+                        </button>
+                    </div>
+                    {viewMode === 'projected' && <>
+                        {projectionModels.length > 1 && <label className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600">
+                            Modelo
+                            <span className="relative min-w-0">
+                                <select
+                                    value={modelKey}
+                                    onChange={(event) => setModelKey(event.target.value)}
+                                    className="h-9 w-44 max-w-[44vw] appearance-none truncate rounded-lg border border-slate-200 bg-slate-50 py-1 pl-2.5 pr-7 text-xs font-bold text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                >
+                                    {projectionModels.map((model) => <option key={model.key} value={model.key}>{model.name}</option>)}
+                                </select>
+                                <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                            </span>
+                        </label>}
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                            <span id="projection-horizon-label">Horizonte</span>
+                            <div className="flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100" role="group" aria-labelledby="projection-horizon-label">
+                                <button type="button" onClick={() => setDraftHorizonHours((value) => Math.max(1, value - 1))} disabled={draftHorizonHours <= 1} title="Reducir horizonte" aria-label="Reducir horizonte" className="flex h-8 w-8 items-center justify-center rounded-l-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent">
+                                    <Minus size={14} />
+                                </button>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={168}
+                                    value={draftHorizonHours}
+                                    onChange={(event) => setDraftHorizonHours(Math.min(168, Math.max(1, Number(event.target.value) || 1)))}
+                                    aria-label="Horas de proyección"
+                                    className="h-8 w-10 bg-transparent text-center font-mono text-xs font-bold text-slate-800 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                />
+                                <span className="pr-1 text-[11px] text-slate-500">h</span>
+                                <button type="button" onClick={() => setDraftHorizonHours((value) => Math.min(168, value + 1))} disabled={draftHorizonHours >= 168} title="Aumentar horizonte" aria-label="Aumentar horizonte" className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:hover:bg-transparent">
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setHorizonHours(draftHorizonHours)}
+                            disabled={draftHorizonHours === horizonHours}
+                            className="flex h-9 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-slate-700 disabled:cursor-default disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                        >
+                            <Check size={14} /> Aplicar
+                        </button>
+                        {projectionsLoading && <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600" role="status"><RotateCw size={13} className="animate-spin" /> Calculando...</span>}
+                        {projectionsError && <button
+                            type="button"
+                            onClick={retryProjections}
+                            title="Reintentar proyecciones"
+                            aria-label="Reintentar proyecciones"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-red-700 hover:bg-red-50"
+                        ><RotateCw size={16} /></button>}
+                    </>}
                 </div>
-            </div>
+                {viewMode === 'projected' && projectionAsOf && targetAt && <div className="-mx-2 -mb-2 mt-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 rounded-b-xl border-t border-blue-100 bg-blue-50/70 px-3 py-2">
+                    <div className="flex items-center gap-2 text-blue-800">
+                        <Clock3 size={16} className="shrink-0" />
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-[10px] font-bold uppercase text-blue-700">Hora proyectada</span>
+                            <span className="text-sm font-extrabold text-slate-900">{new Date(targetAt).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} UTC</span>
+                        </div>
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-600">Desde {new Date(projectionAsOf).toLocaleString('es-AR', { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} UTC</span>
+                    {sites.length > 0 && sites.every((site) => site.isCluster) && <span className="text-[11px] text-slate-600">Sin sitios individuales en esta vista.</span>}
+                    {projectionsError && <span className="text-[11px] text-red-700">{projectionsError}</span>}
+                </div>}
+            </div>}
 
             <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
 
             <MapContainer
-                center={cabaCenter}
-                zoom={13}
+                center={[mapConfig.center.lat, mapConfig.center.lng]}
+                zoom={mapConfig.default_zoom || 13}
                 className="h-full w-full relative"
                 maxZoom={21}
                 minZoom={10}
@@ -439,10 +664,13 @@ export default function InteractiveMap({
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
 
+                <MapConfigController config={mapConfig} />
+
                 <MapViewportController
                     mapRef={mapRef}
                     debounceRef={debounceRef}
                     fetchForMap={fetchForMap}
+                    onZoomChange={handleZoomChange}
                 />
 
                 <MapMoveFocusController
@@ -462,7 +690,7 @@ export default function InteractiveMap({
                     <Polyline
                         positions={selectedRoute.waypoints}
                         pathOptions={{
-                            color: "#2563eb",
+                            color: "#0284c7",
                             weight: 5,
                             opacity: 0.85,
                             dashArray: "8, 6",
@@ -475,6 +703,12 @@ export default function InteractiveMap({
                     const clusterTotal = isCluster ? site.containerCount ?? (Number(site.containers[0]?.description) || 1) : 0
                     const containerCount = isCluster ? clusterTotal : site.containers.length
                     const siteLevel = site.currentLevel ?? site.avgLevel ?? 0
+                    const projection = viewMode === 'projected' && !isCluster ? projections.get(Number(site.id)) : undefined
+                    const projectedLevel = projection?.target_point?.predicted_level
+                    const shownLevel = viewMode === 'projected' ? projectedLevel : siteLevel
+                    const markerColor = viewMode === 'projected'
+                        ? shownLevel == null ? '#94a3b8' : colorForLevel(shownLevel, thresholds)
+                        : site.color
 
                     const handleMarkerClick = () => {
                         const map = mapRef.current
@@ -487,58 +721,79 @@ export default function InteractiveMap({
                         }
                     }
                     const siteKey = site.id
+                    const markerKey = siteKey
                     if (!isCluster) {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             >
                                 <Popup>
                                     <div className="p-2 space-y-2.5 max-w-xs min-w-[220px]">
-                                        <div className="border-b pb-1.5 flex items-center justify-between">
-                                            <div>
-                                                <h3 className="font-bold text-sm text-slate-900 leading-tight">
-                                                    {site.name || `Sitio #${site.id}`}
-                                                </h3>
+                                        <div className="border-b pb-1.5 flex items-start justify-between gap-1.5">
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <MapPin className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                                    <h3 className="font-bold text-sm text-slate-900 leading-tight truncate">
+                                                        {site.name || t('map.site_number', { id: site.id, defaultValue: `Sitio #${site.id}` })}
+                                                    </h3>
+                                                </div>
                                                 {site.address && site.address !== site.name && (
-                                                    <p className="text-[11px] text-slate-500 font-medium">
+                                                    <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
                                                         {site.address}
                                                     </p>
                                                 )}
-                                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                                                    Sitio #{site.id} • {labels[site.type as ContainerType] || labels.indiferenciado} • {containerCount} cont.
-                                                </p>
+                                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        #{site.id}
+                                                    </Badge>
+                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {t(`map.types.${site.type}`, { defaultValue: labels[site.type as ContainerType] || labels.indiferenciado })}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium">
+                                                        {t('map.container_count_short', { count: containerCount, defaultValue: `${containerCount} cont.` })}
+                                                    </Badge>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-600 font-medium">Nivel promedio:</span>
-                                                <span className="font-bold font-mono" style={{ color: colorForLevel(siteLevel) }}>
-                                                    {siteLevel}%
+                                                <span className="text-slate-600 font-medium">{viewMode === 'projected' ? t('map.projected_level', { defaultValue: 'Nivel proyectado:' }) : t('map.avg_level', { defaultValue: 'Nivel promedio:' })}</span>
+                                                <span className="font-bold font-mono" style={{ color: shownLevel == null ? '#64748b' : colorForLevel(shownLevel, thresholds) }}>
+                                                    {shownLevel == null ? t('map.no_data', { defaultValue: 'Sin datos' }) : `${shownLevel}%`}
                                                 </span>
                                             </div>
-                                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                            {shownLevel != null && <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                                                 <div
                                                     className="h-full rounded-full transition-all duration-300"
                                                     style={{
-                                                        width: `${Math.min(100, Math.max(0, siteLevel))}%`,
-                                                        backgroundColor: colorForLevel(siteLevel),
+                                                        width: `${Math.min(100, Math.max(0, shownLevel))}%`,
+                                                        backgroundColor: colorForLevel(shownLevel, thresholds),
                                                     }}
                                                 />
-                                            </div>
+                                            </div>}
+                                            {viewMode === 'projected' && <p className="text-[11px] text-slate-500">
+                                                {projection
+                                                    ? t('map.projection_start_level', { level: projection.current_level, defaultValue: 'Nivel al inicio: {{level}}%' })
+                                                    : projection === null
+                                                        ? t('map.projection_no_start_readings', { defaultValue: 'Sin lecturas completas al inicio.' })
+                                                        : projectionsLoading
+                                                            ? t('map.projection_loading', { defaultValue: 'Calculando proyección...' })
+                                                            : t('map.projection_unavailable', { defaultValue: 'Proyección no disponible.' })}
+                                            </p>}
                                         </div>
 
-                                        <div className="border-t pt-2">
+                                        {viewMode === 'current' && <div className="border-t pt-2">
                                             <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                                Contenedores
+                                                {t('map.containers', { defaultValue: 'Contenedores' })}
                                             </p>
                                             <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
                                                 {site.containers.map((container: Container) => {
                                                     const cLevel = container.currentLevel ?? container.level ?? 0
-                                                    const cColor = colorForLevel(cLevel)
+                                                    const cColor = colorForLevel(cLevel, thresholds)
                                                     return (
                                                         <div
                                                             key={container.id}
@@ -563,15 +818,18 @@ export default function InteractiveMap({
                                                     )
                                                 })}
                                             </div>
-                                        </div>
+                                        </div>}
 
-                                        <button
+                                        {/* La ficha es de la red real (historial y proyección): en el what-if no se ofrece. */}
+                                        {!isPlayground && <Button
                                             type="button"
+                                            size="sm"
                                             onClick={() => navigate(`/map/sites/${site.id}`)}
-                                            className="mt-2 w-full rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-800 shadow-sm"
+                                            className="mt-2 w-full h-8 text-xs font-bold bg-blue-200 hover:bg-blue-300 text-blue-950 border border-blue-300/80 gap-1.5 shadow-xs"
                                         >
-                                            Ver detalle del sitio
-                                        </button>
+                                            {t('map.view_site_detail', { defaultValue: 'Ver detalle del sitio' })}
+                                            <ExternalLink className="w-3 h-3 text-blue-900" />
+                                        </Button>}
                                     </div>
                                 </Popup>
                             </Marker>
@@ -580,26 +838,25 @@ export default function InteractiveMap({
                     else {
                         return (
                             <Marker
-                                key={siteKey}
+                                key={markerKey}
                                 position={[site.lat, site.long]}
-                                icon={createMapPinIcon(site.color, containerCount, site.type)}
+                                icon={createMapPinIcon(markerColor, containerCount, site.type, currentZoom, pinBadges.get(site.id))}
                                 eventHandlers={{ click: handleMarkerClick }}
                             />
                         )
                     }
                 })}
 
-                {redistributionMoves && redistributionMoves.map((m) => {
-                    if (m.from_lat == null || m.from_lng == null || m.to_lat == null || m.to_lng == null) return null
-                    const isSelected = highlightedMoveId === m.container_id
-                    return (
+                {highlightedMove &&
+                    highlightedMove.from_lat != null &&
+                    highlightedMove.from_lng != null &&
+                    highlightedMove.to_lat != null &&
+                    highlightedMove.to_lng != null && (
                         <MovePolylineItem
-                            key={`opt-move-${m.container_id}`}
-                            move={m}
-                            isSelected={isSelected}
+                            key={`opt-move-${highlightedMove.container_id}`}
+                            move={highlightedMove}
                         />
-                    )
-                })}
+                    )}
             </MapContainer>
         </div>
     )

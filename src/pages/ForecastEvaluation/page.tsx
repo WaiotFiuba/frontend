@@ -1,4 +1,5 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Activity,
   AlertCircle,
@@ -12,13 +13,11 @@ import {
   Info,
   Layers,
   LineChart,
-  Loader2,
-  Sparkles,
   Target,
 } from 'lucide-react'
 
-import { Button } from '@/common/ui/button'
-import { Input } from '@/common/ui/input'
+import { Button } from '@/utils/ui/button'
+import { Input } from '@/utils/ui/input'
 import { api } from '@/lib/api'
 
 interface EvaluationMetric {
@@ -68,6 +67,12 @@ interface EvaluationReport {
   worst_predicted_sites: SiteMetric[]
 }
 
+interface ModelOption {
+  key: string
+  name: string
+  status?: string
+}
+
 const formatNumber = (value: number | null | undefined, suffix = '') => {
   if (value === null || value === undefined || Number.isNaN(value)) return 'N/A'
   return `${value.toFixed(2)}${suffix}`
@@ -93,7 +98,7 @@ const metricCards = [
     detail: 'Error absoluto promedio',
     icon: Gauge,
     suffix: ' pts',
-    tone: 'blue',
+    tone: 'sky',
   },
   {
     key: 'rmse',
@@ -101,7 +106,7 @@ const metricCards = [
     detail: 'Penaliza errores grandes',
     icon: BarChart3,
     suffix: ' pts',
-    tone: 'indigo',
+    tone: 'slate',
   },
   {
     key: 'threshold_precision',
@@ -122,15 +127,15 @@ const metricCards = [
 ]
 
 const toneStyles = {
-  blue: {
-    panel: 'from-blue-50/80 to-slate-50 border-blue-100',
-    text: 'text-blue-700',
-    badge: 'bg-blue-100',
+  sky: {
+    panel: 'from-sky-50/80 to-slate-50 border-sky-100',
+    text: 'text-sky-700',
+    badge: 'bg-sky-100',
   },
-  indigo: {
-    panel: 'from-indigo-50/80 to-slate-50 border-indigo-100',
-    text: 'text-indigo-700',
-    badge: 'bg-indigo-100',
+  slate: {
+    panel: 'from-slate-100/80 to-slate-50 border-slate-200',
+    text: 'text-slate-700',
+    badge: 'bg-slate-200',
   },
   amber: {
     panel: 'from-amber-50/80 to-slate-50 border-amber-100',
@@ -153,7 +158,7 @@ function Panel({
 }: {
   title: string
   description?: string
-  icon: typeof Gauge
+  icon?: typeof Gauge
   children: ReactNode
   actions?: ReactNode
 }) {
@@ -161,9 +166,11 @@ function Panel({
     <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-blue-50 text-blue-700">
-            <Icon className="h-5 w-5" />
-          </div>
+          {Icon && (
+            <div className="p-2 rounded-lg bg-sky-50 text-sky-700">
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
           <div>
             <h2 className="font-bold text-slate-900 text-base">{title}</h2>
             {description && <p className="text-xs text-slate-500">{description}</p>}
@@ -244,7 +251,7 @@ function SummaryCard({
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-        <Icon className="h-4 w-4 text-blue-600" />
+        <Icon className="h-4 w-4 text-sky-600" />
       </div>
       <div className="mt-2 text-xl font-black text-slate-900">{value}</div>
     </div>
@@ -258,13 +265,13 @@ function SiteMetricsTable({ sites }: { sites: SiteMetric[] }) {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Site ID</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">ID de Sitio</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">MAE</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">RMSE</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Error crítico</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Precisión</th>
               <th className="px-4 py-3 text-right font-semibold text-slate-600">Recall</th>
-              <th className="px-4 py-3 text-right font-semibold text-slate-600">Samples</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-600">Muestras</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -371,6 +378,12 @@ const buildReportHtml = (report: EvaluationReport) => {
 }
 
 export default function ForecastEvaluation() {
+  const { t } = useTranslation()
+  const [selectedModel, setSelectedModel] = useState<string>('baseline_operational')
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([
+    { key: 'baseline_operational', name: 'Baseline operativo' },
+    { key: 'chronos_2_small', name: 'Chronos-2 Small' },
+  ])
   const [siteSampleSize, setSiteSampleSize] = useState(20)
   const [horizonHours, setHorizonHours] = useState(24)
   const [criticalLevel, setCriticalLevel] = useState(80)
@@ -380,6 +393,19 @@ export default function ForecastEvaluation() {
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null)
   const [report, setReport] = useState<EvaluationReport | null>(null)
+
+  useEffect(() => {
+    api.get<{ default_model_key: string; models: ModelOption[] }>(
+      '/map/site-projections/models'
+    ).then((res) => {
+      if (res?.models && res.models.length > 0) {
+        setAvailableModels(res.models)
+        if (res.default_model_key) {
+          setSelectedModel(res.default_model_key)
+        }
+      }
+    }).catch(() => { })
+  }, [])
 
   const comparedPoints = useMemo(
     () => Number(report?.summary?.compared_points ?? evaluation?.summary?.compared_points ?? 0),
@@ -397,7 +423,7 @@ export default function ForecastEvaluation() {
     try {
       const payload = {
         site_sample_size: siteSampleSize,
-        model_key: 'baseline_operational',
+        model_key: selectedModel,
         horizon_hours: horizonHours,
         critical_level: criticalLevel,
         level_aggregation: levelAggregation,
@@ -432,15 +458,15 @@ export default function ForecastEvaluation() {
   const displayedSiteMetrics = report?.site_metrics.slice(0, 50) ?? []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
-              Evaluación del Forecaster
+            <h1 className="text-3xl font-extrabold text-slate-900">
+              {t('forecast.title')}
             </h1>
             <p className="text-slate-600 mt-1">
-              Backtesting de proyecciones de llenado para medir error y detección de sitios críticos.
+              {t('forecast.subtitle')}
             </p>
           </div>
           <Button
@@ -448,10 +474,10 @@ export default function ForecastEvaluation() {
             variant="outline"
             onClick={handleDownloadReport}
             disabled={!report}
-            className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-xs transition-all cursor-pointer gap-2"
+            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer gap-2"
           >
             <Download className="h-4 w-4" />
-            Descargar informe
+            {t('forecast.download_report')}
           </Button>
         </div>
 
@@ -474,31 +500,29 @@ export default function ForecastEvaluation() {
 
         <form onSubmit={handleRunEvaluation}>
           <Panel
-            title="Parámetros de Evaluación"
-            description="Configuración del backtesting temporal del modelo baseline_operational"
-            icon={FileText}
+            title={t('forecast.evaluation_parameters')}
+            description={t('forecast.backtesting_config', {
+              model: availableModels.find((m) => m.key === selectedModel)?.name || selectedModel,
+            })}
             actions={
               <Button
                 type="submit"
                 disabled={loading}
-                className="text-xs font-semibold gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer"
+                className="text-xs font-bold px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-xs cursor-pointer transition-all"
               >
-                {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {loading ? 'Evaluando Modelo...' : 'Ejecutar Evaluación'}
+                {loading ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
               </Button>
             }
           >
-            <div className="flex items-center gap-2 text-xs text-slate-500 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
-              <Info className="h-4 w-4 text-blue-600 shrink-0" />
-              <span>
-                El backend calcula automáticamente el cutoff como <strong>última medición disponible menos horizonte</strong>. El intervalo de comparación es fijo: <strong>60 minutos</strong>.
-              </span>
+            <div className="flex items-center gap-2 text-xs text-slate-600 bg-sky-50/60 p-2.5 rounded-xl border border-sky-100">
+              <Info className="h-4 w-4 text-sky-600 shrink-0" />
+              <span>{t('forecast.cutoff_info')}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <ParameterField
-                label="Cantidad de sitios"
-                hint="Muestra aleatoria entre sitios con mediciones antes y después del cutoff calculado."
+                label={t('forecast.site_count')}
+                hint={t('forecast.site_count_hint')}
               >
                 <Input
                   type="number"
@@ -511,8 +535,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Horizonte de predicción"
-                hint="Horas futuras a predecir desde el cutoff automático. Requiere datos reales posteriores."
+                label={t('forecast.horizon')}
+                hint={t('forecast.horizon_hint')}
               >
                 <Input
                   type="number"
@@ -525,8 +549,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Umbral crítico"
-                hint="Nivel usado para medir precisión y recall de alertas de desborde."
+                label={t('forecast.critical_threshold')}
+                hint={t('forecast.critical_threshold_hint')}
               >
                 <Input
                   type="number"
@@ -539,8 +563,8 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Lookback histórico"
-                hint="Días previos al cutoff usados para aprender patrones horarios y semanales."
+                label={t('forecast.historical_lookback')}
+                hint={t('forecast.historical_lookback_hint')}
               >
                 <Input
                   type="number"
@@ -553,28 +577,32 @@ export default function ForecastEvaluation() {
               </ParameterField>
 
               <ParameterField
-                label="Agregación del sitio"
-                hint="Promedio resume el sitio completo; máximo prioriza el contenedor más lleno."
+                label={t('forecast.aggregation')}
+                hint={t('forecast.aggregation_hint')}
               >
                 <select
                   value={levelAggregation}
                   onChange={(event) => setLevelAggregation(event.target.value as 'avg' | 'max')}
-                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="avg">Promedio del sitio</option>
-                  <option value="max">Máximo del sitio</option>
+                  <option value="avg">{t('forecast.aggregation_avg')}</option>
+                  <option value="max">{t('forecast.aggregation_max')}</option>
                 </select>
               </ParameterField>
 
               <div className="space-y-2 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
-                <span className="text-xs font-semibold text-slate-700 block">Modelo</span>
-                <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-white p-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">baseline_operational</p>
-                    <p className="text-[10px] text-slate-500">Incrementos históricos por bucket temporal</p>
-                  </div>
-                </div>
+                <span className="text-xs font-semibold text-slate-700 block">{t('forecast.model')}</span>
+                <select
+                  value={selectedModel}
+                  onChange={(event) => setSelectedModel(event.target.value)}
+                  className="h-8 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  {availableModels.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </Panel>
@@ -586,8 +614,8 @@ export default function ForecastEvaluation() {
               {metricCards.map((card) => (
                 <MetricCard
                   key={card.key}
-                  label={card.label}
-                  detail={card.detail}
+                  label={card.key === 'threshold_precision' ? t('forecast.precision_label') : card.key === 'threshold_recall' ? t('forecast.recall_label') : card.label}
+                  detail={t(`forecast.${card.key === 'threshold_precision' ? 'precision_detail' : card.key === 'threshold_recall' ? 'recall_detail' : `${card.key}_detail`}`)}
                   value={report.global_metrics[card.key]}
                   icon={card.icon}
                   suffix={card.suffix}
@@ -598,30 +626,30 @@ export default function ForecastEvaluation() {
             </div>
 
             <Panel
-              title="Resumen de Corrida"
-              description="Contexto usado para interpretar las métricas obtenidas"
+              title={t('forecast.run_summary')}
+              description={t('forecast.run_summary_desc')}
               icon={Database}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <SummaryCard label="Sitios evaluados" value={evaluatedSites} icon={Layers} />
-                <SummaryCard label="Puntos comparados" value={comparedPoints} icon={BarChart3} />
-                <SummaryCard label="Cutoff calculado" value={formatDateTime(evaluation?.cutoff)} icon={Clock3} />
-                <SummaryCard label="Modelo" value={report.model_key} icon={Activity} />
+                <SummaryCard label={t('forecast.evaluated_sites')} value={evaluatedSites} icon={Layers} />
+                <SummaryCard label={t('forecast.compared_points')} value={comparedPoints} icon={BarChart3} />
+                <SummaryCard label={t('forecast.calculated_cutoff')} value={formatDateTime(evaluation?.cutoff)} icon={Clock3} />
+                <SummaryCard label={t('forecast.model')} value={report.model_key} icon={Activity} />
               </div>
             </Panel>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <Panel
-                title="Mejor Predichos"
-                description="Sitios con menor MAE dentro de la evaluación"
+                title={t('forecast.best_predicted')}
+                description={t('forecast.best_predicted_desc')}
                 icon={CheckCircle2}
               >
                 <SiteMetricsTable sites={report.best_predicted_sites.slice(0, 5)} />
               </Panel>
 
               <Panel
-                title="Peor Predichos"
-                description="Sitios prioritarios para revisar datos, recolecciones o patrón de demanda"
+                title={t('forecast.worst_predicted')}
+                description={t('forecast.worst_predicted_desc')}
                 icon={AlertCircle}
               >
                 <SiteMetricsTable sites={report.worst_predicted_sites.slice(0, 5)} />
@@ -629,8 +657,8 @@ export default function ForecastEvaluation() {
             </div>
 
             <Panel
-              title="Métricas por Sitio"
-              description="Se muestran hasta 50 sitios para mantener la vista liviana"
+              title={t('forecast.site_metrics')}
+              description={t('forecast.site_metrics_desc')}
               icon={FileText}
             >
               <SiteMetricsTable sites={displayedSiteMetrics} />

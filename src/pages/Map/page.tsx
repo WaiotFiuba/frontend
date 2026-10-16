@@ -1,46 +1,62 @@
 import 'leaflet/dist/leaflet.css'
-import { Button } from '@/common/ui/button'
+import { Button } from '@/utils/ui/button'
+import { Card, CardContent } from '@/utils/ui/card'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import MapLegend from '@/common/MapLegend'
+import MapLegend from './components/MapLegend'
 import { useState } from 'react'
-import SimulationControl from '@/common/SimulationControl'
+import SimulationControl from './components/SimulationControl'
+import { ArrowLeft, MapPin } from 'lucide-react'
+import { NetworkKpiPanel } from '@/common/KpiPanel'
+import { useCityConfig } from '@/context/CityConfigContext'
+import { useTranslation } from 'react-i18next'
 
 export default function Map() {
     const navigate = useNavigate()
+    const { t } = useTranslation()
     const [refreshTrigger, setRefreshTrigger] = useState(0)
+    const { cityName } = useCityConfig()
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
             <div className="max-w-[1600px] mx-auto space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-4xl font-extrabold text-slate-900 bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
-                            Interactive Map
-                        </h1>
-                        <p className="text-slate-600 mt-1">Monitoring of containers and geographic telemetry.</p>
+                        <div className="flex items-center gap-3">
+                            <MapPin className="w-8 h-8 text-sky-600 shrink-0" />
+                            <div>
+                                <h1 className="text-3xl font-extrabold text-slate-900">
+                                    {t('map.title')}
+                                </h1>
+                                <p className="text-slate-600 text-sm mt-0.5">
+                                    {t('map.subtitle')}
+                                    {cityName ? t('map.in_city', { city: cityName }) : ''}.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    <Button
-                        variant="outline"
-                        onClick={() => navigate('/')}
-                        className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold px-4 py-2 rounded-lg shadow-sm transition-all"
-                    >
-                        Back to Home
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate('/')}
+                            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            {t('common.back_to_home')}
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Contenedor principal con Diccionario a la izquierda y Mapa a la derecha */}
-                <div className="flex flex-col lg:flex-row gap-5 items-stretch">
-                    {/* Panel lateral izquierdo: Diccionario de iconos */}
-                    <div className="w-full lg:w-80 xl:w-80 shrink-0">
-                        <MapLegend className="h-[75vh]" />
-                    </div>
+                {/* Panel de Métricas Operativas de la Red */}
+                <NetworkKpiPanel refreshTrigger={refreshTrigger} />
 
-                    {/* Panel derecho: Mapa interactivo */}
-                    <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-lg h-[75vh] w-full overflow-hidden flex items-center justify-center">
+                {/* Hero Map Full-Width con Leyenda Flotante Superpuesta */}
+                <Card className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative">
+                    <CardContent className="h-full w-full p-0 overflow-hidden relative">
                         <InteractiveMap refreshTrigger={refreshTrigger} />
-                    </div>
-                </div>
+                        <MapLegend />
+                    </CardContent>
+                </Card>
 
                 <SimulationControl onSimulationStateChange={async () => {
                     setRefreshTrigger(prev => prev + 1)

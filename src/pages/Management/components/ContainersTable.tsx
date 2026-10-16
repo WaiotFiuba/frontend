@@ -1,6 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/common/ui/card'
-import { Button } from '@/common/ui/button'
+import { useTranslation } from 'react-i18next'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
+import { Button } from '@/utils/ui/button'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/utils/ui/table'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/utils/ui/select'
 import {
   Search,
   AlertTriangle,
@@ -13,6 +29,7 @@ import {
 } from 'lucide-react'
 import { BackendContainer, PaginatedContainers } from './types'
 import { api } from '@/lib/api'
+import { useLevelThresholds } from '@/context/CityConfigContext'
 
 interface ContainersTableProps {
   onRemoveContainer: (container: BackendContainer) => void
@@ -22,7 +39,8 @@ interface ContainersTableProps {
 const ITEMS_PER_PAGE = 10
 
 export default function ContainersTable({ onRemoveContainer, refreshTrigger }: ContainersTableProps) {
-
+  const { t } = useTranslation()
+  const thresholds = useLevelThresholds()
   const [containers, setContainers] = useState<BackendContainer[]>([])
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -90,9 +108,9 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
       <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-xl font-bold text-slate-950">Containers List</CardTitle>
+            <CardTitle className="text-xl font-bold text-slate-950">{t('management.table_title')}</CardTitle>
             <CardDescription className="text-slate-500 mt-1">
-              Shows the geographical information and current status of each unit.
+              {t('management.table_description')}
             </CardDescription>
           </div>
 
@@ -100,7 +118,7 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             {showOnlyAlerts && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold px-2.5 py-1.5 animate-fade-in shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                Only ≥80%
+                Solo ≥{thresholds.critical}%
                 <button onClick={() => handleToggleAlerts(false)} className="text-amber-500 hover:text-amber-700 ml-1 font-bold text-sm">
                   ×
                 </button>
@@ -108,17 +126,22 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
             )}
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input type="text" placeholder="Search by ID, name or neighborhood..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-700" />
+              <input type="text" placeholder={t('management.search_placeholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all placeholder:text-slate-400 text-slate-700" />
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
-              <select value={selectedType} onChange={(e) => handleTypeChange(e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-700 font-medium">
-                <option value="all">All Types</option>
-                <option value="lateral">Side Load (Carga Lateral)</option>
-                <option value="bilateral">Bilateral Load (Carga Bilateral)</option>
-                <option value="soterrado">Underground (Soterrado)</option>
-              </select>
+              <Select value={selectedType} onValueChange={handleTypeChange}>
+                <SelectTrigger className="w-full sm:w-56 text-xs font-semibold bg-white border-slate-200">
+                  <SelectValue placeholder={t('management.all_types')} />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  <SelectItem value="all">{t('management.all_types')}</SelectItem>
+                  <SelectItem value="lateral">{t('management.lateral_load')}</SelectItem>
+                  <SelectItem value="bilateral">{t('management.bilateral_load')}</SelectItem>
+                  <SelectItem value="soterrado">{t('management.underground')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -132,75 +155,74 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
         )}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3 text-slate-400">
-            <RefreshCw className="h-10 w-10 animate-spin text-indigo-500" />
-            <p className="text-sm font-medium">Loading containers...</p>
+            <RefreshCw className="h-10 w-10 animate-spin text-sky-600" />
+            <p className="text-sm font-medium">{t('common.loading')}</p>
           </div>
         ) : containers.length === 0 ? (
           <div className="py-20 text-center text-slate-400 space-y-2">
             <Database className="h-12 w-12 mx-auto text-slate-300" />
-            <p className="text-lg font-bold text-slate-500">No containers found</p>
+            <p className="text-lg font-bold text-slate-500">{t('management.no_containers_found')}</p>
             <p className="text-sm text-slate-400 max-w-md mx-auto px-6">
               {totalItems === 0 && !debouncedSearch && selectedType === 'all' && !showOnlyAlerts
-                ? "The database is empty. Please register a container using the form below."
-                : 'No containers match the search or selected filter.'}
+                ? t('management.no_containers_db')
+                : t('management.no_containers_filtered')}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/30 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <th className="px-6 py-4 font-semibold text-slate-900">Container ID</th>
-                  <th className="px-6 py-4">Site ID</th>
-                  <th className="px-6 py-4">Neighborhood / Zone</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 w-64">Fill Level</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+            <Table>
+              <TableHeader className="bg-slate-50/40">
+                <TableRow className="border-b border-slate-100">
+                  <TableHead className="px-6 py-4 font-semibold text-slate-900">{t('management.col_container_id')}</TableHead>
+                  <TableHead className="px-6 py-4">{t('management.col_site_id')}</TableHead>
+                  <TableHead className="px-6 py-4">{t('management.col_neighborhood')}</TableHead>
+                  <TableHead className="px-6 py-4">{t('management.col_type')}</TableHead>
+                  <TableHead className="px-6 py-4">{t('management.col_status')}</TableHead>
+                  <TableHead className="px-6 py-4 w-64">{t('management.col_fill_level')}</TableHead>
+                  <TableHead className="px-6 py-4 text-right">{t('management.col_action')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {containers.map((container) => {
                   const fillPercentage = container.current_level
 
                   let fillBg = 'bg-emerald-500'
                   let fillTrack = 'bg-emerald-100'
-                  if (fillPercentage >= 80) {
+                  if (fillPercentage >= thresholds.critical) {
                     fillBg = 'bg-rose-500'
                     fillTrack = 'bg-rose-100'
-                  } else if (fillPercentage >= 50) {
+                  } else if (fillPercentage >= thresholds.high) {
                     fillBg = 'bg-amber-500'
                     fillTrack = 'bg-amber-100'
                   }
 
                   return (
-                    <tr key={container.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-mono text-xs text-slate-500">
+                    <TableRow key={container.id} className="hover:bg-slate-50/80 transition-colors">
+                      <TableCell className="px-6 py-4 font-mono text-xs text-slate-500">
                         {container.id}
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-600">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 font-mono text-xs text-slate-600">
                         {container.site_id}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">{container.zone || 'Not assigned'}</td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-slate-600">{container.zone || 'Sin asignar'}</TableCell>
+                      <TableCell className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200">
-                          {container.container_type?.name || 'Generic'}
+                          {container.container_type?.name || 'Genérico'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
                         {container.available ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Active
+                            Activo
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            Inactive
+                            Inactivo
                           </span>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <span className="w-9 text-right font-bold text-xs tabular-nums text-slate-700">
                             {fillPercentage}%
@@ -209,41 +231,40 @@ export default function ContainersTable({ onRemoveContainer, refreshTrigger }: C
                             <div className={`h-2.5 rounded-full transition-all duration-300 ${fillBg}`} style={{ width: `${Math.min(100, fillPercentage)}%` }} />
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg" title="Remove from view (frontend only)">
+                      </TableCell>
+                      <TableCell className="px-6 py-4 text-right">
+                        <Button variant="ghost" size="sm" onClick={() => onRemoveContainer(container)} className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 h-8 w-8 rounded-lg cursor-pointer" title="Eliminar de la vista (solo visual)">
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
         )}
       </CardContent>
 
       {!loading && totalItems > 0 && (
         <div className="border-t border-slate-100 bg-slate-50/30 px-6 py-4 flex items-center justify-between">
           <div className="text-xs text-slate-500 font-medium">
-            Showing{' '}
+            Mostrando{' '}
             <span className="font-bold text-slate-700">
               {Math.min(totalItems, (currentPage - 1) * ITEMS_PER_PAGE + 1)}
             </span>{' '}
-            to{' '}
+            a{' '}
             <span className="font-bold text-slate-700">
               {Math.min(totalItems, currentPage * ITEMS_PER_PAGE)}
             </span>{' '}
-            of <span className="font-bold text-slate-700">{totalItems}</span>{' '}
-            containers
+            de <span className="font-bold text-slate-700">{totalItems}</span>{' '}
+            contenedores
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} className="h-8 w-8 p-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div className="text-xs font-bold text-slate-700">
-              Page {currentPage} of {totalPages}
+              Página {currentPage} de {totalPages}
             </div>
             <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} className="h-8 w-8 p-0">
               <ChevronRight className="h-4 w-4" />
