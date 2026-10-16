@@ -114,11 +114,16 @@ export function RedistributionImpactPanel({
       ? { real: plan.original_std_fill, with_plan: plan.optimized_std_fill ?? plan.original_std_fill }
       : null
   const observedHours = comparison?.observed_hours ?? 0
-  const period =
-    observedHours >= 24
-      ? t('optimization.period_days', { count: Math.floor(observedHours / 24) })
-      : t('optimization.period_hours', { count: Math.floor(observedHours) })
-  const sinceActivation = t('optimization.impact_since_activation', { period })
+  // Menos de una hora medida: la etiqueta no muestra el período ("0 horas").
+  const sinceActivation =
+    observedHours >= 1
+      ? t('optimization.impact_since_activation_period', {
+          period:
+            observedHours >= 24
+              ? t('optimization.period_days', { count: Math.floor(observedHours / 24) })
+              : t('optimization.period_hours', { count: Math.floor(observedHours) }),
+        })
+      : t('optimization.impact_since_activation')
   const count = (value: number) =>
     value.toLocaleString(i18n.language, { maximumFractionDigits: value < 10 ? 1 : 0 })
   const sigma = (value: number) => `±${value.toFixed(1)}`

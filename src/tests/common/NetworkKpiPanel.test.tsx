@@ -168,6 +168,7 @@ describe('RedistributionImpactPanel Component Tests', () => {
     expect(screen.getByText('-33 %')).toBeInTheDocument()
     // Sin mediciones todavía, las tarjetas medidas lo dicen en lugar de mostrar ceros.
     expect(screen.getAllByText('Todavía sin datos')).toHaveLength(2)
+    expect(screen.getAllByText('Desde la activación')).toHaveLength(2)
   })
 
   it('shows the measured averages since the activation', () => {
