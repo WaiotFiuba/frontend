@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/utils/ui/button'
@@ -63,7 +63,6 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
-  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
@@ -272,7 +271,7 @@ export default function Optimization() {
         {/* Hero Map Full-Width con Panel de Control Flotante Superpuesto y Tarjeta de Impacto */}
         <div className="space-y-6">
           <Card
-            ref={mapContainerRef}
+            id="optimization-map"
             className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative"
           >
             <CardContent className="h-full w-full p-0 overflow-hidden relative">
@@ -734,7 +733,8 @@ export default function Optimization() {
                                 const nextId = isSelected ? null : m.container_id
                                 setHighlightedMoveId(nextId)
                                 if (nextId != null) {
-                                  mapContainerRef.current?.scrollIntoView({
+                                  // Card no reenvía refs: se busca por id, como la tabla.
+                                  document.getElementById('optimization-map')?.scrollIntoView({
                                     behavior: 'smooth',
                                     block: 'center',
                                   })
