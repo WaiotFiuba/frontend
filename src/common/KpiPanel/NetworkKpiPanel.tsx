@@ -20,6 +20,7 @@ export function NetworkKpiPanel({
   collapsible = true,
   defaultCollapsed = false,
   whatif = false,
+  baseline = null,
 }: NetworkKpiPanelProps) {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
@@ -191,6 +192,11 @@ export function NetworkKpiPanel({
               title={t('kpi.critical_sites')}
               value={metrics.critical_count}
               subvalue={t('kpi.saturation_critical', { critical })}
+              comparison={
+                baseline
+                  ? t('kpi.without_plan', { value: baseline.critical_count })
+                  : undefined
+              }
               badgeText={t('kpi.badge_overflow')}
               badgeVariant="danger"
               onClick={

@@ -80,6 +80,8 @@ export interface RedistributionPlan {
   expected_improvement: number
   created_at: string
   simulation_id: number | null
+  // Usuario que generó el plan (null en planes anteriores a registrarlo).
+  created_by?: number | null
   original_mean_fill?: number
   original_std_fill?: number
   optimized_mean_fill?: number
@@ -92,24 +94,25 @@ export interface RedistributionPlan {
   overflow_hours_after?: number | null
 }
 
-export interface WhatIfSiteComparison {
-  site_id: number
-  site_name: string
-  latitude: number
-  longitude: number
-  real_avg_level: number
-  optimized_avg_level: number
-  real_container_count: number
-  optimized_container_count: number
-  improvement_pct: number
+// Un valor de la red real (sin el plan) y de la red what-if (con el plan).
+export interface WhatIfMeasure {
+  real: number
+  with_plan: number
 }
 
+// Cómo le va a la red con el plan, comparada con la red real.
 export interface WhatIfComparisonResponse {
   plan_id: number
   plan_status: string
-  real_global_avg: number
-  optimized_global_avg: number
-  total_sites_improved: number
-  total_sites_worsened: number
-  sites: WhatIfSiteComparison[]
+  // Desvío del nivel entre sitios, antes y después, estimado al generar el plan.
+  dispersion: WhatIfMeasure | null
+  // Horas medidas desde que se activó el plan (0: todavía sin datos).
+  observed_hours: number
+  // Promedio del período desde la activación (null mientras no haya horas medidas).
+  avg_critical_sites: WhatIfMeasure | null
+  avg_full_containers: WhatIfMeasure | null
+  // Solo con el plan activo.
+  full_container_hours: WhatIfMeasure | null
+  critical_sites_now: WhatIfMeasure | null
+  full_containers_now: WhatIfMeasure | null
 }

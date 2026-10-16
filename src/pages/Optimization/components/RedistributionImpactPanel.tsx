@@ -1,36 +1,94 @@
 import { useTranslation } from 'react-i18next'
-import {
-  Activity,
-  Scale,
-  Sparkles,
-  TrendingDown,
-} from 'lucide-react'
-import type { RedistributionPlan } from '../types'
-import type { NetworkMetricsData } from '@/common/KpiPanel/types'
+import { Sparkles } from 'lucide-react'
+import type { RedistributionPlan, WhatIfComparisonResponse, WhatIfMeasure } from '../types'
 
 interface RedistributionImpactPanelProps {
   plan: RedistributionPlan | null
-  baselineMetrics?: NetworkMetricsData | null
+  // Comparación medida desde la activación del plan (null mientras no llega).
+  comparison?: WhatIfComparisonResponse | null
   loading?: boolean
   className?: string
 }
 
+interface ImpactCardProps {
+  title: string
+  tag: string
+  // Estimado al generar (gris) o medido desde la activación (azul).
+  measured: boolean
+  measure: WhatIfMeasure | null
+  format: (value: number) => string
+  caption: string
+}
+
+const percentChange = ({ real, with_plan }: WhatIfMeasure): number =>
+  real > 0 ? Math.round(((with_plan - real) / real) * 100) : 0
+
+function ImpactCard({ title, tag, measured, measure, format, caption }: ImpactCardProps) {
+  const { t } = useTranslation()
+  const change = measure ? percentChange(measure) : 0
+  return (
+    <article className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <h4 className="text-xs font-bold text-slate-700">{title}</h4>
+        <span
+          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+            measured
+              ? 'text-blue-900 bg-blue-50 border-blue-200'
+              : 'text-slate-700 bg-slate-100 border-slate-200'
+          }`}
+        >
+          {tag}
+        </span>
+      </div>
+      {measure ? (
+        <>
+          <span className="text-xl font-bold font-mono tabular-nums text-slate-900">
+            <span className="text-slate-600">{format(measure.real)}</span>
+            <span className="text-base text-slate-500"> → </span>
+            {format(measure.with_plan)}
+          </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-slate-500">{caption}</span>
+            {change !== 0 && (
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                  change < 0
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : 'text-rose-700 bg-rose-50 border-rose-200'
+                }`}
+              >
+                {change > 0 ? `+${change}` : change} %
+              </span>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <span className="text-xl font-bold text-slate-500">{t('optimization.impact_no_data')}</span>
+          <span className="text-[11px] text-slate-500">{t('optimization.impact_no_data_caption')}</span>
+        </>
+      )}
+    </article>
+  )
+}
+
 export function RedistributionImpactPanel({
   plan,
-  baselineMetrics,
+  comparison = null,
   loading = false,
   className = '',
 }: RedistributionImpactPanelProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   if (loading) {
     return (
       <div
         className={`bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4 animate-pulse ${className}`}
       >
         <div className="h-5 w-60 bg-slate-200 rounded-md" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="h-32 bg-slate-100 rounded-xl" />
-          <div className="h-32 bg-slate-100 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="h-28 bg-slate-100 rounded-xl" />
+          <div className="h-28 bg-slate-100 rounded-xl" />
+          <div className="h-28 bg-slate-100 rounded-xl" />
         </div>
       </div>
     )
@@ -44,237 +102,64 @@ export function RedistributionImpactPanel({
         <div className="h-10 w-10 mx-auto rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
           <Sparkles className="h-5 w-5" />
         </div>
-        <h3 className="text-sm font-bold text-slate-800">
-          Impacto Proyectado de Redistribución (What-If)
-        </h3>
-        <p className="text-xs text-slate-500 max-w-lg mx-auto">
-          Ajustá los parámetros deseados y presioná{' '}
-          <strong>&ldquo;Generar Redistribución&rdquo;</strong> para calcular la
-          comparativa de homogenización de carga y los traslados óptimos.
-        </p>
+        <h3 className="text-sm font-bold text-slate-800">{t('optimization.impact_empty_title')}</h3>
+        <p className="text-xs text-slate-500 max-w-lg mx-auto">{t('optimization.impact_empty_desc')}</p>
       </div>
     )
   }
 
-  const origMean =
-    plan.original_mean_fill ?? baselineMetrics?.mean_fill_level ?? 0
-  const origStd =
-    plan.original_std_fill ?? baselineMetrics?.std_fill_level ?? 0
-  const optMean = plan.optimized_mean_fill ?? 0
-  const optStd = plan.optimized_std_fill ?? 0
-
-  const diff = optStd - origStd
-  const reductionPct =
-    origStd > 0 ? Math.round((Math.abs(diff) / origStd) * 100) : 0
-  const improved = diff < -0.1
-
-  const origMin = Math.max(0, origMean - origStd)
-  const origMax = Math.min(100, origMean + origStd)
-  const optMin = Math.max(0, optMean - optStd)
-  const optMax = Math.min(100, optMean + optStd)
+  // La dispersión viene en el plan: se ve apenas se genera.
+  const dispersion: WhatIfMeasure | null =
+    plan.original_std_fill != null
+      ? { real: plan.original_std_fill, with_plan: plan.optimized_std_fill ?? plan.original_std_fill }
+      : null
+  const observedHours = comparison?.observed_hours ?? 0
+  // Menos de una hora medida: la etiqueta no muestra el período ("0 horas").
+  const sinceActivation =
+    observedHours >= 1
+      ? t('optimization.impact_since_activation_period', {
+          period:
+            observedHours >= 24
+              ? t('optimization.period_days', { count: Math.floor(observedHours / 24) })
+              : t('optimization.period_hours', { count: Math.floor(observedHours) }),
+        })
+      : t('optimization.impact_since_activation')
+  const count = (value: number) =>
+    value.toLocaleString(i18n.language, { maximumFractionDigits: value < 10 ? 1 : 0 })
+  const sigma = (value: number) => `±${value.toFixed(1)}`
 
   return (
-    <div
-      className={`bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4 ${className}`}
-    >
-      {/* Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm">
-              {t('optimization.impact_title')}
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              {t('optimization.impact_subtitle')}
-            </p>
-          </div>
-        </div>
-        <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-          {t('optimization.whatif_sim_active')}
-        </span>
+    <div className={`bg-white rounded-2xl border border-slate-200/90 shadow-xs p-5 space-y-4 ${className}`}>
+      <div className="border-b border-slate-100 pb-3">
+        <h3 className="font-bold text-slate-900 text-sm">{t('optimization.impact_title')}</h3>
+        <p className="text-[11px] text-slate-500">{t('optimization.impact_subtitle')}</p>
       </div>
-
-      {/* Mean & Std deviation comparison cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* 1. Promedio de Llenado Histórico */}
-        <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <Activity className="h-4 w-4 text-blue-600" />
-              {t('optimization.mean_fill_title')}
-            </span>
-            <span className="text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-              {t('optimization.hist_window')}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs">
-              <span className="text-[11px] text-slate-500 font-medium block">
-                {t('optimization.hist_base')}
-              </span>
-              <span className="text-xl font-bold font-mono tabular-nums text-slate-800">
-                {origMean.toFixed(1)}%
-              </span>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-2xs">
-              <span className="text-[11px] text-blue-600 font-semibold block">
-                {t('optimization.projected')}
-              </span>
-              <span className="text-xl font-bold font-mono tabular-nums text-blue-700">
-                {optMean.toFixed(1)}%
-              </span>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-500">
-            {t('optimization.volume_conserved')}
-          </p>
-        </div>
-
-        {/* 2. Desvío Estándar Histórico (Balanceo) */}
-        <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <Scale className="h-4 w-4 text-indigo-600" />
-              {t('optimization.std_title')}
-            </span>
-            {improved ? (
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full ring-1 ring-emerald-600/20 flex items-center gap-1">
-                <TrendingDown className="h-3 w-3" />
-                {t('optimization.reduction_dispersion', { pct: reductionPct })}
-              </span>
-            ) : (
-              <span className="text-[11px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
-                {t('optimization.no_variation')}
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-2xs">
-              <span className="text-[11px] text-slate-500 font-medium block">
-                {t('optimization.hist_base')}
-              </span>
-              <span className="text-xl font-bold font-mono tabular-nums text-slate-800">
-                &plusmn;{origStd.toFixed(1)}%
-              </span>
-            </div>
-            <div className="bg-white p-3 rounded-lg border border-emerald-200 shadow-2xs">
-              <span className="text-[11px] text-emerald-600 font-semibold block">
-                {t('optimization.projected')}
-              </span>
-              <span className="text-xl font-bold font-mono tabular-nums text-emerald-700">
-                &plusmn;{optStd.toFixed(1)}%
-              </span>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-500">
-            {improved
-              ? t('optimization.dispersion_reduction_desc', { orig: origStd.toFixed(1), opt: optStd.toFixed(1) })
-              : t('optimization.dispersion_stable_desc')}
-          </p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ImpactCard
+          title={t('optimization.impact_dispersion')}
+          tag={t('optimization.impact_estimated')}
+          measured={false}
+          measure={dispersion}
+          format={sigma}
+          caption={t('optimization.impact_dispersion_caption')}
+        />
+        <ImpactCard
+          title={t('optimization.impact_avg_critical')}
+          tag={sinceActivation}
+          measured
+          measure={comparison?.avg_critical_sites ?? null}
+          format={count}
+          caption={t('optimization.impact_without_with')}
+        />
+        <ImpactCard
+          title={t('optimization.impact_avg_full')}
+          tag={sinceActivation}
+          measured
+          measure={comparison?.avg_full_containers ?? null}
+          format={count}
+          caption={t('optimization.impact_without_with')}
+        />
       </div>
-
-      {/* Visual Distribution Range Meter */}
-      <div className="bg-gradient-to-r from-slate-50 via-indigo-50/30 to-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
-        <div className="flex justify-between items-center text-[11px] text-slate-600 font-semibold">
-          <span>
-            {t('optimization.range_typical')}
-          </span>
-          <span className="font-mono text-[10px] text-slate-400">
-            {t('optimization.range_0_100')}
-          </span>
-        </div>
-
-        {/* Original bar */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-500">
-            <span>
-              {t('optimization.hist_base_range', { min: origMin.toFixed(0), max: origMax.toFixed(0) })}
-            </span>
-            <span>{t('optimization.wide_dispersion')}</span>
-          </div>
-          <div className="h-2 w-full bg-slate-200/80 rounded-full relative overflow-hidden">
-            <div
-              className="absolute h-full bg-slate-400/80 rounded-full"
-              style={{
-                left: `${origMin}%`,
-                width: `${Math.max(2, origMax - origMin)}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Optimized bar */}
-        <div className="space-y-1 pt-1">
-          <div className="flex justify-between text-[10px] text-emerald-700 font-semibold">
-            <span>
-              {t('optimization.projected_range', { min: optMin.toFixed(0), max: optMax.toFixed(0) })}
-            </span>
-            <span>{t('optimization.concentrated_band')}</span>
-          </div>
-          <div className="h-2 w-full bg-slate-200/80 rounded-full relative overflow-hidden">
-            <div
-              className="absolute h-full bg-emerald-500 rounded-full shadow-2xs transition-all duration-700"
-              style={{
-                left: `${optMin}%`,
-                width: `${Math.max(2, optMax - optMin)}%`,
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Plan execution quick metrics (only if moves exist) */}
-      {plan.moves.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] text-slate-500 font-semibold block">
-              {t('kpi.containers_label')}
-            </span>
-            <span className="text-xl font-bold font-mono tabular-nums text-blue-700">
-              {plan.total_containers_moved}
-            </span>
-            <span className="text-[10px] text-slate-400 block">{t('optimization.to_relocate')}</span>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] text-slate-500 font-semibold block">
-              {t('optimization.avg_distance')}
-            </span>
-            <span className="text-xl font-bold font-mono tabular-nums text-indigo-700">
-              {plan.avg_distance_km.toFixed(2)} km
-            </span>
-            <span className="text-[10px] text-slate-400 block">
-              {t('optimization.per_move')}
-            </span>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] text-slate-500 font-semibold block">
-              {t('optimization.donor_sites')}
-            </span>
-            <span className="text-xl font-bold font-mono tabular-nums text-sky-700">
-              {plan.sites_donating}
-            </span>
-            <span className="text-[10px] text-slate-400 block">
-              {t('optimization.give_excess')}
-            </span>
-          </div>
-          <div className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80">
-            <span className="text-[11px] text-slate-500 font-semibold block">
-              {t('optimization.receiver_sites')}
-            </span>
-            <span className="text-xl font-bold font-mono tabular-nums text-rose-700">
-              {plan.sites_receiving}
-            </span>
-            <span className="text-[10px] text-slate-400 block">
-              {t('optimization.decongested')}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
