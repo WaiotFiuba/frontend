@@ -25,6 +25,7 @@ export function KpiCard({
   progressColor = 'bg-blue-600',
   badgeText,
   badgeVariant = 'neutral',
+  comparison,
   onClick,
   isSelected = false,
   className = '',
@@ -81,6 +82,10 @@ export function KpiCard({
           </span>
         )}
       </div>
+
+      {comparison && (
+        <span className="mt-1 text-xs font-medium text-slate-600">{comparison}</span>
+      )}
 
       {/* Optional micro progress bar */}
       {progressPct !== undefined && (

@@ -50,7 +50,8 @@ export async function fetchWhatIfComparison(
   return await api.get<WhatIfComparisonResponse>(`/map/optimization/plan/${planId}/comparison`)
 }
 
-export async function fetchActiveWhatIfPlan(): Promise<RedistributionPlan> {
-  return await api.get<RedistributionPlan>('/map/optimization/plan/active')
+// Sin plan activo el backend responde null: el what-if es la red real.
+export async function fetchActiveWhatIfPlan(): Promise<RedistributionPlan | null> {
+  return await api.get<RedistributionPlan | null>('/map/optimization/plan/active')
 }
 
