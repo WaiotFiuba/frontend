@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ForecastEvaluation from '@/pages/ForecastEvaluation/page'
 
@@ -13,8 +14,13 @@ const evaluation = (status: string, processed = 0) => ({
   lookback_days: 14, site_count: 20, summary: { processed_sites: processed }, metrics: [],
 })
 const report = {
-  id: 7, model_key: 'baseline_operational', status: 'completed', summary: { site_count: 20 },
-  global_metrics: {}, site_metrics: [], best_predicted_sites: [], worst_predicted_sites: [],
+  id: 7, model_key: 'baseline_operational', status: 'completed',
+  summary: { site_count: 20, cutoff_count: 14, case_count: 280, critical_at_cutoff: 12 },
+  global_metrics: {
+    event_f1: 0.94, event_precision: 0.91, event_recall: 0.97, event_horizon_f1: 0.96,
+    event_observed: 40, event_too_early: 3, event_too_late: 1, mae: 1.93, rmse: 2.27,
+  },
+  site_metrics: [], best_predicted_sites: [], worst_predicted_sites: [],
 }
 
 const runButton = () => screen.getByRole('button', { name: /Ejecutar Evaluación|Evaluando Modelo/ })
@@ -84,5 +90,66 @@ describe('forecast evaluation', () => {
     expect(await screen.findByText('Sin mediciones')).toBeInTheDocument()
     expect(window.localStorage.getItem(KEY)).toBeNull()
     expect(runButton()).not.toBeDisabled()
+  })
+
+  it('sends the new evaluation parameters', async () => {
+    render(<ForecastEvaluation />)
+    fireEvent.change(screen.getByLabelText(/Horas entre cortes/), { target: { value: '12' } })
+    fireEvent.click(runButton())
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
+    expect(post.mock.calls[0][1]).toMatchObject({
+      site_sample_size: 500,
+      cutoff_count: 14,
+      cutoff_spacing_hours: 12,
+      min_history_days: 7,
+      critical_early_hours: 3,
+      critical_late_hours: 1,
+    })
+  })
+
+  it('shows the event metrics and the short history warning', async () => {
+    window.localStorage.setItem(KEY, '7')
+    statuses = ['completed']
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/status')) return evaluation('completed')
+      if (url.endsWith('/report')) return { ...report, summary: { ...report.summary, short_history: true } }
+      return { models: [] }
+    })
+
+    render(<ForecastEvaluation />)
+
+    expect(await screen.findByText('F1 por evento')).toBeInTheDocument()
+    expect(screen.getByText('94%')).toBeInTheDocument()
+    expect(screen.getByText('Avisos por evento')).toBeInTheDocument()
+    expect(screen.getByText(/Historia corta/)).toBeInTheDocument()
+    expect(screen.queryByText('Precisión crítico')).not.toBeInTheDocument()
+  })
+
+  it('shows the main parameters and keeps the advanced ones closed', () => {
+    render(<ForecastEvaluation />)
+
+    for (const label of ['Modelo', 'Cantidad de sitios', 'Horizonte de predicción', 'Umbral crítico']) {
+      expect(screen.getByLabelText(new RegExp(`^${label}`))).toBeInTheDocument()
+    }
+    const advanced = screen.getByText('Opciones avanzadas').closest('details')
+    expect(advanced).not.toHaveAttribute('open')
+    expect(advanced).toContainElement(screen.getByLabelText(/^Horas entre cortes/))
+    expect(advanced).toContainElement(screen.getByLabelText(/^Anticipación aceptada/))
+  })
+
+  it('explains each event warning card on hover', async () => {
+    window.localStorage.setItem(KEY, '7')
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith('/status')) return evaluation('completed')
+      if (url.endsWith('/report')) return report
+      return { models: [] }
+    })
+    render(<ForecastEvaluation />)
+    const card = (await screen.findByText('Avisos tardíos')).closest('[tabindex]') as HTMLElement
+
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).hover(card)
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/cuenta como cruce perdido/)
   })
 })
