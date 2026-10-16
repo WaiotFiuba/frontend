@@ -249,7 +249,7 @@
     "fill_label": "Fill level:",
     "hide": "Hide",
     "impact_empty_title": "Projected Redistribution Impact (What-If)",
-    "impact_empty_desc": "Adjust the parameters and press “Generate Redistribution” to see how the network would do with the plan.",
+    "impact_empty_desc": "Adjust the parameters and press “Generate Optimization Plan” to see how the network would do with the plan.",
     "impact_estimated": "Estimated at generation",
     "impact_since_activation": "Since activation",
     "impact_since_activation_period": "Since activation · {{period}}",
