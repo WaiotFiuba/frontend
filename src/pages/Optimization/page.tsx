@@ -287,7 +287,7 @@ export default function Optimization() {
                 <MoveImpactCard
                   move={selectedMove}
                   onClose={() => setHighlightedMoveId(null)}
-                  className="sm:top-4 sm:left-4 sm:right-auto z-[1002]"
+                  className="sm:top-4 sm:left-4 sm:right-auto"
                 />
               )}
 
