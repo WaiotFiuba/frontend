@@ -73,6 +73,29 @@ interface ModelOption {
   status?: string
 }
 
+// Id de la evaluacion en curso: se sigue al recargar o desde otra pestana.
+const ACTIVE_EVALUATION_KEY = 'forecastEvaluation.activeId'
+const STATUS_POLL_MS = 3000
+const MAX_STATUS_FAILURES = 3
+
+const readActiveEvaluation = (): number | null => {
+  try {
+    const value = window.localStorage.getItem(ACTIVE_EVALUATION_KEY)
+    return value ? Number(value) : null
+  } catch {
+    return null
+  }
+}
+
+const saveActiveEvaluation = (id: number | null) => {
+  try {
+    if (id === null) window.localStorage.removeItem(ACTIVE_EVALUATION_KEY)
+    else window.localStorage.setItem(ACTIVE_EVALUATION_KEY, String(id))
+  } catch {
+    // Sin localStorage la pagina sigue andando; solo no recuerda la evaluacion.
+  }
+}
+
 const formatNumber = (value: number | null | undefined, suffix = '') => {
   if (value === null || value === undefined || Number.isNaN(value)) return 'N/A'
   return `${value.toFixed(2)}${suffix}`
@@ -393,6 +416,71 @@ export default function ForecastEvaluation() {
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null)
   const [report, setReport] = useState<EvaluationReport | null>(null)
+  const [activeEvaluationId, setActiveEvaluationId] = useState<number | null>(readActiveEvaluation)
+  const [progress, setProgress] = useState<EvaluationResponse | null>(null)
+  const running = activeEvaluationId !== null
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === ACTIVE_EVALUATION_KEY) setActiveEvaluationId(readActiveEvaluation())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  useEffect(() => {
+    if (activeEvaluationId === null) return
+    let cancelled = false
+    let timeoutId: number
+    let failures = 0
+
+    const finish = () => {
+      saveActiveEvaluation(null)
+      setActiveEvaluationId(null)
+      setProgress(null)
+    }
+
+    const poll = async () => {
+      try {
+        const current = await api.get<EvaluationResponse>(
+          `/map/site-projections/evaluations/${activeEvaluationId}/status`
+        )
+        if (cancelled) return
+        failures = 0
+        setProgress(current)
+        if (current.status === 'completed') {
+          const generatedReport = await api.get<EvaluationReport>(
+            `/map/site-projections/evaluations/${activeEvaluationId}/report`
+          )
+          if (cancelled) return
+          setEvaluation(current)
+          setReport(generatedReport)
+          finish()
+          return
+        }
+        if (current.status === 'failed') {
+          setError(String(current.summary?.error ?? t('forecast.evaluation_failed')))
+          finish()
+          return
+        }
+      } catch (err) {
+        if (cancelled) return
+        failures += 1
+        if (failures >= MAX_STATUS_FAILURES) {
+          setError(err instanceof Error ? err.message : t('forecast.evaluation_failed'))
+          finish()
+          return
+        }
+      }
+      timeoutId = window.setTimeout(() => void poll(), STATUS_POLL_MS)
+    }
+
+    void poll()
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [activeEvaluationId, t])
 
   useEffect(() => {
     api.get<{ default_model_key: string; models: ModelOption[] }>(
@@ -415,6 +503,7 @@ export default function ForecastEvaluation() {
 
   const handleRunEvaluation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (running) return
     setLoading(true)
     setError(null)
     setEvaluation(null)
@@ -431,9 +520,8 @@ export default function ForecastEvaluation() {
         stop_at_full: false,
       }
       const created = await api.post<EvaluationResponse>('/map/site-projections/evaluations', payload)
-      const generatedReport = await api.get<EvaluationReport>(`/map/site-projections/evaluations/${created.id}/report`)
-      setEvaluation(created)
-      setReport(generatedReport)
+      saveActiveEvaluation(created.id)
+      setActiveEvaluationId(created.id)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudo ejecutar la evaluación.'
       setError(message)
@@ -488,6 +576,19 @@ export default function ForecastEvaluation() {
           </div>
         )}
 
+        {running && (
+          <div className="flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800 shadow-xs">
+            <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+            <span>
+              {t('forecast.evaluation_in_progress', {
+                id: activeEvaluationId,
+                processed: Number(progress?.summary?.processed_sites ?? 0),
+                total: progress?.site_count ?? 0,
+              })}
+            </span>
+          </div>
+        )}
+
         {evaluation && (
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-xs">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
@@ -507,10 +608,10 @@ export default function ForecastEvaluation() {
             actions={
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || running}
                 className="text-xs font-bold px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-xs cursor-pointer transition-all"
               >
-                {loading ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
+                {loading || running ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
               </Button>
             }
           >

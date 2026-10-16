@@ -343,6 +343,8 @@
     "evaluation_parameters": "Evaluation Parameters",
     "run_evaluation": "Run Evaluation",
     "running_evaluation": "Evaluating Model...",
+    "evaluation_in_progress": "Evaluation #{{id}} in progress: {{processed}} of {{total}} sites processed.",
+    "evaluation_failed": "The evaluation could not be completed.",
     "site_count": "Number of sites",
     "site_count_hint": "Random sample among sites with measurements before and after the calculated cutoff.",
     "horizon": "Forecast horizon",
