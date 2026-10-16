@@ -820,7 +820,8 @@ export default function InteractiveMap({
                                             </div>
                                         </div>}
 
-                                        <Button
+                                        {/* La ficha es de la red real (historial y proyección): en el what-if no se ofrece. */}
+                                        {!isPlayground && <Button
                                             type="button"
                                             size="sm"
                                             onClick={() => navigate(`/map/sites/${site.id}`)}
@@ -828,7 +829,7 @@ export default function InteractiveMap({
                                         >
                                             {t('map.view_site_detail', { defaultValue: 'Ver detalle del sitio' })}
                                             <ExternalLink className="w-3 h-3 text-blue-900" />
-                                        </Button>
+                                        </Button>}
                                     </div>
                                 </Popup>
                             </Marker>
