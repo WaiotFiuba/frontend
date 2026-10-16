@@ -43,7 +43,7 @@ interface EvaluationResponse {
   id: number
   model_key: string
   status: string
-  cutoff: string
+  cutoff: string | null
   completed_at?: string | null
   horizon_hours: number
   interval_minutes: number
@@ -90,6 +90,8 @@ const formatDateTime = (value?: string | null) => {
     timeStyle: 'short',
   }).format(new Date(value))
 }
+
+const ACTIVE_EVALUATION_KEY = 'waiot_active_forecast_evaluation'
 
 const metricCards = [
   {
@@ -393,6 +395,55 @@ export default function ForecastEvaluation() {
   const [error, setError] = useState<string | null>(null)
   const [evaluation, setEvaluation] = useState<EvaluationResponse | null>(null)
   const [report, setReport] = useState<EvaluationReport | null>(null)
+  const [activeEvaluationId, setActiveEvaluationId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const savedId = Number(sessionStorage.getItem(ACTIVE_EVALUATION_KEY))
+    if (savedId > 0) setActiveEvaluationId(savedId)
+  }, [])
+
+  useEffect(() => {
+    if (activeEvaluationId === null) return
+    let cancelled = false
+    let timer: number | undefined
+
+    const poll = async () => {
+      try {
+        const current = await api.get<EvaluationResponse>(
+          `/map/site-projections/evaluations/${activeEvaluationId}/status`
+        )
+        if (cancelled) return
+        setEvaluation(current)
+        setError(null)
+        if (current.status === 'completed') {
+          const generatedReport = await api.get<EvaluationReport>(
+            `/map/site-projections/evaluations/${activeEvaluationId}/report`
+          )
+          if (cancelled) return
+          setReport(generatedReport)
+          sessionStorage.removeItem(ACTIVE_EVALUATION_KEY)
+          setActiveEvaluationId(null)
+          return
+        }
+        if (current.status === 'failed') {
+          setError(String(current.summary?.error ?? 'No se pudo ejecutar la evaluación.'))
+          sessionStorage.removeItem(ACTIVE_EVALUATION_KEY)
+          setActiveEvaluationId(null)
+          return
+        }
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'No se pudo consultar la evaluación. Reintentando.')
+      }
+      timer = window.setTimeout(poll, 2500)
+    }
+
+    void poll()
+    return () => {
+      cancelled = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [activeEvaluationId])
 
   useEffect(() => {
     api.get<{ default_model_key: string; models: ModelOption[] }>(
@@ -431,9 +482,9 @@ export default function ForecastEvaluation() {
         stop_at_full: false,
       }
       const created = await api.post<EvaluationResponse>('/map/site-projections/evaluations', payload)
-      const generatedReport = await api.get<EvaluationReport>(`/map/site-projections/evaluations/${created.id}/report`)
       setEvaluation(created)
-      setReport(generatedReport)
+      sessionStorage.setItem(ACTIVE_EVALUATION_KEY, String(created.id))
+      setActiveEvaluationId(created.id)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'No se pudo ejecutar la evaluación.'
       setError(message)
@@ -488,7 +539,17 @@ export default function ForecastEvaluation() {
           </div>
         )}
 
-        {evaluation && (
+        {activeEvaluationId !== null && (
+          <div className="flex items-start gap-3 rounded border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+            <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+            <span>
+              Evaluación #{activeEvaluationId} en curso
+              {evaluation?.site_count ? `: ${Number(evaluation.summary?.processed_sites ?? 0)} de ${evaluation.site_count} sitios procesados` : ''}.
+            </span>
+          </div>
+        )}
+
+        {evaluation?.status === 'completed' && report && (
           <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-xs">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
             <span>
@@ -507,10 +568,10 @@ export default function ForecastEvaluation() {
             actions={
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || activeEvaluationId !== null}
                 className="text-xs font-bold px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-xs cursor-pointer transition-all"
               >
-                {loading ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
+                {loading || activeEvaluationId !== null ? t('forecast.running_evaluation') : t('forecast.run_evaluation')}
               </Button>
             }
           >
@@ -527,7 +588,7 @@ export default function ForecastEvaluation() {
                 <Input
                   type="number"
                   min={1}
-                  max={1000}
+                  max={5000}
                   value={siteSampleSize}
                   onChange={(event) => setSiteSampleSize(Number(event.target.value))}
                   className="bg-white"
