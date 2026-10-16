@@ -17,7 +17,9 @@
     "date": "Date",
     "status": "Status",
     "success": "Success",
-    "details": "Details"
+    "details": "Details",
+    "containers": "Containers",
+    "selected": "Selected"
   },
   "nav": {
     "home": "Home",

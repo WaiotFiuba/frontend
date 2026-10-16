@@ -17,7 +17,9 @@
     "date": "Fecha",
     "status": "Estado",
     "success": "Éxito",
-    "details": "Detalles"
+    "details": "Detalles",
+    "containers": "Contenedores",
+    "selected": "Seleccionado"
   },
   "nav": {
     "home": "Inicio",
