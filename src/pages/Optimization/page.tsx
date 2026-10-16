@@ -132,8 +132,13 @@ export default function Optimization() {
       setPlan(generated)
       setRefreshTrigger((prev) => prev + 1)
       try {
-        const updatedWhatif = await fetchNetworkKpis(true)
+        // La red real también: el "sin el plan" se compara contra el mismo momento.
+        const [updatedWhatif, updatedBaseline] = await Promise.all([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
+        ])
         setNetworkMetrics(updatedWhatif)
+        setBaselineMetrics(updatedBaseline)
       } catch (kpiErr) {
         console.warn('Error al actualizar KPIs What-If tras generar plan:', kpiErr)
       }
