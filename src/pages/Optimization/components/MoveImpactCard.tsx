@@ -40,12 +40,13 @@ export default function MoveImpactCard({
 
   const isNetImproved = netDecongestion != null && netDecongestion < 0
 
+  // z-[1000], como lo demás sobre el mapa: el encabezado (z-[1001]) la tapa al hacer scroll.
   return (
     <div
       role="region"
       aria-label={t('optimization.move_impact_desc')}
       onClick={(e) => e.stopPropagation()}
-      className={`absolute top-4 right-4 z-[1001] pointer-events-auto w-80 sm:w-96 max-w-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl p-4 sm:p-5 space-y-3.5 transition-all ${className}`}
+      className={`absolute top-4 right-4 z-[1000] pointer-events-auto w-80 sm:w-96 max-w-[calc(100%-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-2xl p-4 sm:p-5 space-y-3.5 transition-all ${className}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">

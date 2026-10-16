@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/utils/ui/button'
@@ -6,8 +6,18 @@ import { Card, CardContent } from '@/utils/ui/card'
 import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
-import { generateOptimizationPlan, fetchNetworkKpis, fetchActiveWhatIfPlan } from './services/optimizationApi'
-import type { OptimizationConfig, RedistributionPlan, OptimizationMetricsResponse } from './types'
+import {
+  generateOptimizationPlan,
+  fetchNetworkKpis,
+  fetchActiveWhatIfPlan,
+  fetchWhatIfComparison,
+} from './services/optimizationApi'
+import type {
+  OptimizationConfig,
+  RedistributionPlan,
+  OptimizationMetricsResponse,
+  WhatIfComparisonResponse,
+} from './types'
 import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
 import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
@@ -44,6 +54,7 @@ export default function Optimization() {
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
+  const [comparison, setComparison] = useState<WhatIfComparisonResponse | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
@@ -52,7 +63,6 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
-  const mapContainerRef = useRef<HTMLDivElement>(null)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
@@ -73,10 +83,12 @@ export default function Optimization() {
           if (baselineRes.status === 'fulfilled') {
             setBaselineMetrics(baselineRes.value)
           }
-          if (activePlanRes.status === 'fulfilled' && activePlanRes.value) {
-            setPlan(activePlanRes.value)
-            if (activePlanRes.value.config) {
-              setConfig((prev) => ({ ...prev, ...activePlanRes.value.config }))
+          // Sin plan activo el backend responde null: la pantalla queda sin plan.
+          const activePlan = activePlanRes.status === 'fulfilled' ? activePlanRes.value : null
+          if (activePlan) {
+            setPlan(activePlan)
+            if (activePlan.config) {
+              setConfig((prev) => ({ ...prev, ...activePlan.config }))
             }
           }
         }
@@ -92,6 +104,22 @@ export default function Optimization() {
     }
   }, [config.window_days])
 
+  // Comparación con la red real: se pide cada vez que cambia el plan activo.
+  const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
+  useEffect(() => {
+    let isMounted = true
+    setComparison(null)
+    if (activePlanId == null) return
+    fetchWhatIfComparison(activePlanId)
+      .then((result) => {
+        if (isMounted) setComparison(result)
+      })
+      .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    return () => {
+      isMounted = false
+    }
+  }, [activePlanId])
+
   const handleGeneratePlan = async () => {
     setGenerating(true)
     setErrorMsg(null)
@@ -103,8 +131,13 @@ export default function Optimization() {
       setPlan(generated)
       setRefreshTrigger((prev) => prev + 1)
       try {
-        const updatedWhatif = await fetchNetworkKpis(true)
+        // La red real también: el "sin el plan" se compara contra el mismo momento.
+        const [updatedWhatif, updatedBaseline] = await Promise.all([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
+        ])
         setNetworkMetrics(updatedWhatif)
+        setBaselineMetrics(updatedBaseline)
       } catch (kpiErr) {
         console.warn('Error al actualizar KPIs What-If tras generar plan:', kpiErr)
       }
@@ -192,12 +225,13 @@ export default function Optimization() {
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           whatif={true}
+          baseline={plan ? baselineMetrics : null}
         />
 
         {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}
         <RedistributionImpactPanel
           plan={plan}
-          baselineMetrics={baselineMetrics}
+          comparison={comparison}
           loading={generating}
         />
 
@@ -237,7 +271,7 @@ export default function Optimization() {
         {/* Hero Map Full-Width con Panel de Control Flotante Superpuesto y Tarjeta de Impacto */}
         <div className="space-y-6">
           <Card
-            ref={mapContainerRef}
+            id="optimization-map"
             className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative"
           >
             <CardContent className="h-full w-full p-0 overflow-hidden relative">
@@ -253,7 +287,7 @@ export default function Optimization() {
                 <MoveImpactCard
                   move={selectedMove}
                   onClose={() => setHighlightedMoveId(null)}
-                  className="sm:top-4 sm:left-4 sm:right-auto z-[1002]"
+                  className="sm:top-4 sm:left-4 sm:right-auto"
                 />
               )}
 
@@ -699,7 +733,8 @@ export default function Optimization() {
                                 const nextId = isSelected ? null : m.container_id
                                 setHighlightedMoveId(nextId)
                                 if (nextId != null) {
-                                  mapContainerRef.current?.scrollIntoView({
+                                  // Card no reenvía refs: se busca por id, como la tabla.
+                                  document.getElementById('optimization-map')?.scrollIntoView({
                                     behavior: 'smooth',
                                     block: 'center',
                                   })

@@ -8,6 +8,7 @@ import {
   activateWhatIfPlan,
   deactivateWhatIfPlan,
   fetchWhatIfComparison,
+  fetchActiveWhatIfPlan,
 } from '../../pages/Optimization/services/optimizationApi'
 
 const mockMetrics: OptimizationMetricsResponse = {
@@ -131,17 +132,25 @@ describe('Optimization Module Tests', () => {
     const mockComparison = {
       plan_id: 10,
       plan_status: 'active_whatif',
-      real_global_avg: 62.5,
-      optimized_global_avg: 48.0,
-      total_sites_improved: 4,
-      total_sites_worsened: 1,
-      sites: [],
+      dispersion: { real: 30, with_plan: 22.5 },
+      observed_hours: 334,
+      avg_critical_sites: { real: 1587, with_plan: 1275 },
+      avg_full_containers: { real: 1384, with_plan: 1258 },
+      full_container_hours: { real: 468723, with_plan: 426880 },
+      critical_sites_now: { real: 1610, with_plan: 1290 },
+      full_containers_now: { real: 1402, with_plan: 1270 },
     }
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(mockComparison))
 
     const res = await fetchWhatIfComparison(10)
     expect(res.plan_id).toBe(10)
-    expect(res.real_global_avg).toBe(62.5)
-    expect(res.optimized_global_avg).toBe(48.0)
+    expect(res.avg_critical_sites).toEqual({ real: 1587, with_plan: 1275 })
+    expect(res.observed_hours).toBe(334)
+  })
+
+  it('fetchActiveWhatIfPlan returns null when there is no active plan', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(null))
+
+    expect(await fetchActiveWhatIfPlan()).toBeNull()
   })
 })

@@ -5,7 +5,7 @@ import { categoryRangeLabel } from '@/common/KpiPanel/KpiDistributionBar'
 import { DEFAULT_LEVEL_THRESHOLDS } from '@/context/CityConfigContext'
 import type { NetworkMetricsData } from '@/common/KpiPanel/types'
 import { RedistributionImpactPanel } from '@/pages/Optimization/components/RedistributionImpactPanel'
-import type { RedistributionPlan } from '@/pages/Optimization/types'
+import type { RedistributionPlan, WhatIfComparisonResponse } from '@/pages/Optimization/types'
 
 const mockMetrics: NetworkMetricsData = {
   total_sites: 120,
@@ -123,6 +123,24 @@ describe('NetworkKpiPanel Component Tests', () => {
     }
   })
 
+  it('shows the critical sites without the plan when it gets the real network', () => {
+    render(
+      <NetworkKpiPanel
+        metrics={mockMetrics}
+        whatif={true}
+        baseline={{ ...mockMetrics, critical_count: 21 }}
+      />
+    )
+
+    expect(screen.getByText('sin el plan: 21')).toBeInTheDocument()
+  })
+
+  it('does not compare without the real network', () => {
+    render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
+
+    expect(screen.queryByText(/sin el plan/)).not.toBeInTheDocument()
+  })
+
   it('renders What-If badge and title when whatif prop is true', () => {
     render(<NetworkKpiPanel metrics={mockMetrics} whatif={true} />)
 
@@ -135,27 +153,42 @@ describe('NetworkKpiPanel Component Tests', () => {
 })
 
 describe('RedistributionImpactPanel Component Tests', () => {
-  it('renders baseline placeholder when plan is null', () => {
-    render(<RedistributionImpactPanel plan={null} baselineMetrics={mockMetrics} />)
+  it('renders the placeholder when there is no plan', () => {
+    render(<RedistributionImpactPanel plan={null} />)
 
-    expect(
-      screen.getByText('Impacto Proyectado de Redistribución (What-If)')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Impacto Proyectado de Redistribución (What-If)')).toBeInTheDocument()
   })
 
-  it('renders comparison metrics and moves summary when plan is provided', () => {
-    render(<RedistributionImpactPanel plan={mockPlan} baselineMetrics={mockMetrics} />)
+  it('shows the estimated dispersion right after generating the plan', () => {
+    render(<RedistributionImpactPanel plan={mockPlan} />)
 
-    expect(
-      screen.getByText(/Comparativa de Balanceo What-If/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText('Impacto del plan')).toBeInTheDocument()
+    expect(screen.getByText('±19.1')).toBeInTheDocument()
+    expect(screen.getByText('±12.8')).toBeInTheDocument()
+    expect(screen.getByText('-33 %')).toBeInTheDocument()
+    // Sin mediciones todavía, las tarjetas medidas lo dicen en lugar de mostrar ceros.
+    expect(screen.getAllByText('Todavía sin datos')).toHaveLength(2)
+    expect(screen.getAllByText('Desde la activación')).toHaveLength(2)
+  })
 
-    // std fill reduction
-    expect(screen.getByText('-33% dispersión')).toBeInTheDocument()
-    expect(screen.getByText('±12.8%')).toBeInTheDocument()
+  it('shows the measured averages since the activation', () => {
+    const comparison: WhatIfComparisonResponse = {
+      plan_id: 1,
+      plan_status: 'active_whatif',
+      dispersion: { real: 19.1, with_plan: 12.8 },
+      observed_hours: 334,
+      avg_critical_sites: { real: 1587, with_plan: 1275 },
+      avg_full_containers: { real: 1384, with_plan: 1258 },
+      full_container_hours: { real: 468723, with_plan: 426880 },
+      critical_sites_now: { real: 1610, with_plan: 1290 },
+      full_containers_now: { real: 1402, with_plan: 1270 },
+    }
+    render(<RedistributionImpactPanel plan={mockPlan} comparison={comparison} />)
 
-    // Moves summary
-    expect(screen.getByText('0.85 km')).toBeInTheDocument()
+    expect(screen.getAllByText('Desde la activación · 13 días')).toHaveLength(2)
+    expect(screen.getByText('-20 %')).toBeInTheDocument()
+    expect(screen.getByText('-9 %')).toBeInTheDocument()
+    expect(screen.queryByText('Todavía sin datos')).not.toBeInTheDocument()
   })
 })
 
