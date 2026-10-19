@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
 import { withRetry } from '@/lib/retry'
+import { singleFlight } from '@/lib/singleFlight'
 import type { NetworkMetricsData } from './types'
 
 interface UseNetworkKpisOptions {
@@ -21,14 +22,15 @@ export function useNetworkKpis({
   const [error, setError] = useState<string | null>(null)
   const isMountedRef = useRef(true)
 
-  const fetchMetrics = useCallback(async () => {
+  const fetchMetrics = useCallback(async (withRetries: boolean = true) => {
     if (!enabled || externalMetrics !== undefined) return
 
     setLoading(true)
     setError(null)
     try {
       const query = whatif ? '?whatif=true' : ''
-      const result = await withRetry(() => api.get<NetworkMetricsData>(`/map/kpis${query}`))
+      const load = () => api.get<NetworkMetricsData>(`/map/kpis${query}`)
+      const result = await (withRetries ? withRetry(load) : load())
       if (isMountedRef.current) {
         setData(result)
       }
@@ -52,11 +54,27 @@ export function useNetworkKpis({
     }
   }, [externalMetrics])
 
+  // Cargas de a una: la primera se reintenta (el backend puede estar despertándose);
+  // los refrescos no, y si llega otro mientras corre uno se hace uno solo más al terminar.
+  const fetchMetricsRef = useRef(fetchMetrics)
+  useEffect(() => {
+    fetchMetricsRef.current = fetchMetrics
+  }, [fetchMetrics])
+  const loadRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    let attempted = false
+    loadRef.current = singleFlight(async () => {
+      const firstLoad = !attempted
+      attempted = true
+      await fetchMetricsRef.current(firstLoad)
+    })
+  }, [])
+
   // Fetch cuando monta o cambia refreshTrigger
   useEffect(() => {
     isMountedRef.current = true
     if (externalMetrics === undefined) {
-      void fetchMetrics()
+      loadRef.current?.()
     }
     return () => {
       isMountedRef.current = false

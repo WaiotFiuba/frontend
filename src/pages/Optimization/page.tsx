@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/utils/ui/button'
@@ -15,6 +15,7 @@ import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import { withRetry } from '@/lib/retry'
+import { singleFlight } from '@/lib/singleFlight'
 import { useThrottledValue } from '@/lib/useThrottledValue'
 import { useSimulationMapExtras } from '@/simulation/useSimulationMapExtras'
 import {
@@ -131,21 +132,28 @@ export default function Optimization() {
     }
   }, [config.window_days, metricsReload])
 
-  // Con lecturas nuevas se vuelven a pedir los KPI de la red, real y con el plan.
+  // Con lecturas nuevas se vuelven a pedir los KPI de la red, real y con el plan, de a
+  // un pedido: si llega otro aviso mientras corre uno, se hace uno solo más al terminar.
+  const refreshKpisRef = useRef<(() => void) | null>(null)
   useEffect(() => {
-    if (dataVersion === 0) return
     let isMounted = true
-    Promise.all([fetchNetworkKpis(true), fetchNetworkKpis(false)])
-      .then(([whatif, baseline]) => {
+    refreshKpisRef.current = singleFlight(async () => {
+      try {
+        const [whatif, baseline] = await Promise.all([fetchNetworkKpis(true), fetchNetworkKpis(false)])
         if (!isMounted) return
         setNetworkMetrics(whatif)
         setBaselineMetrics(baseline)
         setMetricsError(null)
-      })
-      .catch((err) => console.warn('Error al actualizar los KPI con las lecturas nuevas:', err))
+      } catch (err) {
+        console.warn('Error al actualizar los KPI con las lecturas nuevas:', err)
+      }
+    })
     return () => {
       isMounted = false
     }
+  }, [])
+  useEffect(() => {
+    if (dataVersion > 0) refreshKpisRef.current?.()
   }, [dataVersion])
 
   // Comparación con la red real: se pide al cambiar el plan activo y se vuelve a pedir
