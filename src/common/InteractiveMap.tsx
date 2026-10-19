@@ -383,8 +383,12 @@ export default function InteractiveMap({
     useEffect(() => {
         onDataChangeRef.current = onDataChange
     }, [onDataChange])
+    // Última versión de datos atendida: este efecto también corre cuando cambia
+    // fetchForBounds (filtro de residuos, umbrales, what-if), y eso no son lecturas nuevas.
+    const handledDataVersionRef = useRef(0)
     useEffect(() => {
-        if (dataChanges.version === 0 || !mapRef.current) return
+        if (dataChanges.version === handledDataVersionRef.current || !mapRef.current) return
+        handledDataVersionRef.current = dataChanges.version
         const map = mapRef.current
         const bounds = map.getBounds()
         const sw = bounds.getSouthWest()
