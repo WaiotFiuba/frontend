@@ -20,11 +20,11 @@ import MapVisual from "./MapVisual"
 import { asUtc, latest, useDataChanges } from "./useDataChanges"
 import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
-import { api } from '@/lib/api'
 import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
-import { useLevelThresholds } from '@/context/CityConfigContext'
+import { useCityConfig, useLevelThresholds } from '@/context/CityConfigContext'
+import type { MapConfigResponse } from '@/context/CityConfigContext'
 import { Button } from "@/utils/ui/button"
 import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
@@ -122,12 +122,13 @@ function MapMoveFocusController({
     return null
 }
 
-interface MapConfigResponse {
-    city_name: string
-    center: { lat: number; lng: number }
-    default_zoom: number
-    bounds: [[number, number], [number, number]] | null
-    available_waste_types?: string[]
+// Si la configuración de la ciudad no llega (ni con los reintentos), el mapa
+// arranca centrado en un lugar por defecto.
+const FALLBACK_MAP_CONFIG: MapConfigResponse = {
+    city_name: 'Default',
+    center: { lat: -34.6037, lng: -58.3816 },
+    default_zoom: 13,
+    bounds: null,
 }
 
 function MapConfigController({
@@ -460,39 +461,11 @@ export default function InteractiveMap({
         [redistributionMoves, highlightedMoveId]
     )
 
-    const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
-    const [configLoading, setConfigLoading] = useState(true)
+    // La configuración de la ciudad la carga (y la reintenta) el contexto global.
+    const { config: cityConfig, isLoading: configLoading } = useCityConfig()
+    const mapConfig = cityConfig ?? (configLoading ? null : FALLBACK_MAP_CONFIG)
 
-    useEffect(() => {
-        let cancelled = false
-        api.get<MapConfigResponse>('/map/config')
-            .then((data) => {
-                if (!cancelled && data) {
-                    setMapConfig(data)
-                }
-            })
-            .catch((err) => {
-                console.error('Failed to load map config:', err)
-                if (!cancelled) {
-                    setMapConfig({
-                        city_name: 'Default',
-                        center: { lat: -34.6037, lng: -58.3816 },
-                        default_zoom: 13,
-                        bounds: null,
-                    })
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setConfigLoading(false)
-                }
-            })
-        return () => {
-            cancelled = true
-        }
-    }, [])
-
-    if (configLoading || !mapConfig) {
+    if (!mapConfig) {
         return (
             <div className="h-full w-full flex items-center justify-center bg-slate-50">
                 <div className="flex flex-col items-center gap-3">

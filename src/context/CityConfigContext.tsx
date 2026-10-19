@@ -25,6 +25,7 @@ export interface MapConfigResponse {
     bounds: [[number, number], [number, number]] | null
     thresholds?: LevelThresholds
     is_loaded?: boolean
+    available_waste_types?: string[]
 }
 
 interface CityConfigContextType {
