@@ -146,7 +146,6 @@ export type BackendSiteHistoryPoint = {
 
 export type BackendSiteHistory = {
     site_id: number
-    simulation_id?: number | null
     window_start?: string | null
     window_end?: string | null
     points: BackendSiteHistoryPoint[]
