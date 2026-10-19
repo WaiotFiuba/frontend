@@ -350,9 +350,11 @@ export default function Optimization() {
 
         {/* Hero Map Full-Width con Panel de Control Flotante Superpuesto y Tarjeta de Impacto */}
         <div className="space-y-6">
+          {/* isolate: Leaflet y los paneles del mapa (z-index hasta 1000) quedan contenidos acá
+              y no tapan los diálogos de la página. */}
           <Card
             id="optimization-map"
-            className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative"
+            className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative isolate"
           >
             <CardContent className="h-full w-full p-0 overflow-hidden relative">
               <InteractiveMap
