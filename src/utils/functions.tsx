@@ -197,8 +197,10 @@ export const fetchSitesBBox = async (
             }
         })
     } catch (error) {
+        // Se propaga: el mapa conserva los sitios que ya tenía. Devolver una lista
+        // vacía lo dejaría sin pines hasta la próxima carga.
         console.warn('Error obteniendo sitios:', error)
-        return []
+        throw error
     }
 }
 
