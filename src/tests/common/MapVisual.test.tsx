@@ -12,7 +12,6 @@ describe('MapVisual', () => {
         render(
             <MapVisual
                 fullContainersCount={5}
-                simulatedClock="14:30"
                 currentZoom={14}
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
@@ -26,8 +25,7 @@ describe('MapVisual', () => {
 
         expect(screen.getByText(/Al 100%/i)).toBeInTheDocument()
         expect(screen.getByText('5')).toBeInTheDocument()
-        expect(screen.getByText(/Reloj de Simulación/i)).toBeInTheDocument()
-        expect(screen.getByText('14:30')).toBeInTheDocument()
+        expect(screen.queryByText(/Reloj de Simulación/i)).not.toBeInTheDocument()
 
         // Waste filter buttons
         fireEvent.click(screen.getByRole('button', { name: /Húmedos/i }))
@@ -47,7 +45,6 @@ describe('MapVisual', () => {
         render(
             <MapVisual
                 fullContainersCount={0}
-                simulatedClock="12:00"
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
                 zoneProfilesVisible={false}

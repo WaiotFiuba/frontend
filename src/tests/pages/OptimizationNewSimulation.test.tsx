@@ -1,14 +1,14 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import Optimization from '@/pages/Optimization/page'
 
-// El mapa real consulta la simulación activa; acá un botón simula que arranca otra.
-let nextSimulationId = 1
+// El mapa real avisa cuando llegan lecturas nuevas (también cuando arranca otra
+// simulación, que reinicia los niveles); acá lo simula un botón.
 vi.mock('@/common/InteractiveMap', () => ({
-  default: ({ onActiveSimulationChange }: { onActiveSimulationChange?: (id: number) => void }) => (
-    <button type="button" onClick={() => onActiveSimulationChange?.(nextSimulationId++)}>
+  default: ({ onDataChange }: { onDataChange?: () => void }) => (
+    <button type="button" onClick={() => onDataChange?.()}>
       nueva simulación
     </button>
   ),
@@ -40,6 +40,11 @@ const activePlan = {
 describe('What-if refresh when a new simulation starts', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('asks again for the network KPIs and the comparison', async () => {
@@ -68,7 +73,9 @@ describe('What-if refresh when a new simulation starts', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'nueva simulación' }))
 
+    // Los KPI se piden enseguida; la comparación, dentro de los 15 s siguientes.
+    await waitFor(() => expect(calls.kpis).toBe(before.kpis + 2))
+    await vi.advanceTimersByTimeAsync(15_000)
     await waitFor(() => expect(calls.comparison).toBe(before.comparison + 1))
-    expect(calls.kpis).toBe(before.kpis + 2)
   })
 })

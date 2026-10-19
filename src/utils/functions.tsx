@@ -193,6 +193,7 @@ export const fetchSitesBBox = async (
                 containerCount: (s.container_count as number | undefined) ?? siteContainers.length,
                 containers: containers,
                 isCluster: false,
+                lastReading: (s.last_reading as string | null | undefined) ?? null,
             }
         })
     } catch (error) {

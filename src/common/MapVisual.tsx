@@ -7,7 +7,6 @@ import {
     TooltipTrigger,
 } from "@/utils/ui/tooltip"
 import {
-    Clock,
     Layers,
     Trash2,
     Recycle,
@@ -19,7 +18,6 @@ import type { MapWasteFilter } from "@/utils/types"
 export interface MapVisualProps {
     fullContainersCount: number
     showFullContainersCount?: boolean
-    simulatedClock: string
     currentZoom?: number
     wasteFilter: MapWasteFilter
     onWasteFilterChange: (filter: MapWasteFilter) => void
@@ -35,7 +33,6 @@ export interface MapVisualProps {
 export default function MapVisual({
     fullContainersCount,
     showFullContainersCount = true,
-    simulatedClock,
     wasteFilter,
     onWasteFilterChange,
     zoneProfilesVisible,
@@ -79,17 +76,6 @@ export default function MapVisual({
                     </span>
                 </div>
             </div>}
-
-            {/* Reloj de tiempo simulado */}
-            <div className="rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-sm shadow-md backdrop-blur">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                    <Clock className="w-2.5 h-2.5 text-sky-600" />
-                    {t('map.simulated_clock')}
-                </p>
-                <p className="font-semibold text-slate-900 leading-tight">
-                    {simulatedClock}
-                </p>
-            </div>
 
             {/* Controles de perfiles de zona */}
             <ZoneProfilesControls

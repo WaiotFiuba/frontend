@@ -15,6 +15,7 @@ import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import { withRetry } from '@/lib/retry'
+import { useThrottledValue } from '@/lib/useThrottledValue'
 import {
   generateOptimizationPlan,
   deactivateWhatIfPlan,
@@ -86,8 +87,9 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
-  // Id de la simulación activa, que avisa el mapa: al cambiar, el backend reinició el what-if.
-  const [simulationId, setSimulationId] = useState<number | null>(null)
+  // Sube cada vez que el mapa avisa que llegaron lecturas nuevas (también cuando
+  // arranca otra simulación, que reinicia los niveles y el what-if).
+  const [dataVersion, setDataVersion] = useState<number>(0)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
@@ -127,55 +129,49 @@ export default function Optimization() {
     }
   }, [config.window_days, metricsReload])
 
-  // Al arrancar otra simulación se vuelven a pedir los KPI de la red, real y con el plan.
-  // La primera vez coincide con la carga inicial.
+  // Con lecturas nuevas se vuelven a pedir los KPI de la red, real y con el plan.
   useEffect(() => {
-    if (simulationId == null) return
+    if (dataVersion === 0) return
     let isMounted = true
     Promise.all([fetchNetworkKpis(true), fetchNetworkKpis(false)])
       .then(([whatif, baseline]) => {
         if (!isMounted) return
         setNetworkMetrics(whatif)
         setBaselineMetrics(baseline)
+        setMetricsError(null)
       })
-      .catch((err) => console.warn('Error al actualizar los KPI por la nueva simulación:', err))
+      .catch((err) => console.warn('Error al actualizar los KPI con las lecturas nuevas:', err))
     return () => {
       isMounted = false
     }
-  }, [simulationId])
+  }, [dataVersion])
 
-  // Comparación con la red real: se pide al cambiar el plan activo o la simulación, y se
-  // repite mientras siga activo, porque los promedios se acumulan con cada lote de lecturas.
+  // Comparación con la red real: se pide al cambiar el plan activo y se vuelve a pedir
+  // cuando llegan lecturas nuevas, porque sus promedios se acumulan con cada lote (como
+  // mucho una vez cada COMPARISON_REFRESH_MS).
   const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
+  const comparisonVersion = useThrottledValue(dataVersion, COMPARISON_REFRESH_MS)
   useEffect(() => {
-    let isMounted = true
     setComparison(null)
     setComparisonError(null)
+  }, [activePlanId])
+  useEffect(() => {
+    let isMounted = true
     if (activePlanId == null) return
-    // La primera carga se reintenta y, si falla igual, se avisa; las siguientes
-    // mantienen el último valor si fallan.
     withRetry(() => fetchWhatIfComparison(activePlanId))
       .then((result) => {
-        if (isMounted) setComparison(result)
+        if (!isMounted) return
+        setComparison(result)
+        setComparisonError(null)
       })
       .catch((err) => {
         console.warn('Error al cargar la comparación del plan:', err)
         if (isMounted) setComparisonError(err instanceof Error ? err.message : String(err))
       })
-    const intervalId = window.setInterval(() => {
-      fetchWhatIfComparison(activePlanId)
-        .then((result) => {
-          if (!isMounted) return
-          setComparison(result)
-          setComparisonError(null)
-        })
-        .catch((err) => console.warn('Error al actualizar la comparación del plan:', err))
-    }, COMPARISON_REFRESH_MS)
     return () => {
       isMounted = false
-      window.clearInterval(intervalId)
     }
-  }, [activePlanId, simulationId, comparisonReload])
+  }, [activePlanId, comparisonReload, comparisonVersion])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -381,7 +377,7 @@ export default function Optimization() {
                 redistributionMoves={plan?.moves}
                 highlightedMoveId={highlightedMoveId}
                 isPlayground
-                onActiveSimulationChange={setSimulationId}
+                onDataChange={() => setDataVersion((n) => n + 1)}
               />
 
               {/* Tarjeta flotante de impacto de descongestión */}
