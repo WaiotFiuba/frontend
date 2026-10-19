@@ -14,6 +14,7 @@ import {
 } from './services/optimizationApi'
 import type {
   OptimizationConfig,
+  RedistributionMove,
   RedistributionPlan,
   OptimizationMetricsResponse,
   WhatIfComparisonResponse,
@@ -158,15 +159,22 @@ export default function Optimization() {
     }
   }
 
+  const planIsOverload = plan?.config.algorithm === 'overload' || plan?.config.algorithm === 'overload_mip'
+  // overload_reduction viene en horas de la ventana del plan (28 días si no se eligió otra).
+  const planWeeks = (plan?.config.window_days ?? 28) / 7
+  const overloadPerWeek = (m: RedistributionMove) =>
+    m.overload_reduction != null ? Math.round((m.overload_reduction / planWeeks) * 10) / 10 : null
+
   const handleExportCsv = () => {
     if (!plan?.moves.length) return
-    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', 'Descongestión Neta %']
+    const impactHeader = planIsOverload ? 'Sobrecarga Evitada h/sem' : 'Descongestión Neta %'
+    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', impactHeader]
     const rows = plan.moves.map((m) => [
       m.container_id,
       `"${m.from_site_name.replace(/"/g, '""')}"`,
       `"${m.to_site_name.replace(/"/g, '""')}"`,
       m.distance_km,
-      m.net_decongestion_pct ?? '',
+      (planIsOverload ? overloadPerWeek(m) : m.net_decongestion_pct) ?? '',
     ])
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -706,7 +714,9 @@ export default function Optimization() {
                       <th className="p-3 text-center"></th>
                       <th className="p-3">{t('optimization.th_receiver_site')}</th>
                       <th className="p-3 text-right">{t('optimization.th_distance')}</th>
-                      <th className="p-3 text-center">{t('optimization.th_net_decongestion')}</th>
+                      <th className="p-3 text-center">
+                        {planIsOverload ? t('optimization.th_overload_reduction') : t('optimization.th_net_decongestion')}
+                      </th>
                       <th className="p-3 text-center">{t('optimization.th_action')}</th>
                     </tr>
                   </thead>
@@ -752,13 +762,24 @@ export default function Optimization() {
                             </div>
                           </td>
                           <td className="p-3 text-center whitespace-nowrap">
-                            {m.net_decongestion_pct != null ? (
+                            {planIsOverload ? (
+                              overloadPerWeek(m) != null ? (
+                                <span
+                                  className="text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_after ?? '?'}%`}
+                                >
+                                  {overloadPerWeek(m)} {t('optimization.move_cost_unit')}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">-</span>
+                              )
+                            ) : m.net_decongestion_pct != null ? (
                               <span
                                 className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${m.net_decongestion_pct < 0
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : 'bg-sky-50 text-sky-700 border-sky-200'
                                   }`}
-                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_before ?? '?'}%`}
+                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_after ?? '?'}%`}
                               >
                                 {m.net_decongestion_pct > 0
                                   ? `+${m.net_decongestion_pct}%`

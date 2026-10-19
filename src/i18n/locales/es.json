@@ -243,6 +243,7 @@
     "th_receiver_site": "Sitio Receptor (Destino)",
     "th_distance": "Distancia",
     "th_net_decongestion": "Descongestión Neta",
+    "th_overload_reduction": "Sobrecarga Evitada",
     "th_action": "Acción",
     "view_on_map": "Ver en mapa",
     "selected_move": "Traslado Seleccionado",
