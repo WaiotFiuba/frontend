@@ -30,6 +30,7 @@ import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
 
 interface ActiveSimulation {
+    id: number
     status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
     simulated_time: string | null
 }
@@ -223,6 +224,8 @@ interface InteractiveMapProps {
     redistributionMoves?: MapRedistributionMove[]
     highlightedMoveId?: number | null
     isPlayground?: boolean
+    // Se llama con el id de la simulación activa cada vez que arranca otra.
+    onActiveSimulationChange?: (simulationId: number) => void
 }
 
 export default function InteractiveMap({
@@ -230,6 +233,7 @@ export default function InteractiveMap({
     redistributionMoves,
     highlightedMoveId,
     isPlayground = false,
+    onActiveSimulationChange,
 }: InteractiveMapProps) {
     const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
@@ -396,6 +400,11 @@ export default function InteractiveMap({
             window.clearInterval(intervalId)
         }
     }, [])
+
+    const activeSimulationId = activeSimulation?.id ?? null
+    useEffect(() => {
+        if (activeSimulationId != null) onActiveSimulationChange?.(activeSimulationId)
+    }, [activeSimulationId, onActiveSimulationChange])
 
     const simDebounceRef = useRef<number | null>(null)
     // Refrescar automáticamente los contenedores visibles cuando avanza la simulación con debounce

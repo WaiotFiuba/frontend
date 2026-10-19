@@ -6,9 +6,11 @@ export interface OptimizationConfig {
   min_utilization_donor: number
   min_utilization_receiver: number
   target_utilization: number
-  // 'greedy' y 'lp': modelo por score. 'overload': modelo de sobrecarga.
-  algorithm: 'greedy' | 'lp' | 'overload'
+  // 'greedy' y 'lp': modelo por score. 'overload' (greedy) y 'overload_mip': modelo de sobrecarga.
+  algorithm: 'greedy' | 'lp' | 'overload' | 'overload_mip'
   apply_capacity_constraints?: boolean
+  // Solo modelo de sobrecarga: horas por semana que tiene que ahorrar un movimiento.
+  move_cost_hours_per_week?: number
 }
 
 export interface SiteUtilizationMetric {
