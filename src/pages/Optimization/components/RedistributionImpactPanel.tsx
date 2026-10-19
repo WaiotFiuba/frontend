@@ -6,6 +6,9 @@ interface RedistributionImpactPanelProps {
   plan: RedistributionPlan | null
   // Comparación medida desde la activación del plan (null mientras no llega).
   comparison?: WhatIfComparisonResponse | null
+  // Error al cargar la comparación, y cómo volver a pedirla.
+  comparisonError?: string | null
+  onRetryComparison?: () => void
   loading?: boolean
   className?: string
 }
@@ -75,6 +78,8 @@ function ImpactCard({ title, tag, measured, measure, format, caption }: ImpactCa
 export function RedistributionImpactPanel({
   plan,
   comparison = null,
+  comparisonError = null,
+  onRetryComparison,
   loading = false,
   className = '',
 }: RedistributionImpactPanelProps) {
@@ -134,6 +139,23 @@ export function RedistributionImpactPanel({
         <h3 className="font-bold text-slate-900 text-sm">{t('optimization.impact_title')}</h3>
         <p className="text-[11px] text-slate-500">{t('optimization.impact_subtitle')}</p>
       </div>
+      {comparisonError && (
+        <div
+          role="alert"
+          className="bg-rose-50/70 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs flex items-center justify-between gap-3"
+        >
+          <span>{t('optimization.impact_comparison_error', { error: comparisonError })}</span>
+          {onRetryComparison && (
+            <button
+              type="button"
+              onClick={onRetryComparison}
+              className="shrink-0 rounded-md border border-rose-300 bg-white px-2.5 py-1 font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer"
+            >
+              {t('common.retry')}
+            </button>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ImpactCard
           title={t('optimization.impact_dispersion')}

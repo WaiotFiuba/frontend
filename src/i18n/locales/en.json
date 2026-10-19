@@ -274,6 +274,7 @@
     "impact_avg_full": "Containers at 100 %, on average",
     "impact_without_with": "without the plan → with the plan",
     "impact_no_data": "No data yet",
+    "impact_comparison_error": "Could not load what was measured since activation: {{error}}",
     "impact_no_data_caption": "Measured as readings arrive with the plan active.",
     "period_days_one": "{{count}} day",
     "period_days_other": "{{count}} days",

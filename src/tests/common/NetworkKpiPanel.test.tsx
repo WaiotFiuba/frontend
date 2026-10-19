@@ -199,6 +199,19 @@ describe('RedistributionImpactPanel Component Tests', () => {
     expect(screen.getByText('-9 %')).toBeInTheDocument()
     expect(screen.queryByText('Todavía sin datos')).not.toBeInTheDocument()
   })
+
+  it('shows the comparison load error with a retry button', () => {
+    const onRetry = vi.fn()
+    render(
+      <RedistributionImpactPanel plan={mockPlan} comparisonError="Bad Gateway" onRetryComparison={onRetry} />
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'No se pudo cargar lo medido desde la activación: Bad Gateway'
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('categoryRangeLabel', () => {

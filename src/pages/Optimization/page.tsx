@@ -74,6 +74,8 @@ export default function Optimization() {
   const [confirmingDeactivate, setConfirmingDeactivate] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [comparison, setComparison] = useState<WhatIfComparisonResponse | null>(null)
+  const [comparisonError, setComparisonError] = useState<string | null>(null)
+  const [comparisonReload, setComparisonReload] = useState<number>(0)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
@@ -148,20 +150,32 @@ export default function Optimization() {
   useEffect(() => {
     let isMounted = true
     setComparison(null)
+    setComparisonError(null)
     if (activePlanId == null) return
-    const loadComparison = () =>
+    // La primera carga se reintenta y, si falla igual, se avisa; las siguientes
+    // mantienen el último valor si fallan.
+    withRetry(() => fetchWhatIfComparison(activePlanId))
+      .then((result) => {
+        if (isMounted) setComparison(result)
+      })
+      .catch((err) => {
+        console.warn('Error al cargar la comparación del plan:', err)
+        if (isMounted) setComparisonError(err instanceof Error ? err.message : String(err))
+      })
+    const intervalId = window.setInterval(() => {
       fetchWhatIfComparison(activePlanId)
         .then((result) => {
-          if (isMounted) setComparison(result)
+          if (!isMounted) return
+          setComparison(result)
+          setComparisonError(null)
         })
-        .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
-    loadComparison()
-    const intervalId = window.setInterval(loadComparison, COMPARISON_REFRESH_MS)
+        .catch((err) => console.warn('Error al actualizar la comparación del plan:', err))
+    }, COMPARISON_REFRESH_MS)
     return () => {
       isMounted = false
       window.clearInterval(intervalId)
     }
-  }, [activePlanId, simulationId])
+  }, [activePlanId, simulationId, comparisonReload])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -315,6 +329,8 @@ export default function Optimization() {
         <RedistributionImpactPanel
           plan={plan}
           comparison={comparison}
+          comparisonError={comparisonError}
+          onRetryComparison={() => setComparisonReload((n) => n + 1)}
           loading={generating}
         />
 

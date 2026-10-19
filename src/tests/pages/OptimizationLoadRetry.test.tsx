@@ -39,12 +39,50 @@ const badGateway = () =>
     text: async () => 'Bad Gateway',
   }) as Response
 
-// Respuestas por ruta; `kpis` decide cada respuesta de /map/kpis.
-const mockBackend = (kpis: () => Response) =>
+const activePlan = {
+  id: 7,
+  status: 'active_whatif',
+  config: {
+    max_distance_km: 2.0,
+    window_days: null,
+    algorithm: 'greedy',
+    min_utilization_donor: 0.35,
+    min_utilization_receiver: 0.65,
+    target_utilization: 0.5,
+    apply_capacity_constraints: true,
+  },
+  moves: [],
+  total_containers_moved: 0,
+  sites_emptied: 0,
+  sites_receiving: 0,
+  sites_donating: 0,
+  avg_distance_km: 0,
+  expected_improvement: 0,
+  created_at: '2026-10-01T12:00:00Z',
+  original_std_fill: 19.1,
+  optimized_std_fill: 12.8,
+}
+
+const comparison = {
+  plan_id: 7,
+  plan_status: 'active_whatif',
+  dispersion: { real: 19.1, with_plan: 12.8 },
+  observed_hours: 48,
+  avg_critical_sites: { real: 1500, with_plan: 1200 },
+  avg_full_containers: { real: 1000, with_plan: 900 },
+  full_container_hours: null,
+  critical_sites_now: null,
+  full_containers_now: null,
+}
+
+// Respuestas por ruta: `kpis` decide cada respuesta de /map/kpis y `compare`
+// las de la comparación del plan activo (sin `compare`, no hay plan activo).
+const mockBackend = (kpis: () => Response, compare?: () => Response) =>
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
     if (url.includes('/map/kpis')) return kpis()
-    if (url.includes('/map/optimization/plan/active')) return json(null)
+    if (url.includes('/map/optimization/plan/active')) return json(compare ? activePlan : null)
+    if (compare && url.includes('/comparison')) return compare()
     return json({})
   })
 
@@ -92,5 +130,38 @@ describe('Optimization page loads', () => {
 
     expect(await screen.findByText('Métricas de la Red (What-If)')).toBeInTheDocument()
     expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+
+  it('shows the plan comparison when the first load fails and a retry works', async () => {
+    let calls = 0
+    mockBackend(
+      () => json(metrics),
+      () => (++calls === 1 ? badGateway() : json(comparison))
+    )
+
+    renderPage()
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(await screen.findByText('-20 %')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows the comparison error with a retry button when every attempt fails', async () => {
+    let failing = true
+    mockBackend(
+      () => json(metrics),
+      () => (failing ? badGateway() : json(comparison))
+    )
+
+    renderPage()
+    await vi.advanceTimersByTimeAsync(11000)
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('No se pudo cargar lo medido desde la activación')
+
+    failing = false
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByText('-20 %')).toBeInTheDocument()
   })
 })
