@@ -387,38 +387,41 @@ export default function SiteDetail() {
     }
   }, [siteId])
 
+  // Historial y proyeccion se piden de nuevo con cada lectura nueva del sitio.
+  const siteReady = site !== null
+  const lastReading = site?.last_reading ?? null
+
   useEffect(() => {
-    let cancelled = false
-    let timeoutId: number
     setProjection(null)
+  }, [selectedModel])
 
-    const fetchChart = async () => {
-      if (!siteId) return
-      try {
-        const [historyData, projectionData] = await Promise.all([
-          api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`).catch(() => null),
-          api.get<BackendSiteProjection>(
-            `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60`
-          ).catch(() => null),
-        ])
-        if (!cancelled) {
-          if (historyData) setHistory(historyData)
-          setProjection(projectionData)
-        }
-      } finally {
-        if (!cancelled) {
-          timeoutId = window.setTimeout(() => void fetchChart(), 30000)
-        }
-      }
-    }
-
-    void fetchChart()
-
+  useEffect(() => {
+    if (!siteReady) return
+    let cancelled = false
+    api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`)
+      .then((historyData) => {
+        if (!cancelled) setHistory(historyData)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
-      window.clearTimeout(timeoutId)
     }
-  }, [siteId, selectedModel])
+  }, [siteId, siteReady, lastReading])
+
+  useEffect(() => {
+    if (!siteReady) return
+    let cancelled = false
+    api.get<BackendSiteProjection>(
+      `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60`
+    )
+      .then((projectionData) => {
+        if (!cancelled) setProjection(projectionData)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [siteId, siteReady, selectedModel, lastReading])
 
   if (loading) {
     return (
