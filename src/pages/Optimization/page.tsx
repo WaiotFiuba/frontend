@@ -31,6 +31,7 @@ import type {
 import { NetworkKpiPanel, type UtilizationCategory } from '@/common/KpiPanel'
 import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
+import { HelpButton } from '@/documentation'
 import {
   AlertCircle,
   AlertTriangle,
@@ -279,6 +280,7 @@ export default function Optimization() {
             </div>
           </div>
           <div className="flex items-center gap-2.5">
+            <HelpButton sectionId="optimization" className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-xs cursor-pointer" />
             <Button
               variant="outline"
               onClick={() => navigate('/map')}
@@ -286,14 +288,6 @@ export default function Optimization() {
             >
               <MapPin className="w-4 h-4 text-sky-600" />
               {t('management.go_to_map')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {t('common.back_to_home')}
             </Button>
           </div>
         </div>
