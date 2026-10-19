@@ -68,6 +68,8 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
+  // Id de la simulación activa, que avisa el mapa: al cambiar, el backend reinició el what-if.
+  const [simulationId, setSimulationId] = useState<number | null>(null)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
@@ -109,8 +111,25 @@ export default function Optimization() {
     }
   }, [config.window_days])
 
-  // Comparación con la red real: se pide al cambiar el plan activo y se repite
-  // mientras siga activo, porque los promedios se acumulan con cada lote de lecturas.
+  // Al arrancar otra simulación se vuelven a pedir los KPI de la red, real y con el plan.
+  // La primera vez coincide con la carga inicial.
+  useEffect(() => {
+    if (simulationId == null) return
+    let isMounted = true
+    Promise.all([fetchNetworkKpis(true), fetchNetworkKpis(false)])
+      .then(([whatif, baseline]) => {
+        if (!isMounted) return
+        setNetworkMetrics(whatif)
+        setBaselineMetrics(baseline)
+      })
+      .catch((err) => console.warn('Error al actualizar los KPI por la nueva simulación:', err))
+    return () => {
+      isMounted = false
+    }
+  }, [simulationId])
+
+  // Comparación con la red real: se pide al cambiar el plan activo o la simulación, y se
+  // repite mientras siga activo, porque los promedios se acumulan con cada lote de lecturas.
   const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
   useEffect(() => {
     let isMounted = true
@@ -128,7 +147,7 @@ export default function Optimization() {
       isMounted = false
       window.clearInterval(intervalId)
     }
-  }, [activePlanId])
+  }, [activePlanId, simulationId])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -297,6 +316,7 @@ export default function Optimization() {
                 redistributionMoves={plan?.moves}
                 highlightedMoveId={highlightedMoveId}
                 isPlayground
+                onActiveSimulationChange={setSimulationId}
               />
 
               {/* Tarjeta flotante de impacto de descongestión */}
