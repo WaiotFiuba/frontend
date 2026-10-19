@@ -3,17 +3,27 @@ import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/utils/ui/button'
 import { Card, CardContent } from '@/utils/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/utils/ui/dialog'
 import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import {
   generateOptimizationPlan,
+  deactivateWhatIfPlan,
   fetchNetworkKpis,
   fetchActiveWhatIfPlan,
   fetchWhatIfComparison,
 } from './services/optimizationApi'
 import type {
   OptimizationConfig,
+  RedistributionMove,
   RedistributionPlan,
   OptimizationMetricsResponse,
   WhatIfComparisonResponse,
@@ -23,6 +33,7 @@ import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -31,7 +42,10 @@ import {
   MapPin,
   RotateCcw,
   Sliders,
+  XCircle,
 } from 'lucide-react'
+
+const COMPARISON_REFRESH_MS = 15_000
 
 export default function Optimization() {
   const navigate = useNavigate()
@@ -49,10 +63,14 @@ export default function Optimization() {
     min_utilization_receiver: 0.65,
     target_utilization: 0.5,
     apply_capacity_constraints: true,
+    move_cost_hours_per_week: 20,
   })
+  const isOverload = config.algorithm === 'overload' || config.algorithm === 'overload_mip'
 
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
+  const [deactivating, setDeactivating] = useState<boolean>(false)
+  const [confirmingDeactivate, setConfirmingDeactivate] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [comparison, setComparison] = useState<WhatIfComparisonResponse | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
@@ -63,6 +81,8 @@ export default function Optimization() {
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(true)
+  // Id de la simulación activa, que avisa el mapa: al cambiar, el backend reinició el what-if.
+  const [simulationId, setSimulationId] = useState<number | null>(null)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
 
@@ -104,21 +124,43 @@ export default function Optimization() {
     }
   }, [config.window_days])
 
-  // Comparación con la red real: se pide cada vez que cambia el plan activo.
+  // Al arrancar otra simulación se vuelven a pedir los KPI de la red, real y con el plan.
+  // La primera vez coincide con la carga inicial.
+  useEffect(() => {
+    if (simulationId == null) return
+    let isMounted = true
+    Promise.all([fetchNetworkKpis(true), fetchNetworkKpis(false)])
+      .then(([whatif, baseline]) => {
+        if (!isMounted) return
+        setNetworkMetrics(whatif)
+        setBaselineMetrics(baseline)
+      })
+      .catch((err) => console.warn('Error al actualizar los KPI por la nueva simulación:', err))
+    return () => {
+      isMounted = false
+    }
+  }, [simulationId])
+
+  // Comparación con la red real: se pide al cambiar el plan activo o la simulación, y se
+  // repite mientras siga activo, porque los promedios se acumulan con cada lote de lecturas.
   const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
   useEffect(() => {
     let isMounted = true
     setComparison(null)
     if (activePlanId == null) return
-    fetchWhatIfComparison(activePlanId)
-      .then((result) => {
-        if (isMounted) setComparison(result)
-      })
-      .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    const loadComparison = () =>
+      fetchWhatIfComparison(activePlanId)
+        .then((result) => {
+          if (isMounted) setComparison(result)
+        })
+        .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    loadComparison()
+    const intervalId = window.setInterval(loadComparison, COMPARISON_REFRESH_MS)
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
     }
-  }, [activePlanId])
+  }, [activePlanId, simulationId])
 
   const handleGeneratePlan = async () => {
     setGenerating(true)
@@ -156,15 +198,53 @@ export default function Optimization() {
     }
   }
 
+  // Saca el plan activo: el what-if vuelve a ser la red real y el mapa deja de mostrar los movimientos.
+  const handleDeactivatePlan = async () => {
+    if (!plan) return
+    setDeactivating(true)
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    try {
+      await deactivateWhatIfPlan(plan.id)
+      setPlan(null)
+      setHighlightedMoveId(null)
+      setRefreshTrigger((prev) => prev + 1)
+      try {
+        const [updatedWhatif, updatedBaseline] = await Promise.all([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
+        ])
+        setNetworkMetrics(updatedWhatif)
+        setBaselineMetrics(updatedBaseline)
+      } catch (kpiErr) {
+        console.warn('Error al actualizar KPIs tras desactivar el plan:', kpiErr)
+      }
+      setSuccessMsg(t('optimization.plan_deactivated'))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('optimization.deactivate_plan_error')
+      setErrorMsg(message)
+    } finally {
+      setDeactivating(false)
+      setConfirmingDeactivate(false)
+    }
+  }
+
+  const planIsOverload = plan?.config.algorithm === 'overload' || plan?.config.algorithm === 'overload_mip'
+  // overload_reduction viene en horas de la ventana del plan (28 días si no se eligió otra).
+  const planWeeks = (plan?.config.window_days ?? 28) / 7
+  const overloadPerWeek = (m: RedistributionMove) =>
+    m.overload_reduction != null ? Math.round((m.overload_reduction / planWeeks) * 10) / 10 : null
+
   const handleExportCsv = () => {
     if (!plan?.moves.length) return
-    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', 'Descongestión Neta %']
+    const impactHeader = planIsOverload ? 'Sobrecarga Evitada h/sem' : 'Descongestión Neta %'
+    const headers = ['Contenedor ID', 'Sitio Origen', 'Sitio Destino', 'Distancia KM', impactHeader]
     const rows = plan.moves.map((m) => [
       m.container_id,
       `"${m.from_site_name.replace(/"/g, '""')}"`,
       `"${m.to_site_name.replace(/"/g, '""')}"`,
       m.distance_km,
-      m.net_decongestion_pct ?? '',
+      (planIsOverload ? overloadPerWeek(m) : m.net_decongestion_pct) ?? '',
     ])
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -270,9 +350,11 @@ export default function Optimization() {
 
         {/* Hero Map Full-Width con Panel de Control Flotante Superpuesto y Tarjeta de Impacto */}
         <div className="space-y-6">
+          {/* isolate: Leaflet y los paneles del mapa (z-index hasta 1000) quedan contenidos acá
+              y no tapan los diálogos de la página. */}
           <Card
             id="optimization-map"
-            className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative"
+            className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative isolate"
           >
             <CardContent className="h-full w-full p-0 overflow-hidden relative">
               <InteractiveMap
@@ -280,6 +362,7 @@ export default function Optimization() {
                 redistributionMoves={plan?.moves}
                 highlightedMoveId={highlightedMoveId}
                 isPlayground
+                onActiveSimulationChange={setSimulationId}
               />
 
               {/* Tarjeta flotante de impacto de descongestión */}
@@ -372,7 +455,7 @@ export default function Optimization() {
                     <div className="space-y-2 pt-1 border-t border-slate-100">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">{t('optimization.algorithm')}</span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
@@ -403,6 +486,16 @@ export default function Optimization() {
                           >
                             {t('optimization.algo_overload')}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfig({ ...config, algorithm: 'overload_mip' })}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${config.algorithm === 'overload_mip'
+                              ? 'bg-purple-800 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                          >
+                            {t('optimization.algo_overload_mip')}
+                          </button>
                         </div>
                       </div>
 
@@ -430,10 +523,40 @@ export default function Optimization() {
                     </div>
 
                     {/* Umbrales de Score de Utilización: solo para el modelo por score */}
-                    {config.algorithm === 'overload' ? (
-                      <p className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                        {t('optimization.overload_hint')}
-                      </p>
+                    {isOverload ? (
+                      <div className="pt-2 border-t border-slate-100 space-y-3">
+                        <p className="text-[11px] text-slate-500">
+                          {t('optimization.overload_hint')}
+                          {config.algorithm === 'overload_mip' && ` ${t('optimization.overload_mip_hint')}`}
+                        </p>
+
+                        {/* Costo por movimiento (lambda) */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <label htmlFor="move-cost-input" className="font-semibold text-slate-700 text-[11px]">
+                              {t('optimization.move_cost')}
+                            </label>
+                            <span className="font-mono font-bold text-violet-950 px-2 py-0.5 rounded-md bg-violet-100 border border-violet-200 text-[11px]">
+                              {config.move_cost_hours_per_week ?? 20} {t('optimization.move_cost_unit')}
+                            </span>
+                          </div>
+                          <input
+                            id="move-cost-input"
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={config.move_cost_hours_per_week ?? 20}
+                            onChange={(e) =>
+                              setConfig({ ...config, move_cost_hours_per_week: Number(e.target.value) })
+                            }
+                            className="w-full accent-slate-400 cursor-pointer"
+                          />
+                          <span className="text-[11px] text-slate-500 block">
+                            {t('optimization.move_cost_hint')}
+                          </span>
+                        </div>
+                      </div>
                     ) : (
                       <div className="pt-2 border-t border-slate-100 space-y-3">
                         <span className="text-xs font-bold text-slate-700 block">
@@ -611,6 +734,18 @@ export default function Optimization() {
                     <Download className="h-3.5 w-3.5" />
                     {t('optimization.export_csv')}
                   </Button>
+                  {plan.status === 'active_whatif' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmingDeactivate(true)}
+                      disabled={deactivating}
+                      className="ml-3 text-xs gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50 cursor-pointer"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      {t('optimization.deactivate_plan')}
+                    </Button>
+                  )}
                   {highlightedMoveId && (
                     <Button
                       variant="ghost"
@@ -664,7 +799,9 @@ export default function Optimization() {
                       <th className="p-3 text-center"></th>
                       <th className="p-3">{t('optimization.th_receiver_site')}</th>
                       <th className="p-3 text-right">{t('optimization.th_distance')}</th>
-                      <th className="p-3 text-center">{t('optimization.th_net_decongestion')}</th>
+                      <th className="p-3 text-center">
+                        {planIsOverload ? t('optimization.th_overload_reduction') : t('optimization.th_net_decongestion')}
+                      </th>
                       <th className="p-3 text-center">{t('optimization.th_action')}</th>
                     </tr>
                   </thead>
@@ -710,13 +847,24 @@ export default function Optimization() {
                             </div>
                           </td>
                           <td className="p-3 text-center whitespace-nowrap">
-                            {m.net_decongestion_pct != null ? (
+                            {planIsOverload ? (
+                              overloadPerWeek(m) != null ? (
+                                <span
+                                  className="text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_after ?? '?'}%`}
+                                >
+                                  {overloadPerWeek(m)} {t('optimization.move_cost_unit')}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">-</span>
+                              )
+                            ) : m.net_decongestion_pct != null ? (
                               <span
                                 className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block ${m.net_decongestion_pct < 0
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : 'bg-sky-50 text-sky-700 border-sky-200'
                                   }`}
-                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_before ?? '?'}%`}
+                                title={`Receptor: ${m.receiver_fill_before ?? '?'}% → ${m.receiver_fill_after ?? '?'}% | Donante: ${m.donor_fill_before ?? '?'}% → ${m.donor_fill_after ?? '?'}%`}
                               >
                                 {m.net_decongestion_pct > 0
                                   ? `+${m.net_decongestion_pct}%`
@@ -758,6 +906,45 @@ export default function Optimization() {
           )}
         </div>
       </div>
+
+      {/* Confirmación para desactivar el plan (el botón está al lado de Exportar CSV). */}
+      <Dialog
+        open={confirmingDeactivate}
+        onOpenChange={(open) => !open && !deactivating && setConfirmingDeactivate(false)}
+      >
+        <DialogContent className="sm:max-w-md p-6 rounded-2xl">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <DialogHeader className="p-0">
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {t('optimization.deactivate_confirm_title')}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 leading-relaxed mt-1">
+                {t('optimization.deactivate_confirm_desc', { count: plan?.moves.length ?? 0 })}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingDeactivate(false)}
+              disabled={deactivating}
+              className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleDeactivatePlan}
+              disabled={deactivating}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-md cursor-pointer"
+            >
+              {deactivating ? t('optimization.deactivating_plan') : t('optimization.deactivate_plan')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

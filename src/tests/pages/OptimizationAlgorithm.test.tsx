@@ -24,9 +24,29 @@ describe('Optimization algorithm selector', () => {
 
     expect(screen.getByText('Donante (Subutilizado)')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sobrecarga' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sobrecarga greedy' }))
 
     expect(screen.queryByText('Donante (Subutilizado)')).not.toBeInTheDocument()
     expect(screen.getByText(/Minimiza las horas en zona crítica/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Costo por movimiento')).toHaveValue('20')
+  })
+
+  it('offers the overload MIP with its own hint and the move cost', () => {
+    render(
+      <MemoryRouter>
+        <Optimization />
+      </MemoryRouter>
+    )
+
+    expect(screen.queryByLabelText('Costo por movimiento')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sobrecarga MIP' }))
+
+    expect(screen.queryByText('Donante (Subutilizado)')).not.toBeInTheDocument()
+    expect(screen.getByText(/nunca hace relevos/)).toBeInTheDocument()
+    const moveCost = screen.getByLabelText('Costo por movimiento')
+    fireEvent.change(moveCost, { target: { value: '50' } })
+    expect(moveCost).toHaveValue('50')
+    expect(screen.getByText('50 h/sem')).toBeInTheDocument()
   })
 })
