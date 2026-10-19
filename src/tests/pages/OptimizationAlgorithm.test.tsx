@@ -24,7 +24,7 @@ describe('Optimization algorithm selector', () => {
 
     expect(screen.getByText('Donante (Subutilizado)')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sobrecarga' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sobrecarga greedy' }))
 
     expect(screen.queryByText('Donante (Subutilizado)')).not.toBeInTheDocument()
     expect(screen.getByText(/Minimiza las horas en zona crítica/)).toBeInTheDocument()
