@@ -49,7 +49,9 @@ export default function Optimization() {
     min_utilization_receiver: 0.65,
     target_utilization: 0.5,
     apply_capacity_constraints: true,
+    move_cost_hours_per_week: 20,
   })
+  const isOverload = config.algorithm === 'overload' || config.algorithm === 'overload_mip'
 
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
@@ -372,7 +374,7 @@ export default function Optimization() {
                     <div className="space-y-2 pt-1 border-t border-slate-100">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-700">{t('optimization.algorithm')}</span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => setConfig({ ...config, algorithm: 'greedy' })}
@@ -403,6 +405,16 @@ export default function Optimization() {
                           >
                             {t('optimization.algo_overload')}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfig({ ...config, algorithm: 'overload_mip' })}
+                            className={`px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${config.algorithm === 'overload_mip'
+                              ? 'bg-purple-800 text-white shadow-xs font-bold'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                          >
+                            {t('optimization.algo_overload_mip')}
+                          </button>
                         </div>
                       </div>
 
@@ -430,10 +442,40 @@ export default function Optimization() {
                     </div>
 
                     {/* Umbrales de Score de Utilización: solo para el modelo por score */}
-                    {config.algorithm === 'overload' ? (
-                      <p className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-                        {t('optimization.overload_hint')}
-                      </p>
+                    {isOverload ? (
+                      <div className="pt-2 border-t border-slate-100 space-y-3">
+                        <p className="text-[11px] text-slate-500">
+                          {t('optimization.overload_hint')}
+                          {config.algorithm === 'overload_mip' && ` ${t('optimization.overload_mip_hint')}`}
+                        </p>
+
+                        {/* Costo por movimiento (lambda) */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <label htmlFor="move-cost-input" className="font-semibold text-slate-700 text-[11px]">
+                              {t('optimization.move_cost')}
+                            </label>
+                            <span className="font-mono font-bold text-violet-950 px-2 py-0.5 rounded-md bg-violet-100 border border-violet-200 text-[11px]">
+                              {config.move_cost_hours_per_week ?? 20} {t('optimization.move_cost_unit')}
+                            </span>
+                          </div>
+                          <input
+                            id="move-cost-input"
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={config.move_cost_hours_per_week ?? 20}
+                            onChange={(e) =>
+                              setConfig({ ...config, move_cost_hours_per_week: Number(e.target.value) })
+                            }
+                            className="w-full accent-slate-400 cursor-pointer"
+                          />
+                          <span className="text-[11px] text-slate-500 block">
+                            {t('optimization.move_cost_hint')}
+                          </span>
+                        </div>
+                      </div>
                     ) : (
                       <div className="pt-2 border-t border-slate-100 space-y-3">
                         <span className="text-xs font-bold text-slate-700 block">
