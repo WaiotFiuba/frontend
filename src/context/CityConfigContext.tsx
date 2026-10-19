@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
+import { withRetry } from '@/lib/retry'
 
 /** Umbrales de nivel de llenado (%): límite inferior inclusive de cada categoría. */
 export interface LevelThresholds {
@@ -42,6 +43,9 @@ const CityConfigContext = createContext<CityConfigContextType>({
     error: null,
 })
 
+// Esperas entre reintentos de la configuración (cerca de un minuto en total).
+const CONFIG_RETRY_DELAYS_MS = [1000, 3000, 7000, 15000, 30000]
+
 export const CityConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [config, setConfig] = useState<MapConfigResponse | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -50,7 +54,9 @@ export const CityConfigProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     useEffect(() => {
         let isMounted = true
 
-        api.get<MapConfigResponse>('/map/config')
+        // Sin botón para reintentar: insiste más que las cargas de las pantallas,
+        // porque mientras no llega toda la app usa los umbrales por defecto.
+        withRetry(() => api.get<MapConfigResponse>('/map/config'), CONFIG_RETRY_DELAYS_MS)
             .then(data => {
                 if (isMounted && data) {
                     setConfig(data)
