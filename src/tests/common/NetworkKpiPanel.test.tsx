@@ -150,6 +150,15 @@ describe('NetworkKpiPanel Component Tests', () => {
       screen.getByText(/Diagnóstico proyectado de capacidad y balance bajo redistribución What-If/i)
     ).toBeInTheDocument()
   })
+
+  it('shows the load error with a retry button instead of hiding the panel', () => {
+    const onRetry = vi.fn()
+    render(<NetworkKpiPanel metrics={null} loading={false} error="Bad Gateway" onRetry={onRetry} />)
+
+    expect(screen.getByText(/No se pudieron cargar las métricas de red: Bad Gateway/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('RedistributionImpactPanel Component Tests', () => {

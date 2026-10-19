@@ -1,5 +1,6 @@
 {
   "common": {
+    "retry": "Retry",
     "back_to_home": "Back to Home",
     "loading": "Loading...",
     "error": "Error",

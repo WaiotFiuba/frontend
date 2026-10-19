@@ -14,6 +14,7 @@ import {
 import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
+import { withRetry } from '@/lib/retry'
 import {
   generateOptimizationPlan,
   deactivateWhatIfPlan,
@@ -76,6 +77,8 @@ export default function Optimization() {
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [baselineMetrics, setBaselineMetrics] = useState<OptimizationMetricsResponse | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(false)
+  const [metricsError, setMetricsError] = useState<string | null>(null)
+  const [metricsReload, setMetricsReload] = useState<number>(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [highlightedMoveId, setHighlightedMoveId] = useState<number | null>(null)
@@ -88,41 +91,39 @@ export default function Optimization() {
 
   useEffect(() => {
     let isMounted = true
-    const loadInitialData = async () => {
-      setLoadingMetrics(true)
-      try {
-        const [whatifRes, baselineRes, activePlanRes] = await Promise.allSettled([
-          fetchNetworkKpis(true),
-          fetchNetworkKpis(false),
-          fetchActiveWhatIfPlan(),
-        ])
-        if (isMounted) {
-          if (whatifRes.status === 'fulfilled') {
-            setNetworkMetrics(whatifRes.value)
-          }
-          if (baselineRes.status === 'fulfilled') {
-            setBaselineMetrics(baselineRes.value)
-          }
-          // Sin plan activo el backend responde null: la pantalla queda sin plan.
-          const activePlan = activePlanRes.status === 'fulfilled' ? activePlanRes.value : null
-          if (activePlan) {
-            setPlan(activePlan)
-            if (activePlan.config) {
-              setConfig((prev) => ({ ...prev, ...activePlan.config }))
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Error al cargar datos iniciales de optimización:', err)
-      } finally {
+    setLoadingMetrics(true)
+    setMetricsError(null)
+    // Cada carga se reintenta por su cuenta y se muestra apenas llega: si el backend
+    // se está despertando, una que falla no demora a las demás (por ejemplo, el plan activo).
+    withRetry(() => fetchNetworkKpis(true))
+      .then((metrics) => {
+        if (isMounted) setNetworkMetrics(metrics)
+      })
+      .catch((err) => {
+        if (isMounted) setMetricsError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
         if (isMounted) setLoadingMetrics(false)
-      }
-    }
-    loadInitialData()
+      })
+    withRetry(() => fetchNetworkKpis(false))
+      .then((metrics) => {
+        if (isMounted) setBaselineMetrics(metrics)
+      })
+      .catch((err) => console.warn('Error al cargar los KPI de la red real:', err))
+    withRetry(fetchActiveWhatIfPlan)
+      .then((activePlan) => {
+        // Sin plan activo el backend responde null: la pantalla queda sin plan.
+        if (!isMounted || !activePlan) return
+        setPlan(activePlan)
+        if (activePlan.config) {
+          setConfig((prev) => ({ ...prev, ...activePlan.config }))
+        }
+      })
+      .catch((err) => console.warn('Error al cargar el plan activo:', err))
     return () => {
       isMounted = false
     }
-  }, [config.window_days])
+  }, [config.window_days, metricsReload])
 
   // Al arrancar otra simulación se vuelven a pedir los KPI de la red, real y con el plan.
   // La primera vez coincide con la carga inicial.
@@ -306,6 +307,8 @@ export default function Optimization() {
           onSelectCategory={setSelectedCategory}
           whatif={true}
           baseline={plan ? baselineMetrics : null}
+          error={metricsError}
+          onRetry={() => setMetricsReload((n) => n + 1)}
         />
 
         {/* 2. Panel Complementario de Impacto What-If (Específico de redistribución) */}

@@ -21,6 +21,8 @@ export function NetworkKpiPanel({
   defaultCollapsed = false,
   whatif = false,
   baseline = null,
+  error: externalError = null,
+  onRetry,
 }: NetworkKpiPanelProps) {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
@@ -29,7 +31,8 @@ export function NetworkKpiPanel({
   const {
     metrics: fetchedMetrics,
     loading: internalLoading,
-    error,
+    error: internalError,
+    refetch,
   } = useNetworkKpis({
     externalMetrics,
     refreshTrigger,
@@ -38,6 +41,9 @@ export function NetworkKpiPanel({
 
   const isLoading = externalLoading ?? internalLoading
   const metrics = externalMetrics ?? fetchedMetrics
+  const error = externalError ?? internalError
+  // Sin métricas de afuera el panel las pide solo, así que también reintenta solo.
+  const retry = onRetry ?? (externalMetrics === undefined ? refetch : undefined)
 
   // Skeleton loading state
   if (isLoading && !metrics) {
@@ -65,6 +71,15 @@ export function NetworkKpiPanel({
         className={`bg-rose-50/70 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs flex items-center justify-between ${className}`}
       >
         <span>{t('kpi.error_loading', { error })}</span>
+        {retry && (
+          <button
+            type="button"
+            onClick={() => void retry()}
+            className="ml-3 shrink-0 rounded-md border border-rose-300 bg-white px-2.5 py-1 font-semibold text-rose-700 hover:bg-rose-100 cursor-pointer"
+          >
+            {t('common.retry')}
+          </button>
+        )}
       </div>
     )
   }

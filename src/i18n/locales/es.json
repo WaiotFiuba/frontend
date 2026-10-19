@@ -1,5 +1,6 @@
 {
   "common": {
+    "retry": "Reintentar",
     "back_to_home": "Volver al inicio",
     "loading": "Cargando...",
     "error": "Error",

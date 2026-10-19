@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
+import { withRetry } from '@/lib/retry'
 import type { NetworkMetricsData } from './types'
 
 interface UseNetworkKpisOptions {
@@ -27,7 +28,7 @@ export function useNetworkKpis({
     setError(null)
     try {
       const query = whatif ? '?whatif=true' : ''
-      const result = await api.get<NetworkMetricsData>(`/map/kpis${query}`)
+      const result = await withRetry(() => api.get<NetworkMetricsData>(`/map/kpis${query}`))
       if (isMountedRef.current) {
         setData(result)
       }
