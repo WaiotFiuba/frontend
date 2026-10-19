@@ -193,11 +193,14 @@ export const fetchSitesBBox = async (
                 containerCount: (s.container_count as number | undefined) ?? siteContainers.length,
                 containers: containers,
                 isCluster: false,
+                lastReading: (s.last_reading as string | null | undefined) ?? null,
             }
         })
     } catch (error) {
+        // Se propaga: el mapa conserva los sitios que ya tenía. Devolver una lista
+        // vacía lo dejaría sin pines hasta la próxima carga.
         console.warn('Error obteniendo sitios:', error)
-        return []
+        throw error
     }
 }
 

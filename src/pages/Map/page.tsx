@@ -3,8 +3,10 @@ import { Card, CardContent } from '@/utils/ui/card'
 import InteractiveMap from '@/common/InteractiveMap'
 import MapLegend from './components/MapLegend'
 import { useState } from 'react'
-import SimulationControl from './components/SimulationControl'
-import { MapPin } from 'lucide-react'
+import SimulationControl from '@/simulation/SimulationControl'
+import { SIMULATOR_ENABLED } from '@/simulation/config'
+import { useSimulationMapExtras } from '@/simulation/useSimulationMapExtras'
+import { ArrowLeft, MapPin } from 'lucide-react'
 import { NetworkKpiPanel } from '@/common/KpiPanel'
 import { useCityConfig } from '@/context/CityConfigContext'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +14,10 @@ import { HelpButton } from '@/documentation'
 
 export default function Map() {
     const { t } = useTranslation()
-    const [refreshTrigger, setRefreshTrigger] = useState(0)
+    // Los KPIs se vuelven a pedir cuando el mapa avisa que llegaron lecturas nuevas.
+    const [kpiRefresh, setKpiRefresh] = useState(0)
     const { cityName } = useCityConfig()
+    const mapExtras = useSimulationMapExtras()
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-emerald-50/30 p-6">
@@ -39,19 +43,17 @@ export default function Map() {
                 </div>
 
                 {/* Panel de Métricas Operativas de la Red */}
-                <NetworkKpiPanel refreshTrigger={refreshTrigger} />
+                <NetworkKpiPanel refreshTrigger={kpiRefresh} />
 
                 {/* Hero Map Full-Width con Leyenda Flotante Superpuesta */}
                 <Card className="rounded-2xl border-slate-200 shadow-xl h-[78vh] min-h-[600px] w-full overflow-hidden p-0 relative">
                     <CardContent className="h-full w-full p-0 overflow-hidden relative">
-                        <InteractiveMap refreshTrigger={refreshTrigger} />
+                        <InteractiveMap onDataChange={() => setKpiRefresh((n) => n + 1)} extras={mapExtras} />
                         <MapLegend />
                     </CardContent>
                 </Card>
 
-                <SimulationControl onSimulationStateChange={async () => {
-                    setRefreshTrigger(prev => prev + 1)
-                }} />
+                {SIMULATOR_ENABLED && <SimulationControl />}
             </div>
         </div>
     )

@@ -30,6 +30,8 @@ export interface Site {
     puede_ingresar?: boolean
     containers: Container[]
     isCluster?: boolean
+    // Fecha de la última lectura del sitio (los grupos de sitios no la traen).
+    lastReading?: string | null
 }
 
 export const labels: Record<ContainerType, string> = {
@@ -144,7 +146,6 @@ export type BackendSiteHistoryPoint = {
 
 export type BackendSiteHistory = {
     site_id: number
-    simulation_id?: number | null
     window_start?: string | null
     window_end?: string | null
     points: BackendSiteHistoryPoint[]
