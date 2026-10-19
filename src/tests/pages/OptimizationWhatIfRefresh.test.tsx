@@ -1,11 +1,16 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 import Optimization from '@/pages/Optimization/page'
 
+// El mapa real avisa cuando llegan lecturas nuevas; acá lo simula un botón.
 vi.mock('@/common/InteractiveMap', () => ({
-  default: () => <div data-testid="interactive-map-mock" />,
+  default: ({ onDataChange }: { onDataChange?: () => void }) => (
+    <button type="button" onClick={() => onDataChange?.()}>
+      lecturas nuevas
+    </button>
+  ),
 }))
 
 const jsonResponse = <T,>(data: T) =>
@@ -53,7 +58,7 @@ describe('What-if comparison refresh', () => {
     vi.useRealTimers()
   })
 
-  it('asks again for the comparison while the plan is active', async () => {
+  it('asks again for the comparison when new readings arrive, at most every 15 s', async () => {
     let comparisonCalls = 0
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -75,6 +80,13 @@ describe('What-if comparison refresh', () => {
     const withoutData = (await screen.findAllByText('Todavía sin datos')).length
     expect(comparisonCalls).toBe(1)
 
+    // Sin lecturas nuevas no se vuelve a pedir.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000)
+    })
+    expect(comparisonCalls).toBe(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'lecturas nuevas' }))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(15_000)
     })

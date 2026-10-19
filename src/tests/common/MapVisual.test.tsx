@@ -5,29 +5,22 @@ import MapVisual from '@/common/MapVisual'
 describe('MapVisual', () => {
     it('renders indicators and handles zoom and waste filter changes', () => {
         const onWasteFilterChange = vi.fn()
-        const onToggleZoneProfiles = vi.fn()
         const onZoomIn = vi.fn()
         const onZoomOut = vi.fn()
 
         render(
             <MapVisual
-                fullContainersCount={5}
-                simulatedClock="14:30"
                 currentZoom={14}
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
-                zoneProfilesVisible={false}
-                zoneProfilesLoading={false}
-                onToggleZoneProfiles={onToggleZoneProfiles}
+                extraControls={<button type="button">Control extra</button>}
                 onZoomIn={onZoomIn}
                 onZoomOut={onZoomOut}
             />
         )
 
-        expect(screen.getByText(/Al 100%/i)).toBeInTheDocument()
-        expect(screen.getByText('5')).toBeInTheDocument()
-        expect(screen.getByText(/Reloj de Simulación/i)).toBeInTheDocument()
-        expect(screen.getByText('14:30')).toBeInTheDocument()
+        expect(screen.queryByText(/Al 100%/i)).not.toBeInTheDocument()
+        expect(screen.queryByText(/Reloj de Simulación/i)).not.toBeInTheDocument()
 
         // Waste filter buttons
         fireEvent.click(screen.getByRole('button', { name: /Húmedos/i }))
@@ -36,9 +29,9 @@ describe('MapVisual', () => {
         fireEvent.click(screen.getByRole('button', { name: /Reciclables/i }))
         expect(onWasteFilterChange).toHaveBeenCalledWith('reciclaje')
 
-        // Zone profiles toggle
-        fireEvent.click(screen.getByTitle(/Mostrar\/ocultar perfiles de zona/i))
-        expect(onToggleZoneProfiles).toHaveBeenCalledTimes(1)
+        // Los botones que agrega la página van en la misma barra; sin ellos, no hay perfiles de zona.
+        expect(screen.getByRole('button', { name: 'Control extra' })).toBeInTheDocument()
+        expect(screen.queryByTitle(/perfiles de zona/i)).not.toBeInTheDocument()
     })
 
     it('disables unavailable waste filter buttons when not in availableWasteTypes', () => {
@@ -46,13 +39,8 @@ describe('MapVisual', () => {
 
         render(
             <MapVisual
-                fullContainersCount={0}
-                simulatedClock="12:00"
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
-                zoneProfilesVisible={false}
-                zoneProfilesLoading={false}
-                onToggleZoneProfiles={vi.fn()}
                 availableWasteTypes={['organico']}
             />
         )

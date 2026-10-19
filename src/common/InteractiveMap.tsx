@@ -12,28 +12,20 @@ import {
     createArrowIcon,
     calculateBearing,
     colorForLevel,
-    formatSimulatedTime,
 } from "@/utils/functions"
-import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
-import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
-import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
+import type { MapExtras } from "./mapExtras"
+import { asUtc, latest, useDataChanges } from "./useDataChanges"
 import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
-import { api } from '@/lib/api'
 import { Activity, Check, ChevronDown, Clock3, Minus, Plus, RotateCw } from 'lucide-react'
 import { useVisibleSiteProjections } from '@/pages/Map/hooks/useVisibleSiteProjections'
 import { fetchProjectionModels } from '@/pages/Map/services/projectionApi'
-import { useLevelThresholds } from '@/context/CityConfigContext'
+import { useCityConfig, useLevelThresholds } from '@/context/CityConfigContext'
+import type { MapConfigResponse } from '@/context/CityConfigContext'
 import { Button } from "@/utils/ui/button"
 import { Badge } from "@/utils/ui/badge"
 import { ExternalLink, MapPin } from "lucide-react"
-
-interface ActiveSimulation {
-    id: number
-    status: 'pending' | 'running' | 'paused' | 'stopping' | 'completed' | 'failed'
-    simulated_time: string | null
-}
 
 export interface MapRedistributionMove {
     container_id: number
@@ -128,12 +120,13 @@ function MapMoveFocusController({
     return null
 }
 
-interface MapConfigResponse {
-    city_name: string
-    center: { lat: number; lng: number }
-    default_zoom: number
-    bounds: [[number, number], [number, number]] | null
-    available_waste_types?: string[]
+// Si la configuración de la ciudad no llega (ni con los reintentos), el mapa
+// arranca centrado en un lugar por defecto.
+const FALLBACK_MAP_CONFIG: MapConfigResponse = {
+    city_name: 'Default',
+    center: { lat: -34.6037, lng: -58.3816 },
+    default_zoom: 13,
+    bounds: null,
 }
 
 function MapConfigController({
@@ -221,26 +214,28 @@ function MovePolylineItem({ move }: { move: MapRedistributionMove }) {
 
 interface InteractiveMapProps {
     refreshTrigger?: number
+    // Se llama cuando llegan lecturas nuevas (para refrescar otros paneles de la página).
+    onDataChange?: () => void
+    // Capas, botones y leyendas que agrega la página (por ejemplo, los del simulador).
+    extras?: MapExtras
     redistributionMoves?: MapRedistributionMove[]
     highlightedMoveId?: number | null
     isPlayground?: boolean
-    // Se llama con el id de la simulación activa cada vez que arranca otra.
-    onActiveSimulationChange?: (simulationId: number) => void
 }
 
 export default function InteractiveMap({
     refreshTrigger = 0,
+    onDataChange,
+    extras,
     redistributionMoves,
     highlightedMoveId,
     isPlayground = false,
-    onActiveSimulationChange,
 }: InteractiveMapProps) {
     const { t } = useTranslation()
     const [sites, setSites] = useState<Site[]>([])
     // Zoom con el que el backend agrupó los sitios cargados (define la grilla).
     const [sitesBackendZoom, setSitesBackendZoom] = useState<number>(10)
     const [wasteFilter, setWasteFilter] = useState<MapWasteFilter>('all')
-    const [activeSimulation, setActiveSimulation] = useState<ActiveSimulation | null>(null)
     const [selectedRoute] = useState<RouteDetails | null>(null)
     const [viewMode, setViewMode] = useState<'current' | 'projected'>('current')
     const [projectionAsOf, setProjectionAsOf] = useState<string | null>(null)
@@ -270,17 +265,24 @@ export default function InteractiveMap({
     const { projections, loading: projectionsLoading, error: projectionsError, retry: retryProjections } =
         useVisibleSiteProjections(sites, viewMode === 'projected' ? projectionAsOf : null, targetAt, modelKey)
 
+    const dataChanges = useDataChanges()
+    // "Ahora" para proyectar: la última lectura conocida (con el simulador es la
+    // hora simulada; con sensores reales, la actual).
+    const latestReading = useMemo(
+        () => sites.reduce<string | null>((acc, site) => latest(acc, site.lastReading ?? null), dataChanges.latestReading),
+        [sites, dataChanges.latestReading]
+    )
     const enterProjectedMode = () => {
-        const simulationTime = activeSimulation?.simulated_time
-        const utcSimulationTime = simulationTime && !/(Z|[+-]\d{2}:\d{2})$/i.test(simulationTime)
-            ? `${simulationTime}Z`
-            : simulationTime
-        const parsed = utcSimulationTime ? new Date(utcSimulationTime) : null
-        setProjectionAsOf(parsed && !Number.isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString())
+        setProjectionAsOf(latestReading ? new Date(asUtc(latestReading)).toISOString() : null)
         setViewMode('projected')
     }
+    // Si todavía no había lecturas al entrar, se proyecta desde la primera que llegue.
+    useEffect(() => {
+        if (viewMode === 'projected' && projectionAsOf === null && latestReading) {
+            setProjectionAsOf(new Date(asUtc(latestReading)).toISOString())
+        }
+    }, [viewMode, projectionAsOf, latestReading])
     const [currentZoom, setCurrentZoom] = useState<number>(13)
-    const zoneProfiles = useZoneProfiles()
     const thresholds = useLevelThresholds()
 
     const handleZoomChange = useCallback((newZoom: number) => {
@@ -376,75 +378,35 @@ export default function InteractiveMap({
         }
     }, [refreshTrigger, fetchForBounds])
 
+    // Refrescar los sitios visibles cuando el backend registra lecturas nuevas.
+    const onDataChangeRef = useRef(onDataChange)
     useEffect(() => {
-        let cancelled = false
-
-        const fetchActiveSimulation = async () => {
-            try {
-                const data = await api.get<ActiveSimulation>('/digital-twin/simulations/active')
-                if (!cancelled) {
-                    setActiveSimulation(data)
-                }
-            } catch {
-                // Mantener el ultimo estado conocido si falla un poll aislado.
-                // En hosting gratuito la API puede demorar o cortar una consulta sin
-                // que la simulacion haya terminado realmente.
-            }
-        }
-
-        void fetchActiveSimulation()
-        const intervalId = window.setInterval(fetchActiveSimulation, 800)
-
-        return () => {
-            cancelled = true
-            window.clearInterval(intervalId)
-        }
-    }, [])
-
-    const activeSimulationId = activeSimulation?.id ?? null
+        onDataChangeRef.current = onDataChange
+    }, [onDataChange])
+    // Última versión de datos atendida: este efecto también corre cuando cambia
+    // fetchForBounds (filtro de residuos, umbrales, what-if), y eso no son lecturas nuevas.
+    const handledDataVersionRef = useRef(0)
     useEffect(() => {
-        if (activeSimulationId != null) onActiveSimulationChange?.(activeSimulationId)
-    }, [activeSimulationId, onActiveSimulationChange])
+        if (dataChanges.version === handledDataVersionRef.current || !mapRef.current) return
+        handledDataVersionRef.current = dataChanges.version
+        const map = mapRef.current
+        const bounds = map.getBounds()
+        const sw = bounds.getSouthWest()
+        const ne = bounds.getNorthEast()
+        const zoom = map.getZoom()
+        const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
+        const latPadding = (ne.lat - sw.lat) * boundsPadding
+        const lngPadding = (ne.lng - sw.lng) * boundsPadding
 
-    const simDebounceRef = useRef<number | null>(null)
-    // Refrescar automáticamente los contenedores visibles cuando avanza la simulación con debounce
-    useEffect(() => {
-        if (!mapRef.current) return
-
-        if (simDebounceRef.current) {
-            window.clearTimeout(simDebounceRef.current)
-        }
-        simDebounceRef.current = window.setTimeout(() => {
-            if (!mapRef.current) return
-            const map = mapRef.current
-            const bounds = map.getBounds()
-            const sw = bounds.getSouthWest()
-            const ne = bounds.getNorthEast()
-            const zoom = map.getZoom()
-            const { boundsPadding } = getContainerFetchConfigByZoom(zoom)
-            const latPadding = (ne.lat - sw.lat) * boundsPadding
-            const lngPadding = (ne.lng - sw.lng) * boundsPadding
-
-            void fetchForBounds(
-                sw.lat - latPadding,
-                ne.lat + latPadding,
-                sw.lng - lngPadding,
-                ne.lng + lngPadding,
-                zoom
-            )
-        }, 600)
-
-        return () => {
-            if (simDebounceRef.current) {
-                window.clearTimeout(simDebounceRef.current)
-            }
-        }
-    }, [activeSimulation?.simulated_time, activeSimulation?.status, fetchForBounds])
-
-    const simulatedClock = useMemo(
-        () => formatSimulatedTime(activeSimulation?.simulated_time),
-        [activeSimulation?.simulated_time]
-    )
+        void fetchForBounds(
+            sw.lat - latPadding,
+            ne.lat + latPadding,
+            sw.lng - lngPadding,
+            ne.lng + lngPadding,
+            zoom
+        )
+        onDataChangeRef.current?.()
+    }, [dataChanges.version, fetchForBounds])
 
     // Sitios a desplegar: cuando el zoom es el más alejado posible (zoom <= 10), se agrupan en uno solo
     const displaySites = useMemo(() => {
@@ -503,46 +465,11 @@ export default function InteractiveMap({
         [redistributionMoves, highlightedMoveId]
     )
 
-    // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
-    const fullContainersCount = useMemo(() => {
-        return sites.reduce((acc, s) => {
-            return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
-        }, 0)
-    }, [sites])
+    // La configuración de la ciudad la carga (y la reintenta) el contexto global.
+    const { config: cityConfig, isLoading: configLoading } = useCityConfig()
+    const mapConfig = cityConfig ?? (configLoading ? null : FALLBACK_MAP_CONFIG)
 
-    const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
-    const [configLoading, setConfigLoading] = useState(true)
-
-    useEffect(() => {
-        let cancelled = false
-        api.get<MapConfigResponse>('/map/config')
-            .then((data) => {
-                if (!cancelled && data) {
-                    setMapConfig(data)
-                }
-            })
-            .catch((err) => {
-                console.error('Failed to load map config:', err)
-                if (!cancelled) {
-                    setMapConfig({
-                        city_name: 'Default',
-                        center: { lat: -34.6037, lng: -58.3816 },
-                        default_zoom: 13,
-                        bounds: null,
-                    })
-                }
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setConfigLoading(false)
-                }
-            })
-        return () => {
-            cancelled = true
-        }
-    }, [])
-
-    if (configLoading || !mapConfig) {
+    if (!mapConfig) {
         return (
             <div className="h-full w-full flex items-center justify-center bg-slate-50">
                 <div className="flex flex-col items-center gap-3">
@@ -556,16 +483,11 @@ export default function InteractiveMap({
     return (
         <div className="h-full w-full relative">
             <MapVisual
-                fullContainersCount={fullContainersCount}
-                showFullContainersCount={viewMode === 'current'}
-                simulatedClock={simulatedClock}
                 currentZoom={currentZoom}
                 wasteFilter={wasteFilter}
                 onWasteFilterChange={setWasteFilter}
                 availableWasteTypes={mapConfig?.available_waste_types}
-                zoneProfilesVisible={zoneProfiles.visible}
-                zoneProfilesLoading={zoneProfiles.loading}
-                onToggleZoneProfiles={zoneProfiles.toggle}
+                extraControls={extras?.controls}
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
             />
@@ -657,7 +579,7 @@ export default function InteractiveMap({
                 </div>}
             </div>}
 
-            <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
+            {extras?.overlays}
 
             <MapContainer
                 center={[mapConfig.center.lat, mapConfig.center.lng]}
@@ -687,12 +609,7 @@ export default function InteractiveMap({
                     redistributionMoves={redistributionMoves}
                 />
 
-                {/* Capa de perfiles de zona (radios censales), activable por el usuario */}
-                <ZoneProfilesLayer
-                    data={zoneProfiles.data}
-                    visible={zoneProfiles.visible}
-                    selectedZoneRef={zoneProfiles.selectedZoneRef}
-                />
+                {extras?.layers}
 
                 {/* Trazado de circuito seleccionado */}
                 {selectedRoute && selectedRoute.waypoints.length > 0 && (

@@ -128,6 +128,8 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
   const { t } = useTranslation()
   const [activeSim, setActiveSim] = useState<SimulationRead | null>(null)
   const [loading, setLoading] = useState(true)
+  // Consulta periódica en curso: si la API está lenta, no se le apilan pedidos.
+  const pollInFlightRef = useRef(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [neighborhoods, setNeighborhoods] = useState<string[]>([])
 
@@ -354,7 +356,11 @@ export default function SimulationControl({ onSimulationStateChange }: Simulatio
       : 2000
 
     const timer = setInterval(() => {
-      fetchActiveSimulation(false)
+      if (pollInFlightRef.current) return
+      pollInFlightRef.current = true
+      void fetchActiveSimulation(false).finally(() => {
+        pollInFlightRef.current = false
+      })
     }, pollInterval)
 
     return () => clearInterval(timer)
