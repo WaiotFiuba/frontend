@@ -460,13 +460,6 @@ export default function InteractiveMap({
         [redistributionMoves, highlightedMoveId]
     )
 
-    // Cantidad de contenedores al 100% (en riesgo de colapso/desborde)
-    const fullContainersCount = useMemo(() => {
-        return sites.reduce((acc, s) => {
-            return acc + (s.containers ? s.containers.filter((c: Container) => (c.currentLevel ?? c.level ?? 0) >= 100).length : 0)
-        }, 0)
-    }, [sites])
-
     const [mapConfig, setMapConfig] = useState<MapConfigResponse | null>(null)
     const [configLoading, setConfigLoading] = useState(true)
 
@@ -513,8 +506,6 @@ export default function InteractiveMap({
     return (
         <div className="h-full w-full relative">
             <MapVisual
-                fullContainersCount={fullContainersCount}
-                showFullContainersCount={viewMode === 'current'}
                 currentZoom={currentZoom}
                 wasteFilter={wasteFilter}
                 onWasteFilterChange={setWasteFilter}

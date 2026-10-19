@@ -11,7 +11,6 @@ describe('MapVisual', () => {
 
         render(
             <MapVisual
-                fullContainersCount={5}
                 currentZoom={14}
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
@@ -23,8 +22,7 @@ describe('MapVisual', () => {
             />
         )
 
-        expect(screen.getByText(/Al 100%/i)).toBeInTheDocument()
-        expect(screen.getByText('5')).toBeInTheDocument()
+        expect(screen.queryByText(/Al 100%/i)).not.toBeInTheDocument()
         expect(screen.queryByText(/Reloj de Simulación/i)).not.toBeInTheDocument()
 
         // Waste filter buttons
@@ -44,7 +42,6 @@ describe('MapVisual', () => {
 
         render(
             <MapVisual
-                fullContainersCount={0}
                 wasteFilter="all"
                 onWasteFilterChange={onWasteFilterChange}
                 zoneProfilesVisible={false}
