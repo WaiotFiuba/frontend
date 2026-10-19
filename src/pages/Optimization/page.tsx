@@ -34,6 +34,8 @@ import {
   Sliders,
 } from 'lucide-react'
 
+const COMPARISON_REFRESH_MS = 15_000
+
 export default function Optimization() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -107,19 +109,24 @@ export default function Optimization() {
     }
   }, [config.window_days])
 
-  // Comparación con la red real: se pide cada vez que cambia el plan activo.
+  // Comparación con la red real: se pide al cambiar el plan activo y se repite
+  // mientras siga activo, porque los promedios se acumulan con cada lote de lecturas.
   const activePlanId = plan?.status === 'active_whatif' ? plan.id : null
   useEffect(() => {
     let isMounted = true
     setComparison(null)
     if (activePlanId == null) return
-    fetchWhatIfComparison(activePlanId)
-      .then((result) => {
-        if (isMounted) setComparison(result)
-      })
-      .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    const loadComparison = () =>
+      fetchWhatIfComparison(activePlanId)
+        .then((result) => {
+          if (isMounted) setComparison(result)
+        })
+        .catch((err) => console.warn('Error al cargar la comparación del plan:', err))
+    loadComparison()
+    const intervalId = window.setInterval(loadComparison, COMPARISON_REFRESH_MS)
     return () => {
       isMounted = false
+      window.clearInterval(intervalId)
     }
   }, [activePlanId])
 
