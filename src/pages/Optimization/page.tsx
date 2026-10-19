@@ -3,11 +3,20 @@ import 'leaflet/dist/leaflet.css'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/utils/ui/button'
 import { Card, CardContent } from '@/utils/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/utils/ui/dialog'
 import { Switch } from '@/utils/ui/switch'
 import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import {
   generateOptimizationPlan,
+  deactivateWhatIfPlan,
   fetchNetworkKpis,
   fetchActiveWhatIfPlan,
   fetchWhatIfComparison,
@@ -24,6 +33,7 @@ import RedistributionImpactPanel from './components/RedistributionImpactPanel'
 import MoveImpactCard from './components/MoveImpactCard'
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -32,6 +42,7 @@ import {
   MapPin,
   RotateCcw,
   Sliders,
+  XCircle,
 } from 'lucide-react'
 
 const COMPARISON_REFRESH_MS = 15_000
@@ -58,6 +69,8 @@ export default function Optimization() {
 
   // Execution states
   const [generating, setGenerating] = useState<boolean>(false)
+  const [deactivating, setDeactivating] = useState<boolean>(false)
+  const [confirmingDeactivate, setConfirmingDeactivate] = useState<boolean>(false)
   const [plan, setPlan] = useState<RedistributionPlan | null>(null)
   const [comparison, setComparison] = useState<WhatIfComparisonResponse | null>(null)
   const [networkMetrics, setNetworkMetrics] = useState<OptimizationMetricsResponse | null>(null)
@@ -182,6 +195,37 @@ export default function Optimization() {
       setErrorMsg(message)
     } finally {
       setGenerating(false)
+    }
+  }
+
+  // Saca el plan activo: el what-if vuelve a ser la red real y el mapa deja de mostrar los movimientos.
+  const handleDeactivatePlan = async () => {
+    if (!plan) return
+    setDeactivating(true)
+    setErrorMsg(null)
+    setSuccessMsg(null)
+    try {
+      await deactivateWhatIfPlan(plan.id)
+      setPlan(null)
+      setHighlightedMoveId(null)
+      setRefreshTrigger((prev) => prev + 1)
+      try {
+        const [updatedWhatif, updatedBaseline] = await Promise.all([
+          fetchNetworkKpis(true),
+          fetchNetworkKpis(false),
+        ])
+        setNetworkMetrics(updatedWhatif)
+        setBaselineMetrics(updatedBaseline)
+      } catch (kpiErr) {
+        console.warn('Error al actualizar KPIs tras desactivar el plan:', kpiErr)
+      }
+      setSuccessMsg(t('optimization.plan_deactivated'))
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('optimization.deactivate_plan_error')
+      setErrorMsg(message)
+    } finally {
+      setDeactivating(false)
+      setConfirmingDeactivate(false)
     }
   }
 
@@ -688,6 +732,18 @@ export default function Optimization() {
                     <Download className="h-3.5 w-3.5" />
                     {t('optimization.export_csv')}
                   </Button>
+                  {plan.status === 'active_whatif' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmingDeactivate(true)}
+                      disabled={deactivating}
+                      className="ml-3 text-xs gap-1.5 border-rose-200 text-rose-700 hover:bg-rose-50 cursor-pointer"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      {t('optimization.deactivate_plan')}
+                    </Button>
+                  )}
                   {highlightedMoveId && (
                     <Button
                       variant="ghost"
@@ -848,6 +904,45 @@ export default function Optimization() {
           )}
         </div>
       </div>
+
+      {/* Confirmación para desactivar el plan (el botón está al lado de Exportar CSV). */}
+      <Dialog
+        open={confirmingDeactivate}
+        onOpenChange={(open) => !open && !deactivating && setConfirmingDeactivate(false)}
+      >
+        <DialogContent className="sm:max-w-md p-6 rounded-2xl">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <DialogHeader className="p-0">
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                {t('optimization.deactivate_confirm_title')}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 leading-relaxed mt-1">
+                {t('optimization.deactivate_confirm_desc', { count: plan?.moves.length ?? 0 })}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingDeactivate(false)}
+              disabled={deactivating}
+              className="border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleDeactivatePlan}
+              disabled={deactivating}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-semibold shadow-md cursor-pointer"
+            >
+              {deactivating ? t('optimization.deactivating_plan') : t('optimization.deactivate_plan')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
