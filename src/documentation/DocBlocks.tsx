@@ -10,7 +10,7 @@ import {
   HelpCircle,
   BookOpen,
 } from 'lucide-react'
-import type { DocBlock, DocSection } from './types'
+import type { DocSection } from './types'
 
 export const DocBlocks: React.FC<{
   section: DocSection

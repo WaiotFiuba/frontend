@@ -20,7 +20,7 @@ export const HelpButton: React.FC<HelpButtonProps> = ({
   className = '',
 }) => {
   const { openDocumentation } = useDocumentation()
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
   const isEn = i18n.language?.startsWith('en')
   const label = isEn ? 'Help' : 'Ayuda'
 

@@ -39,7 +39,6 @@ import { HelpButton } from '@/documentation'
 import {
   AlertCircle,
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ChevronUp,

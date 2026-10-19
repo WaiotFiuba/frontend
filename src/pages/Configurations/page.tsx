@@ -20,7 +20,6 @@ import {
   FolderOpen,
   Edit3,
   Map,
-  X,
   AlertCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'

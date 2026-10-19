@@ -1,4 +1,3 @@
-import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthContext } from '../../context/AuthContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
@@ -9,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/utils/ui/select'
-import { User as UserIcon, Mail, Languages, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { User as UserIcon, Mail, Languages, CheckCircle2 } from 'lucide-react'
 
 export default function Profile() {
   const { user } = useAuthContext()
