@@ -30,6 +30,9 @@ export interface NetworkKpiPanelProps {
   whatif?: boolean
   // Red real para comparar con el what-if (solo con un plan activo).
   baseline?: NetworkMetricsData | null
+  // Error de la carga hecha por quien pasa `metrics`, y cómo volver a intentarla.
+  error?: string | null
+  onRetry?: () => void
 }
 
 export interface KpiCardProps {

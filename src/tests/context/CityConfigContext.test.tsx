@@ -55,4 +55,28 @@ describe('CityConfigContext thresholds', () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/map/config'))
     expect(screen.getByText(`thresholds:${normal}/${high}/${critical}/${full}`)).toBeInTheDocument()
   })
+
+  it('retries /map/config when the first load fails', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      vi.mocked(api.get)
+        .mockRejectedValueOnce(new Error('Bad Gateway'))
+        .mockResolvedValue({
+          ...baseConfig,
+          thresholds: { normal: 30, high: 60, critical: 90, full: 100 },
+        })
+
+      render(
+        <CityConfigProvider>
+          <ThresholdsConsumer />
+        </CityConfigProvider>
+      )
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await waitFor(() => expect(screen.getByText('thresholds:30/60/90/100')).toBeInTheDocument())
+      expect(api.get).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

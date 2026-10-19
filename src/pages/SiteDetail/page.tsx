@@ -349,19 +349,6 @@ export default function SiteDetail() {
       try {
         const siteData = await api.get<BackendSite>(`/map/sites/${siteId}`)
         if (!cancelled) {
-          if (siteData && (String(siteId).includes('332') || siteData.address?.includes('DEGLIOUMINI'))) {
-            const frontClock = new Date().toLocaleTimeString()
-            console.log(
-              `%c[FRONTEND SITE DETAIL - SITIO 332]\n` +
-              `  • Nivel promedio: ${siteData.current_level}%\n` +
-              `  • Última lectura backend: ${siteData.last_reading ?? 'N/A'}\n` +
-              `  • Último vaciado backend: ${siteData.last_pickup ?? 'N/A'}\n` +
-              `  • Hora reloj local navegador: ${frontClock}\n` +
-              `  • Contenedores:`,
-              'color: #0284c7; font-weight: bold;',
-              siteData.containers
-            )
-          }
           setSite(siteData)
         }
       } catch (err: unknown) {
