@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/utils/ui/button"
 import {
@@ -11,16 +12,14 @@ import {
     Trash2,
     Recycle,
 } from "lucide-react"
-import ZoneProfilesControls from "./ZoneProfiles/ZoneProfilesControls"
 import type { MapWasteFilter } from "@/utils/types"
 
 export interface MapVisualProps {
     currentZoom?: number
     wasteFilter: MapWasteFilter
     onWasteFilterChange: (filter: MapWasteFilter) => void
-    zoneProfilesVisible: boolean
-    zoneProfilesLoading: boolean
-    onToggleZoneProfiles: () => void
+    // Botones que agrega la página a la barra (por ejemplo, los del simulador).
+    extraControls?: ReactNode
     availableWasteTypes?: string[]
     onZoomIn?: () => void
     onZoomOut?: () => void
@@ -30,9 +29,7 @@ export interface MapVisualProps {
 export default function MapVisual({
     wasteFilter,
     onWasteFilterChange,
-    zoneProfilesVisible,
-    zoneProfilesLoading,
-    onToggleZoneProfiles,
+    extraControls,
     availableWasteTypes,
     className = "",
 }: MapVisualProps) {
@@ -40,12 +37,7 @@ export default function MapVisual({
 
     return (
         <div className={`absolute top-3 left-14 z-[1000] flex flex-wrap items-center gap-3 ${className}`}>
-            {/* Controles de perfiles de zona */}
-            <ZoneProfilesControls
-                visible={zoneProfilesVisible}
-                loading={zoneProfilesLoading}
-                onToggle={onToggleZoneProfiles}
-            />
+            {extraControls}
 
             {/* Filtros dinámicos de tipo de residuo */}
             <TooltipProvider delayDuration={150}>

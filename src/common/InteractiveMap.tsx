@@ -13,10 +13,8 @@ import {
     calculateBearing,
     colorForLevel,
 } from "@/utils/functions"
-import { useZoneProfiles } from "./ZoneProfiles/useZoneProfiles"
-import ZoneProfilesLayer from "./ZoneProfiles/ZoneProfilesLayer"
-import ZoneProfilesLegend from "./ZoneProfiles/ZoneProfilesLegend"
 import MapVisual from "./MapVisual"
+import type { MapExtras } from "./mapExtras"
 import { asUtc, latest, useDataChanges } from "./useDataChanges"
 import { buildPinBadges, MACRO_CLUSTER_ID } from "./redistributionBadges"
 import type { Map as LeafletMap } from 'leaflet'
@@ -218,6 +216,8 @@ interface InteractiveMapProps {
     refreshTrigger?: number
     // Se llama cuando llegan lecturas nuevas (para refrescar otros paneles de la página).
     onDataChange?: () => void
+    // Capas, botones y leyendas que agrega la página (por ejemplo, los del simulador).
+    extras?: MapExtras
     redistributionMoves?: MapRedistributionMove[]
     highlightedMoveId?: number | null
     isPlayground?: boolean
@@ -226,6 +226,7 @@ interface InteractiveMapProps {
 export default function InteractiveMap({
     refreshTrigger = 0,
     onDataChange,
+    extras,
     redistributionMoves,
     highlightedMoveId,
     isPlayground = false,
@@ -282,7 +283,6 @@ export default function InteractiveMap({
         }
     }, [viewMode, projectionAsOf, latestReading])
     const [currentZoom, setCurrentZoom] = useState<number>(13)
-    const zoneProfiles = useZoneProfiles()
     const thresholds = useLevelThresholds()
 
     const handleZoomChange = useCallback((newZoom: number) => {
@@ -483,9 +483,7 @@ export default function InteractiveMap({
                 wasteFilter={wasteFilter}
                 onWasteFilterChange={setWasteFilter}
                 availableWasteTypes={mapConfig?.available_waste_types}
-                zoneProfilesVisible={zoneProfiles.visible}
-                zoneProfilesLoading={zoneProfiles.loading}
-                onToggleZoneProfiles={zoneProfiles.toggle}
+                extraControls={extras?.controls}
                 onZoomIn={handleZoomIn}
                 onZoomOut={handleZoomOut}
             />
@@ -577,7 +575,7 @@ export default function InteractiveMap({
                 </div>}
             </div>}
 
-            <ZoneProfilesLegend visible={zoneProfiles.visible} error={zoneProfiles.error} />
+            {extras?.overlays}
 
             <MapContainer
                 center={[mapConfig.center.lat, mapConfig.center.lng]}
@@ -607,12 +605,7 @@ export default function InteractiveMap({
                     redistributionMoves={redistributionMoves}
                 />
 
-                {/* Capa de perfiles de zona (radios censales), activable por el usuario */}
-                <ZoneProfilesLayer
-                    data={zoneProfiles.data}
-                    visible={zoneProfiles.visible}
-                    selectedZoneRef={zoneProfiles.selectedZoneRef}
-                />
+                {extras?.layers}
 
                 {/* Trazado de circuito seleccionado */}
                 {selectedRoute && selectedRoute.waypoints.length > 0 && (

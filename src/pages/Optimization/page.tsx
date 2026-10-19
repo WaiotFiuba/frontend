@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import { withRetry } from '@/lib/retry'
 import { useThrottledValue } from '@/lib/useThrottledValue'
+import { useSimulationMapExtras } from '@/simulation/useSimulationMapExtras'
 import {
   generateOptimizationPlan,
   deactivateWhatIfPlan,
@@ -92,6 +93,7 @@ export default function Optimization() {
   const [dataVersion, setDataVersion] = useState<number>(0)
 
   const selectedMove = plan?.moves.find((m) => m.container_id === highlightedMoveId) ?? null
+  const mapExtras = useSimulationMapExtras()
 
   useEffect(() => {
     let isMounted = true
@@ -378,6 +380,7 @@ export default function Optimization() {
                 highlightedMoveId={highlightedMoveId}
                 isPlayground
                 onDataChange={() => setDataVersion((n) => n + 1)}
+                extras={mapExtras}
               />
 
               {/* Tarjeta flotante de impacto de descongestión */}
