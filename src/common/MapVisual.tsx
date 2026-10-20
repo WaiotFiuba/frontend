@@ -39,18 +39,17 @@ export default function MapVisual({
         <div className={`absolute top-3 left-14 z-[1000] flex flex-wrap items-center gap-3 ${className}`}>
             {extraControls}
 
-            {/* Filtros dinámicos de tipo de residuo */}
             <TooltipProvider delayDuration={150}>
                 <div className="rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-md backdrop-blur flex items-center gap-1">
                     {[
-                        { value: 'all', label: t('common.all'), icon: Layers },
-                        { value: 'organico', label: t('map.organic'), icon: Trash2 },
-                        { value: 'reciclaje', label: t('map.recyclable'), icon: Recycle },
-                    ].map(({ value, label, icon: Icon }) => {
+                        { value: 'all', label: t('common.all'), icon: Layers, aliases: ['all'] },
+                        { value: 'humedo', label: t('map.organic'), icon: Trash2, aliases: ['humedo', 'organico'] },
+                        { value: 'reciclable', label: t('map.recyclable'), icon: Recycle, aliases: ['reciclable', 'reciclaje'] },
+                    ].map(({ value, label, icon: Icon, aliases }) => {
                         const isDisabled =
                             value !== 'all' &&
                             availableWasteTypes != null &&
-                            !availableWasteTypes.includes(value)
+                            !aliases.some((alias) => availableWasteTypes.includes(alias))
 
                         const buttonNode = (
                             <Button
@@ -60,13 +59,12 @@ export default function MapVisual({
                                 disabled={isDisabled}
                                 variant={wasteFilter === value ? 'default' : 'ghost'}
                                 onClick={() => onWasteFilterChange(value as MapWasteFilter)}
-                                className={`h-7 px-2.5 text-xs font-semibold gap-1 rounded-lg transition-all ${
-                                    isDisabled
-                                        ? 'opacity-40 cursor-not-allowed text-slate-400 pointer-events-none'
-                                        : wasteFilter === value
+                                className={`h-7 px-2.5 text-xs font-semibold gap-1 rounded-lg transition-all ${isDisabled
+                                    ? 'opacity-40 cursor-not-allowed text-slate-400 pointer-events-none'
+                                    : wasteFilter === value
                                         ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sm cursor-pointer'
                                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
-                                }`}
+                                    }`}
                             >
                                 <Icon className="w-3 h-3" />
                                 {label}

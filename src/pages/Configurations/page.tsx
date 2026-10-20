@@ -516,11 +516,10 @@ export default function ConfigurationsPage() {
                                 setEndTime('')
                               }
                             }}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer ${
-                              isEndUndefined
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer ${isEndUndefined
                                 ? 'bg-sky-100 text-sky-900 border border-sky-200'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                            }`}
+                              }`}
                           >
                             {isEndUndefined ? `✓ ${t('configurations.undefined')}` : t('configurations.undefined')}
                           </button>
@@ -618,11 +617,10 @@ export default function ConfigurationsPage() {
                             key={hour}
                             type="button"
                             onClick={() => toggleCollectionHour(hour)}
-                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                              isSelected
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
                                 ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             <span>{String(hour).padStart(2, '0')}:00</span>
                             <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
@@ -642,18 +640,16 @@ export default function ConfigurationsPage() {
                             key={day.id}
                             type="button"
                             onClick={() => toggleCollectionDay(day.id)}
-                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                              isSelected
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
                                 ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             <span className="hidden sm:inline">{t(`simulation.weekdays.${day.key}`)}</span>
                             <span className="sm:hidden">{day.short}</span>
                             <span
-                              className={`text-[9px] ${
-                                isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
-                              }`}
+                              className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
+                                }`}
                             >
                               {isSelected ? t('simulation.active') : t('simulation.no_collection')}
                             </span>
@@ -847,11 +843,10 @@ export default function ConfigurationsPage() {
                     {filteredConfigs.map((item) => (
                       <div
                         key={item.id}
-                        className={`p-4 border rounded-xl transition-all ${
-                          editingId === item.id
+                        className={`p-4 border rounded-xl transition-all ${editingId === item.id
                             ? 'border-sky-500 bg-sky-50/30 ring-1 ring-sky-500 shadow-sm'
                             : 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>

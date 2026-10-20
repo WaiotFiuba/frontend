@@ -24,10 +24,10 @@ describe('MapVisual', () => {
 
         // Waste filter buttons
         fireEvent.click(screen.getByRole('button', { name: /Húmedos/i }))
-        expect(onWasteFilterChange).toHaveBeenCalledWith('organico')
+        expect(onWasteFilterChange).toHaveBeenCalledWith('humedo')
 
         fireEvent.click(screen.getByRole('button', { name: /Reciclables/i }))
-        expect(onWasteFilterChange).toHaveBeenCalledWith('reciclaje')
+        expect(onWasteFilterChange).toHaveBeenCalledWith('reciclable')
 
         // Los botones que agrega la página van en la misma barra; sin ellos, no hay perfiles de zona.
         expect(screen.getByRole('button', { name: 'Control extra' })).toBeInTheDocument()
