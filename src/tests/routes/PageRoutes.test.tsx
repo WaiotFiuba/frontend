@@ -60,7 +60,7 @@ describe('PageRoutes', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText(/Bienvenido a Waiot FIUBA/i)).toBeInTheDocument()
+    expect(screen.getByText(/Gestión Inteligente de Residuos Urbanos/i)).toBeInTheDocument()
   })
 
   it('renders Map page at /map', () => {
@@ -97,7 +97,7 @@ describe('PageRoutes', () => {
     expect(screen.getByRole('button', { name: /Iniciar Sesión/i })).toBeInTheDocument()
   })
 
-  it.each(['/map/sites/1', '/optimization'])(
+  it.each(['/map/sites/1', '/optimization', '/profile'])(
     'redirects %s to login when there is no token',
     (path) => {
       render(
@@ -130,5 +130,17 @@ describe('PageRoutes', () => {
     )
 
     expect(screen.getByRole('heading', { name: /Configuraciones/i })).toBeInTheDocument()
+  })
+
+  it('renders Profile page at /profile when authenticated', () => {
+    authState.accessToken = 'token-123'
+
+    render(
+      <MemoryRouter initialEntries={['/profile']}>
+        <PageRoutes />
+      </MemoryRouter>
+    )
+
+    expect(screen.getByRole('heading', { name: /Perfil de Usuario/i })).toBeInTheDocument()
   })
 })

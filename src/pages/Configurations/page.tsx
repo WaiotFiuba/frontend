@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/utils/ui/card'
 import { Button } from '@/utils/ui/button'
+import { HelpButton } from '@/documentation'
 import {
   Settings,
   Plus,
@@ -16,11 +17,9 @@ import {
   MapPin,
   FileCode,
   Check,
-  Copy,
   FolderOpen,
   Edit3,
   Map,
-  X,
   AlertCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -112,9 +111,6 @@ export default function ConfigurationsPage() {
   const [globalDemandMultiplier, setGlobalDemandMultiplier] = useState<number | string>(1.0)
   const [zoneOverrides, setZoneOverrides] = useState<ZoneOverride[]>([])
 
-  // JSON Mode / Preview State
-  const [showJsonModal, setShowJsonModal] = useState<SavedConfigurationItem | null>(null)
-  const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -337,12 +333,6 @@ export default function ConfigurationsPage() {
     setZoneOverrides(updated)
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const filteredConfigs = configs.filter(
     (c) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -364,6 +354,7 @@ export default function ConfigurationsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <HelpButton sectionId="configurations" className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-xs" />
             <Button
               variant="outline"
               onClick={() => navigate('/map')}
@@ -371,13 +362,6 @@ export default function ConfigurationsPage() {
             >
               <Map className="h-4 w-4 text-sky-600" />
               {t('management.go_to_map')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
-            >
-              {t('common.back_to_home')}
             </Button>
           </div>
         </div>
@@ -532,11 +516,10 @@ export default function ConfigurationsPage() {
                                 setEndTime('')
                               }
                             }}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer ${
-                              isEndUndefined
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer ${isEndUndefined
                                 ? 'bg-sky-100 text-sky-900 border border-sky-200'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                            }`}
+                              }`}
                           >
                             {isEndUndefined ? `✓ ${t('configurations.undefined')}` : t('configurations.undefined')}
                           </button>
@@ -634,11 +617,10 @@ export default function ConfigurationsPage() {
                             key={hour}
                             type="button"
                             onClick={() => toggleCollectionHour(hour)}
-                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                              isSelected
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
                                 ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             <span>{String(hour).padStart(2, '0')}:00</span>
                             <span className={`text-[9px] ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
@@ -658,18 +640,16 @@ export default function ConfigurationsPage() {
                             key={day.id}
                             type="button"
                             onClick={() => toggleCollectionDay(day.id)}
-                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                              isSelected
+                            className={`cursor-pointer py-2 text-xs font-bold rounded-lg border transition-all flex flex-col items-center justify-center gap-0.5 ${isSelected
                                 ? 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700 shadow-xs'
                                 : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'
-                            }`}
+                              }`}
                           >
                             <span className="hidden sm:inline">{t(`simulation.weekdays.${day.key}`)}</span>
                             <span className="sm:hidden">{day.short}</span>
                             <span
-                              className={`text-[9px] ${
-                                isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
-                              }`}
+                              className={`text-[9px] ${isSelected ? 'text-sky-100 font-semibold' : 'text-slate-400'
+                                }`}
                             >
                               {isSelected ? t('simulation.active') : t('simulation.no_collection')}
                             </span>
@@ -863,11 +843,10 @@ export default function ConfigurationsPage() {
                     {filteredConfigs.map((item) => (
                       <div
                         key={item.id}
-                        className={`p-4 border rounded-xl transition-all ${
-                          editingId === item.id
+                        className={`p-4 border rounded-xl transition-all ${editingId === item.id
                             ? 'border-sky-500 bg-sky-50/30 ring-1 ring-sky-500 shadow-sm'
                             : 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -915,17 +894,6 @@ export default function ConfigurationsPage() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => setShowJsonModal(item)}
-                              className="h-7 px-2 text-[11px] font-semibold text-slate-600 hover:text-sky-600 gap-1 cursor-pointer"
-                              title="Inspeccionar JSON"
-                            >
-                              <FileCode className="h-3.5 w-3.5" />
-                              {t('configurations.view_json')}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
                               onClick={() => handleEditConfig(item)}
                               className="h-7 px-2 text-[11px] font-semibold text-sky-600 hover:bg-sky-50 gap-1 cursor-pointer"
                               title="Cargar en editor para modificar"
@@ -968,88 +936,6 @@ export default function ConfigurationsPage() {
           </div>
         </div>
       </div>
-
-      {/* MODAL / DIALOG: Visor de JSON Completo */}
-      {showJsonModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-              <div className="flex items-center gap-2.5">
-                <FileCode className="h-5 w-5 text-sky-600" />
-                <div>
-                  <h3 className="font-bold text-slate-900 text-base">{showJsonModal.name}</h3>
-                  <p className="text-xs text-slate-500">Estructura JSON completa de la configuración</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowJsonModal(null)}
-                className="h-8 w-8 text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="p-5 overflow-y-auto flex-1 bg-slate-950 text-slate-100 font-mono text-xs">
-              <pre className="whitespace-pre-wrap leading-relaxed">
-                {JSON.stringify(showJsonModal.config, null, 2)}
-              </pre>
-            </div>
-
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-xs text-slate-500">
-                {showJsonModal.id ? `ID #${showJsonModal.id}` : 'Previsualización'}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => copyToClipboard(JSON.stringify(showJsonModal.config, null, 2))}
-                  className="gap-1.5 text-xs font-semibold cursor-pointer"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-emerald-600" />
-                      Copiado!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      Copiar JSON
-                    </>
-                  )}
-                </Button>
-                {showJsonModal.id > 0 && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      const item = showJsonModal
-                      setShowJsonModal(null)
-                      handleUseInMap(item)
-                    }}
-                    className="!bg-sky-600 hover:!bg-sky-700 !text-white text-xs font-bold gap-1.5 cursor-pointer"
-                  >
-                    <Map className="h-3.5 w-3.5" />
-                    Cargar en Mapa
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowJsonModal(null)}
-                  className="text-xs font-semibold cursor-pointer"
-                >
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

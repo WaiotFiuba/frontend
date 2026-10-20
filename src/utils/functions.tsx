@@ -88,10 +88,10 @@ export const colorForLevel = (level: number, thresholds: LevelThresholds) => {
 export const containerTypeForWaste = (rawType?: string | null, rawWaste?: string | null): ContainerType => {
     const value = `${rawType ?? ""} ${rawWaste ?? ""}`.toLowerCase()
     if (value.includes("seca") || value.includes("recicl") || value.includes("verde")) {
-        return "reciclaje"
+        return "reciclable"
     }
     if (value.includes("humeda") || value.includes("húmeda") || value.includes("organico")) {
-        return "organico"
+        return "humedo"
     }
     return "indiferenciado"
 }
@@ -117,7 +117,7 @@ export const fetchSitesBBox = async (
             zoom: String(zoom),
             limit: String(limit),
             distribution: distribution,
-            waste_filter: wasteFilter === 'reciclaje' ? 'reciclable' : wasteFilter === 'organico' ? 'humedo' : 'all',
+            waste_filter: wasteFilter,
         })
 
         const url = `/map/sites/bbox?${params.toString()}`
@@ -205,10 +205,10 @@ export const fetchSitesBBox = async (
 }
 
 const pinTypeAccent = (type: ContainerType) => {
-    if (type === "reciclaje") {
+    if (type === "reciclable") {
         return { color: "#047857", label: "R" }
     }
-    if (type === "organico") {
+    if (type === "humedo") {
         return { color: "#111827", label: "H" }
     }
     return { color: "#64748b", label: "" }

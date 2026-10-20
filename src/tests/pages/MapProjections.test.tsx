@@ -9,7 +9,7 @@ vi.mock('@/pages/Map/services/projectionApi', () => ({ fetchSiteProjections }))
 const asOf = '2026-10-10T12:00:00Z'
 const targetAt = '2026-10-11T12:00:00Z'
 const site = (id: number, currentLevel = 20): Site => ({
-  id: String(id), lat: -34.6, long: -58.4, type: 'organico',
+  id: String(id), lat: -34.6, long: -58.4, type: 'humedo',
   color: '#10b981', currentLevel, containers: [],
 })
 const response = (ids: number[]) => ({

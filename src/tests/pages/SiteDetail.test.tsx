@@ -81,4 +81,30 @@ describe('site detail', () => {
 
     expect(await findByText('Confianza: 42%')).toBeInTheDocument()
   })
+
+  it('aggregates multiple readings in the same hour into a single historical point with the average level', async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === '/map/sites/332') return site('2026-01-01T10:00:00Z')
+      if (url.includes('/history')) {
+        return {
+          site_id: 332,
+          points: [
+            { timestamp: '2026-01-01T08:15:00Z', avg_level: 20, max_level: 20, min_level: 20, measurement_count: 1 },
+            { timestamp: '2026-01-01T08:45:00Z', avg_level: 80, max_level: 80, min_level: 80, measurement_count: 1 },
+          ],
+        }
+      }
+      if (url.includes('/projection')) return projection
+      return { models: [] }
+    })
+
+    const { container, findByText } = renderSite()
+
+    expect(await findByText('1 históricos')).toBeInTheDocument()
+
+    const circles = container.querySelectorAll('circle')
+    const historyCircle = Array.from(circles).find((c) => c.getAttribute('fill') === '#059669')
+    expect(historyCircle).toBeTruthy()
+    expect(historyCircle?.querySelector('title')?.textContent).toContain('50%')
+  })
 })

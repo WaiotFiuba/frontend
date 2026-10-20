@@ -1,5 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, MapPin, RefreshCw } from 'lucide-react'
 import { Button } from '@/utils/ui/button'
 import { api } from '@/lib/api'
@@ -12,9 +13,9 @@ import type {
   BackendSiteProjectionPoint,
 } from '@/utils/types'
 
-const formatDateTime = (value?: string | null) => {
-  if (!value) return 'Sin datos'
-  return new Intl.DateTimeFormat('es-AR', {
+const formatDateTime = (value?: string | null, locale = 'es-AR') => {
+  if (!value) return null
+  return new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
@@ -24,16 +25,16 @@ const formatDateTime = (value?: string | null) => {
   }).format(new Date(value))
 }
 
-const formatChartTime = (value: string) => (
-  new Intl.DateTimeFormat('es-AR', {
+const formatChartTime = (value: string, locale = 'es-AR') => (
+  new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
 )
 
-const formatChartDate = (value: string) => (
-  new Intl.DateTimeFormat('es-AR', {
+const formatChartDate = (value: string, locale = 'es-AR') => (
+  new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
@@ -65,6 +66,9 @@ function LevelHistoryChart({
   availableModels?: ModelOption[]
   onSelectModel?: (key: string) => void
 }) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language?.startsWith('en') ? 'en-US' : 'es-AR'
+
   const chart = useMemo(() => {
     const height = 260
     const padding = 42
@@ -172,7 +176,7 @@ function LevelHistoryChart({
   if (points.length === 0 && (!projection || projection.points.length === 0)) {
     return (
       <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500">
-        Todavía no hay mediciones históricas para este sitio.
+        {t('site_detail.no_history')}
       </div>
     )
   }
@@ -181,8 +185,8 @@ function LevelHistoryChart({
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Histórico y proyección de nivel</h2>
-          <p className="text-sm text-slate-500">Histórico observado y proyección predictiva futura.</p>
+          <h2 className="text-lg font-bold text-slate-900">{t('site_detail.history_and_projection')}</h2>
+          <p className="text-sm text-slate-500">{t('site_detail.observed_and_projection')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {availableModels && availableModels.length > 1 && onSelectModel && (
@@ -205,35 +209,35 @@ function LevelHistoryChart({
             </div>
           )}
           <div className="text-right text-sm">
-            <p className="font-semibold text-slate-600">{points.length} históricos</p>
+            <p className="font-semibold text-slate-600">{t('site_detail.historical_count', { count: points.length })}</p>
             {projection?.critical_at ? (
               <p className="text-xs font-semibold text-red-600">
-                Umbral crítico: {formatDateTime(projection.critical_at)}
+                {t('site_detail.critical_threshold_at', { time: formatDateTime(projection.critical_at, locale) })}
               </p>
             ) : (
-              <p className="text-xs text-slate-500">Sin cruce crítico proyectado</p>
+              <p className="text-xs text-slate-500">{t('site_detail.no_critical_crossing')}</p>
             )}
           </div>
         </div>
       </div>
       <div className="mb-2 flex flex-wrap gap-3 text-xs font-semibold">
         <span className="inline-flex items-center gap-1 text-emerald-700">
-          <span className="h-0.5 w-6 rounded bg-emerald-600" /> Histórico
+          <span className="h-0.5 w-6 rounded bg-emerald-600" /> {t('site_detail.legend_historical')}
         </span>
         <span className="inline-flex items-center gap-1 text-sky-700">
-          <span className="h-0.5 w-6 rounded border-t-2 border-dashed border-sky-600" /> Proyección
+          <span className="h-0.5 w-6 rounded border-t-2 border-dashed border-sky-600" /> {t('site_detail.legend_projection')}
         </span>
         {chart.confidenceArea && (
           <span className="inline-flex items-center gap-1 text-sky-600">
-            <span className="h-2.5 w-4 rounded bg-sky-200" /> Banda cuantiles 10%-90%
+            <span className="h-2.5 w-4 rounded bg-sky-200" /> {t('site_detail.legend_confidence_band')}
           </span>
         )}
         <span className="inline-flex items-center gap-1 text-red-700">
-          <span className="h-0.5 w-6 rounded bg-red-500" /> Umbral crítico
+          <span className="h-0.5 w-6 rounded bg-red-500" /> {t('site_detail.legend_critical_threshold')}
         </span>
         {projection && (
           <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-600">
-            Confianza: {Math.round(projection.confidence * 100)}%
+            {t('site_detail.confidence', { value: Math.round(projection.confidence * 100) })}
           </span>
         )}
       </div>
@@ -269,7 +273,7 @@ function LevelHistoryChart({
               textAnchor="middle"
               className="fill-slate-600 text-[11px] font-semibold"
             >
-              {formatChartTime(tick.date.toISOString())}
+              {formatChartTime(tick.date.toISOString(), locale)}
             </text>
             <text
               x={tick.x}
@@ -277,14 +281,14 @@ function LevelHistoryChart({
               textAnchor="middle"
               className="fill-slate-400 text-[10px]"
             >
-              {formatChartDate(tick.date.toISOString())}
+              {formatChartDate(tick.date.toISOString(), locale)}
             </text>
           </g>
         ))}
         {chart.nowX != null && (
           <g>
             <line x1={chart.nowX} x2={chart.nowX} y1="36" y2="224" stroke="#0f172a" strokeDasharray="3 5" strokeWidth="1.5" />
-            <text x={chart.nowX + 6} y="38" className="fill-slate-700 text-[11px] font-bold">Ahora</text>
+            <text x={chart.nowX + 6} y="38" className="fill-slate-700 text-[11px] font-bold">{t('site_detail.now')}</text>
           </g>
         )}
         {chart.area && <path d={chart.area} fill="#10b981" opacity="0.12" />}
@@ -293,16 +297,25 @@ function LevelHistoryChart({
         {chart.projectionLine && (
           <path d={chart.projectionLine} fill="none" stroke="#0284c7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 6" />
         )}
-        {chart.coords.map(({ x, y, point }) => (
-          <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#059669" stroke="white" strokeWidth="2">
-            <title>{`${formatDateTime(point.timestamp)} - Promedio ${Math.round(point.avg_level)}%`}</title>
-          </circle>
-        ))}
-        {chart.projectionCoords.map(({ x, y, point }) => (
-          <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#0284c7" stroke="white" strokeWidth="2">
-            <title>{`${formatDateTime(point.timestamp)} - Proyección: ${Math.round(point.predicted_level)}%${point.lower_bound != null ? ` (Rango 10-90%: ${Math.round(point.lower_bound)}% - ${Math.round(point.upper_bound!)}%)` : ''}`}</title>
-          </circle>
-        ))}
+        {chart.coords.map(({ x, y, point }) => {
+          const pointTime = formatDateTime(point.timestamp, locale) || t('site_detail.no_data')
+          return (
+            <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#059669" stroke="white" strokeWidth="2">
+              <title>{`${pointTime} - ${t('site_detail.average')}: ${Math.round(point.avg_level)}%`}</title>
+            </circle>
+          )
+        })}
+        {chart.projectionCoords.map(({ x, y, point }) => {
+          const pointTime = formatDateTime(point.timestamp, locale) || t('site_detail.no_data')
+          const boundText = point.lower_bound != null
+            ? ` (${t('site_detail.range_label')}: ${Math.round(point.lower_bound)}% - ${Math.round(point.upper_bound!)}%)`
+            : ''
+          return (
+            <circle key={point.timestamp} cx={x} cy={y} r="3.5" fill="#0284c7" stroke="white" strokeWidth="2">
+              <title>{`${pointTime} - ${t('site_detail.projection_label')}: ${Math.round(point.predicted_level)}%${boundText}`}</title>
+            </circle>
+          )
+        })}
       </svg>
       </div>
     </div>
@@ -310,6 +323,8 @@ function LevelHistoryChart({
 }
 
 export default function SiteDetail() {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language?.startsWith('en') ? 'en-US' : 'es-AR'
   const thresholds = useLevelThresholds()
   const { siteId } = useParams()
   const navigate = useNavigate()
@@ -353,7 +368,7 @@ export default function SiteDetail() {
         }
       } catch (err: unknown) {
         if (!cancelled && !isBackground) {
-          const msg = err instanceof Error ? err.message : 'No se pudo cargar el sitio.'
+          const msg = err instanceof Error ? err.message : t('site_detail.error_loading')
           setError(msg)
         }
       } finally {
@@ -372,9 +387,8 @@ export default function SiteDetail() {
       cancelled = true
       window.clearTimeout(timeoutId)
     }
-  }, [siteId])
+  }, [siteId, t])
 
-  // Historial y proyeccion se piden de nuevo con cada lectura nueva del sitio.
   const siteReady = site !== null
   const lastReading = site?.last_reading ?? null
 
@@ -410,10 +424,58 @@ export default function SiteDetail() {
     }
   }, [siteId, siteReady, selectedModel, lastReading])
 
+  // Agrupar por hora para que quede un único punto con el nivel promedio del sitio por cada hora
+  const historyPoints = useMemo(() => {
+    const raw = (history?.points ?? []).filter((point) => (
+      !projection || new Date(point.timestamp).getTime() <= new Date(projection.generated_at).getTime()
+    ))
+    if (raw.length === 0) return []
+
+    const hourMap = new Map<string, { sum: number; count: number; max: number; min: number; date: Date }>()
+    for (const pt of raw) {
+      const d = new Date(pt.timestamp)
+      if (Number.isNaN(d.getTime())) continue
+      const bucketDate = new Date(Date.UTC(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        d.getUTCHours(),
+        0, 0, 0
+      ))
+      const key = bucketDate.toISOString()
+      const weight = Math.max(1, pt.measurement_count || 1)
+      const existing = hourMap.get(key)
+      if (existing) {
+        existing.sum += pt.avg_level * weight
+        existing.count += weight
+        existing.max = Math.max(existing.max, pt.max_level ?? pt.avg_level)
+        existing.min = Math.min(existing.min, pt.min_level ?? pt.avg_level)
+      } else {
+        hourMap.set(key, {
+          sum: pt.avg_level * weight,
+          count: weight,
+          max: pt.max_level ?? pt.avg_level,
+          min: pt.min_level ?? pt.avg_level,
+          date: bucketDate,
+        })
+      }
+    }
+
+    return Array.from(hourMap.entries())
+      .map(([key, item]) => ({
+        timestamp: key,
+        avg_level: Math.round((item.sum / item.count) * 100) / 100,
+        max_level: item.max,
+        min_level: item.min,
+        measurement_count: item.count,
+      }))
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  }, [history, projection])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-6xl text-slate-600">Cargando sitio...</div>
+        <div className="mx-auto max-w-6xl text-slate-600">{t('site_detail.loading')}</div>
       </div>
     )
   }
@@ -424,19 +486,15 @@ export default function SiteDetail() {
         <div className="mx-auto max-w-6xl space-y-4">
           <Button variant="outline" onClick={() => navigate('/map')}>
             <ArrowLeft className="mr-2 size-4" />
-            Volver al mapa
+            {t('site_detail.back_to_map')}
           </Button>
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error || 'Sitio no encontrado.'}
+            {error || t('site_detail.not_found')}
           </div>
         </div>
       </div>
     )
   }
-
-  const historyPoints = (history?.points ?? []).filter((point) => (
-    !projection || new Date(point.timestamp).getTime() <= new Date(projection.generated_at).getTime()
-  ))
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
@@ -445,16 +503,16 @@ export default function SiteDetail() {
           <div>
             <Button variant="outline" onClick={() => navigate('/map')} className="mb-4">
               <ArrowLeft className="mr-2 size-4" />
-              Volver al mapa
+              {t('site_detail.back_to_map')}
             </Button>
-            <h1 className="text-3xl font-extrabold text-slate-900">Sitio #{site.id}</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900">{t('site_detail.site_number', { id: site.id })}</h1>
             <p className="mt-1 flex items-center gap-2 text-slate-600">
               <MapPin className="size-4" />
-              {site.address || 'Dirección no disponible'}
+              {site.address || t('site_detail.no_address')}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Nivel actual</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('site_detail.current_level')}</p>
             <p className="text-4xl font-extrabold text-slate-900">{site.current_level}%</p>
             <div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-slate-200">
               <div
@@ -466,10 +524,10 @@ export default function SiteDetail() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <InfoCard label="Contenedores" value={String(site.container_count)} />
-          <InfoCard label="Residuo" value={site.waste_type_name || 'Sin tipo'} />
-          <InfoCard label="Lado de carga" value={site.load_side_category || 'No especificado'} />
-          <InfoCard label="Disponible" value={site.available ? 'Sí' : 'No'} />
+          <InfoCard label={t('site_detail.containers')} value={String(site.container_count)} />
+          <InfoCard label={t('site_detail.waste_type')} value={site.waste_type_name || t('site_detail.no_waste_type')} />
+          <InfoCard label={t('site_detail.load_side')} value={site.load_side_category || t('site_detail.unspecified')} />
+          <InfoCard label={t('site_detail.available')} value={site.available ? t('common.yes') : t('common.no')} />
         </div>
 
         <LevelHistoryChart
@@ -482,31 +540,31 @@ export default function SiteDetail() {
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-1">
-            <h2 className="mb-3 text-lg font-bold text-slate-900">Datos del sitio</h2>
-            <DetailRow label="ID" value={String(site.id)} />
-            <DetailRow label="Nombre" value={site.name} />
-            <DetailRow label="Dirección" value={site.address || 'Sin datos'} />
-            <DetailRow label="Latitud" value={String(site.latitude)} />
-            <DetailRow label="Longitud" value={String(site.longitude)} />
-            <DetailRow label="Última actualización" value={formatDateTime(site.last_reading)} />
-            <DetailRow label="Última recolección" value={formatDateTime(site.last_pickup)} />
-            <DetailRow label="Registro actualizado" value={formatDateTime(site.updated_at)} />
+            <h2 className="mb-3 text-lg font-bold text-slate-900">{t('site_detail.site_data')}</h2>
+            <DetailRow label={t('site_detail.id')} value={String(site.id)} />
+            <DetailRow label={t('site_detail.name')} value={site.name} />
+            <DetailRow label={t('site_detail.address')} value={site.address || t('site_detail.no_data')} />
+            <DetailRow label={t('site_detail.latitude')} value={String(site.latitude)} />
+            <DetailRow label={t('site_detail.longitude')} value={String(site.longitude)} />
+            <DetailRow label={t('site_detail.last_reading')} value={formatDateTime(site.last_reading, locale) || t('site_detail.no_data')} />
+            <DetailRow label={t('site_detail.last_pickup')} value={formatDateTime(site.last_pickup, locale) || t('site_detail.no_data')} />
+            <DetailRow label={t('site_detail.record_updated')} value={formatDateTime(site.updated_at, locale) || t('site_detail.no_data')} />
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Contenedores asociados</h2>
+              <h2 className="text-lg font-bold text-slate-900">{t('site_detail.associated_containers')}</h2>
               <RefreshCw className="size-4 text-slate-400" />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                   <tr>
-                    <th className="py-2 pr-3">ID</th>
-                    <th className="py-2 pr-3">Serie</th>
-                    <th className="py-2 pr-3">Tipo</th>
-                    <th className="py-2 pr-3">Nivel</th>
-                    <th className="py-2 pr-3">Última lectura</th>
+                    <th className="py-2 pr-3">{t('site_detail.table_id')}</th>
+                    <th className="py-2 pr-3">{t('site_detail.table_serie')}</th>
+                    <th className="py-2 pr-3">{t('site_detail.table_type')}</th>
+                    <th className="py-2 pr-3">{t('site_detail.table_level')}</th>
+                    <th className="py-2 pr-3">{t('site_detail.table_last_reading')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -516,7 +574,7 @@ export default function SiteDetail() {
                       <td className="py-2 pr-3 text-slate-600">{container.serie_id || '-'}</td>
                       <td className="py-2 pr-3 text-slate-600">{container.container_type || '-'}</td>
                       <td className="py-2 pr-3 font-semibold text-slate-900">{container.current_level}%</td>
-                      <td className="py-2 pr-3 text-slate-600">{formatDateTime(container.last_reading)}</td>
+                      <td className="py-2 pr-3 text-slate-600">{formatDateTime(container.last_reading, locale) || t('site_detail.no_data')}</td>
                     </tr>
                   ))}
                 </tbody>

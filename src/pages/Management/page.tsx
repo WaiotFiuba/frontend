@@ -91,13 +91,6 @@ export default function Management() {
               <Map className="h-4 w-4 text-sky-600" />
               {t('management.go_to_map')}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/')}
-              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer"
-            >
-              {t('common.back_to_home')}
-            </Button>
           </div>
         </div>
 

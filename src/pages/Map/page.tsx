@@ -1,20 +1,18 @@
 import 'leaflet/dist/leaflet.css'
-import { Button } from '@/utils/ui/button'
 import { Card, CardContent } from '@/utils/ui/card'
-import { useNavigate } from 'react-router-dom'
 import InteractiveMap from '@/common/InteractiveMap'
 import MapLegend from './components/MapLegend'
 import { useState } from 'react'
 import SimulationControl from '@/simulation/SimulationControl'
 import { SIMULATOR_ENABLED } from '@/simulation/config'
 import { useSimulationMapExtras } from '@/simulation/useSimulationMapExtras'
-import { ArrowLeft, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { NetworkKpiPanel } from '@/common/KpiPanel'
 import { useCityConfig } from '@/context/CityConfigContext'
 import { useTranslation } from 'react-i18next'
+import { HelpButton } from '@/documentation'
 
 export default function Map() {
-    const navigate = useNavigate()
     const { t } = useTranslation()
     // Los KPIs se vuelven a pedir cuando el mapa avisa que llegaron lecturas nuevas.
     const [kpiRefresh, setKpiRefresh] = useState(0)
@@ -40,14 +38,7 @@ export default function Map() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate('/')}
-                            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            {t('common.back_to_home')}
-                        </Button>
+                        <HelpButton sectionId="map" className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold gap-2 shadow-sm" />
                     </div>
                 </div>
 

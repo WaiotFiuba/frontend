@@ -20,6 +20,7 @@ import { Button } from '@/utils/ui/button'
 import { Input } from '@/utils/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/utils/ui/tooltip'
 import { api } from '@/lib/api'
+import { HelpButton } from '@/documentation'
 
 interface EvaluationMetric {
   id: number
@@ -592,16 +593,19 @@ export default function ForecastEvaluation() {
               {t('forecast.subtitle')}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDownloadReport}
-            disabled={!report}
-            className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer gap-2"
-          >
-            <Download className="h-4 w-4" />
-            {t('forecast.download_report')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <HelpButton sectionId="forecast" className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs cursor-pointer gap-2" />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadReport}
+              disabled={!report}
+              className="border-slate-200 text-slate-700 hover:bg-slate-100 font-semibold px-4 py-2 rounded-xl shadow-xs transition-all cursor-pointer gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {t('forecast.download_report')}
+            </Button>
+          </div>
         </div>
 
         {error && (

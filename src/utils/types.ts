@@ -1,5 +1,5 @@
-export type ContainerType = "reciclaje" | "organico" | "indiferenciado"
-export type MapWasteFilter = "all" | "organico" | "reciclaje"
+export type ContainerType = "reciclable" | "humedo" | "indiferenciado"
+export type MapWasteFilter = "all" | "humedo" | "reciclable"
 
 export interface Container {
     id: string
@@ -35,8 +35,8 @@ export interface Site {
 }
 
 export const labels: Record<ContainerType, string> = {
-    reciclaje: "Reciclaje",
-    organico: "Orgánico",
+    reciclable: "Reciclable",
+    humedo: "Húmedo",
     indiferenciado: "Indiferenciado",
 }
 

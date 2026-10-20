@@ -1,75 +1,71 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Languages } from 'lucide-react'
+import { User } from 'lucide-react'
 import { Button } from "@/utils/ui/button"
 import { useAuthContext } from '../context/AuthContext'
 
 export default function Header({ className }: { className?: string }) {
     const navigate = useNavigate()
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
     const { accessToken, logout, user } = useAuthContext()
-
-    const toggleLanguage = () => {
-        const nextLang = i18n.language.startsWith('es') ? 'en' : 'es'
-        i18n.changeLanguage(nextLang)
-        localStorage.setItem('i18nextLng', nextLang)
-    }
-
-    const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
 
     return (
         <header className={`bg-white shadow-md border-b border-slate-200 sticky top-0 z-50 ${className}`}>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div className="flex items-center justify-between">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+                <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
 
-                    <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/')} title={t('header.home_tooltip')}>
+                    <div
+                        className="flex items-center justify-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => navigate('/')}
+                        title={t('header.home_tooltip')}
+                    >
                         <img
                             src="/images/WAIOT FIUBA.png"
                             alt="Waiot Logo"
-                            className="h-10 w-auto"
+                            className="h-9 sm:h-10 w-auto"
                         />
-                        <div>
-                            <h1 className="text-2xl font-bold text-slate-900">{t('header.title')}</h1>
+                        <div className="text-center xl:text-left">
+                            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">{t('header.title')}</h1>
                             <p className="text-xs text-slate-500">{t('header.subtitle')}</p>
                         </div>
                     </div>
 
-                    <nav className="hidden md:flex items-center gap-8">
-                        <button onClick={() => navigate('/map')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                    <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 xl:gap-8">
+                        <button onClick={() => navigate('/map')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer text-sm sm:text-base">
                             {t('nav.map')}
                         </button>
-                        <button onClick={() => navigate('/optimization')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                        <button onClick={() => navigate('/optimization')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer text-sm sm:text-base">
                             {t('nav.optimization')}
                         </button>
-                        <button onClick={() => navigate('/forecast-evaluation')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                        <button onClick={() => navigate('/forecast-evaluation')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer text-sm sm:text-base">
                             {t('nav.predictions')}
                         </button>
-                        <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                        <button onClick={() => navigate('/management')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer text-sm sm:text-base">
                             {t('nav.management')}
                         </button>
-                        <button onClick={() => navigate('/configurations')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
+                        <button onClick={() => navigate('/configurations')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer text-sm sm:text-base">
                             {t('nav.configurations')}
-                        </button>
-                        <button onClick={() => navigate('/about')} className="text-slate-600 hover:text-slate-900 font-medium transition-colors cursor-pointer">
-                            {t('nav.about')}
                         </button>
                     </nav>
 
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={toggleLanguage}
-                            className="h-8 gap-1.5 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer border-slate-200"
-                            title={t('header.switch_lang')}
-                        >
-                            <Languages className="h-3.5 w-3.5 text-sky-600" />
-                            <span>{currentLang === 'es' ? 'EN' : 'ES'}</span>
-                        </Button>
-
+                    <div className="flex flex-wrap items-center justify-center gap-3">
                         {user && (
-                            <div className="text-sm text-slate-700 mr-2">{t('header.greeting', { name: user.name })}</div>
+                            <div className="text-sm text-slate-700">{t('header.greeting', { name: user.name })}</div>
                         )}
+
+                        {accessToken && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate('/profile')}
+                                className="h-8 w-8 p-0 rounded-full border border-slate-200 text-slate-700 hover:text-sky-600 hover:bg-sky-50 cursor-pointer transition-colors"
+                                title={t('header.profile_tooltip')}
+                                aria-label={t('header.profile_tooltip')}
+                            >
+                                <User className="h-4 w-4" />
+                            </Button>
+                        )}
+
                         {accessToken ? (
                             <Button variant="outline" onClick={() => logout()} className="cursor-pointer">
                                 {t('auth.logout')}
