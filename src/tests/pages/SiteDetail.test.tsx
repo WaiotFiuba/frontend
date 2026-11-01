@@ -100,11 +100,83 @@ describe('site detail', () => {
 
     const { container, findByText } = renderSite()
 
-    expect(await findByText('1 históricos')).toBeInTheDocument()
+    expect(await findByText('Horas con telemetría: 1')).toBeInTheDocument()
 
     const circles = container.querySelectorAll('circle')
     const historyCircle = Array.from(circles).find((c) => c.getAttribute('fill') === '#059669')
     expect(historyCircle).toBeTruthy()
     expect(historyCircle?.querySelector('title')?.textContent).toContain('50%')
+  })
+
+  it('projects from the last reading of the site', async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === '/map/sites/332') return site('2026-01-01T09:58:00Z')
+      if (url.includes('/history')) return { site_id: 332, points: [] }
+      if (url.includes('/projection')) return projection
+      return { models: [] }
+    })
+
+    renderSite()
+
+    await waitFor(() => expect(callsTo('/projection')).toBe(1))
+    const projectionUrl = get.mock.calls.find(([url]) => String(url).includes('/projection'))![0]
+    expect(projectionUrl).toContain('as_of=2026-01-01T09%3A58%3A00Z')
+  })
+
+  it('requests the history again when it was cut before the projection now', async () => {
+    const earlier = { timestamp: '2026-01-01T08:15:00Z', avg_level: 30, max_level: 30, min_level: 30, measurement_count: 1 }
+    const later = { timestamp: '2026-01-01T09:30:00Z', avg_level: 40, max_level: 40, min_level: 40, measurement_count: 1 }
+    get.mockImplementation(async (url: string) => {
+      if (url === '/map/sites/332') return site('2026-01-01T10:00:00Z')
+      if (url.includes('/history')) {
+        // El primer pedido corta a las 09:00, antes del «Ahora» de la proyección (10:00).
+        return callsTo('/history') === 1
+          ? { site_id: 332, window_end: '2026-01-01T09:00:00Z', points: [earlier] }
+          : { site_id: 332, window_end: '2026-01-01T10:00:00Z', points: [earlier, later] }
+      }
+      if (url.includes('/projection')) return projection
+      return { models: [] }
+    })
+
+    const { findByText } = renderSite()
+
+    expect(await findByText('Horas con telemetría: 2')).toBeInTheDocument()
+    expect(callsTo('/history')).toBe(2)
+  })
+
+  it('joins the history and the projection at the current level on the now line', async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === '/map/sites/332') return site('2026-01-01T10:00:00Z')
+      if (url.includes('/history')) {
+        return {
+          site_id: 332,
+          points: [
+            { timestamp: '2026-01-01T08:15:00Z', avg_level: 30, max_level: 30, min_level: 30, measurement_count: 1 },
+            { timestamp: '2026-01-01T09:30:00Z', avg_level: 40, max_level: 40, min_level: 40, measurement_count: 1 },
+          ],
+        }
+      }
+      if (url.includes('/projection')) {
+        return {
+          ...projection,
+          points: [
+            { timestamp: '2026-01-01T11:00:00Z', predicted_level: 55, reaches_critical: false },
+            { timestamp: '2026-01-01T12:00:00Z', predicted_level: 60, reaches_critical: false },
+          ],
+        }
+      }
+      return { models: [] }
+    })
+
+    const { container, findByText } = renderSite()
+    expect(await findByText('Horas con telemetría: 2')).toBeInTheDocument()
+
+    const pathData = (stroke: string) => container.querySelector(`path[stroke="${stroke}"]`)!.getAttribute('d')!.split(' ')
+    const historyEnd = pathData('#059669').slice(-2)
+    const projectionStart = pathData('#0284c7').slice(1, 3)
+    const nowX = container.querySelector('line[stroke="#0f172a"]')!.getAttribute('x1')
+
+    expect(historyEnd).toEqual(projectionStart)
+    expect(projectionStart[0]).toBe(nowX)
   })
 })
