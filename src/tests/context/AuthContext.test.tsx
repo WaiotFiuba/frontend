@@ -39,7 +39,24 @@ describe('AuthContext', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllEnvs()
     localStorage.clear()
+  })
+
+  it('does not log in the test user automatically in a production build', async () => {
+    vi.stubEnv('MODE', 'production')
+    vi.stubEnv('DEV', false)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(() => jsonResponse({}))
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(localStorage.getItem('access_token')).toBeNull()
   })
     it('login stores token and hydrates user', async () => {
       const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((input: RequestInfo | URL) => {
