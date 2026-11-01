@@ -9,7 +9,10 @@ import { Input } from "@/utils/ui/input"
 const success_route = '/';
 
 export const Login = () => {
-    const [userForm, setUserForm] = useState({ name: "prueba@gmail.com", password: "prueba123456" })
+    // El usuario de prueba solo se precarga en desarrollo.
+    const [userForm, setUserForm] = useState(
+        import.meta.env.DEV ? { name: "prueba@gmail.com", password: "prueba123456" } : { name: "", password: "" }
+    )
     const { user, login, loading, error } = useAuthContext();
     const navigate = useNavigate();
     const { t } = useTranslation();

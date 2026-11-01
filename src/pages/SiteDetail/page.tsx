@@ -53,6 +53,8 @@ interface ModelOption {
   description?: string
 }
 
+const fetchSiteHistory = (siteId?: string) => api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`)
+
 function LevelHistoryChart({
   points,
   projection,
@@ -114,7 +116,7 @@ function LevelHistoryChart({
       padding + innerHeight - (Math.max(0, Math.min(100, level)) / 100) * innerHeight
     )
     const coords = points.map((point) => {
-      const x = points.length === 1
+      const x = points.length === 1 && !projection
         ? padding + innerWidth / 2
         : xForTime(point.timestamp)
       const y = yForLevel(point.avg_level)
@@ -126,11 +128,19 @@ function LevelHistoryChart({
       point,
     }))
 
-    const line = coords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
-    const area = coords.length > 0
-      ? `${line} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
+    // La proyección parte del nivel actual en «Ahora», que cae entre la última hora del
+    // histórico y el primer intervalo proyectado: ese punto une las dos líneas.
+    const anchor = projection
+      ? { x: xForTime(projection.generated_at), y: yForLevel(projection.current_level) }
+      : null
+    const historyPath = anchor && coords.length > 0 ? [...coords, anchor] : coords
+    const projectionPath = anchor && projectionCoords.length > 0 ? [anchor, ...projectionCoords] : projectionCoords
+
+    const line = historyPath.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
+    const area = historyPath.length > 0
+      ? `${line} L ${historyPath[historyPath.length - 1].x} ${height - padding} L ${historyPath[0].x} ${height - padding} Z`
       : ''
-    const projectionLine = projectionCoords.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
+    const projectionLine = projectionPath.map((coord, index) => `${index === 0 ? 'M' : 'L'} ${coord.x} ${coord.y}`).join(' ')
 
     // Banda probabilística de cuantiles (ej. Chronos 10% - 90%)
     const hasBounds = projectionPoints.some((p) => p.lower_bound != null && p.upper_bound != null)
@@ -144,7 +154,7 @@ function LevelHistoryChart({
         x: xForTime(p.timestamp),
         y: yForLevel(p.lower_bound ?? p.predicted_level),
       }))
-      const allCoords = [...upperCoords, ...lowerCoords]
+      const allCoords = anchor ? [anchor, ...upperCoords, ...lowerCoords, anchor] : [...upperCoords, ...lowerCoords]
       confidenceArea = allCoords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ') + ' Z'
     }
 
@@ -155,7 +165,7 @@ function LevelHistoryChart({
         date: new Date(tickTime),
       }
     })
-    const nowX = projection?.generated_at ? xForTime(projection.generated_at) : null
+    const nowX = anchor?.x ?? null
     const criticalY = projection ? yForLevel(projection.critical_level) : null
 
     return {
@@ -399,7 +409,7 @@ export default function SiteDetail() {
   useEffect(() => {
     if (!siteReady) return
     let cancelled = false
-    api.get<BackendSiteHistory>(`/map/sites/${siteId}/history?limit=168`)
+    fetchSiteHistory(siteId)
       .then((historyData) => {
         if (!cancelled) setHistory(historyData)
       })
@@ -412,8 +422,11 @@ export default function SiteDetail() {
   useEffect(() => {
     if (!siteReady) return
     let cancelled = false
+    // «Ahora» es la última lectura del sitio, la misma que muestra la ficha. El reloj de
+    // la simulación avanza una hora en pocos segundos y no coincidiría con ella.
+    const asOf = lastReading ? `&as_of=${encodeURIComponent(lastReading)}` : ''
     api.get<BackendSiteProjection>(
-      `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60`
+      `/map/sites/${siteId}/projection?model_key=${selectedModel}&horizon_hours=24&interval_minutes=60${asOf}`
     )
       .then((projectionData) => {
         if (!cancelled) setProjection(projectionData)
@@ -423,6 +436,28 @@ export default function SiteDetail() {
       cancelled = true
     }
   }, [siteId, siteReady, selectedModel, lastReading])
+
+  // El histórico y la proyección se piden por separado, y cada uno corta en el reloj de
+  // su momento. Si la proyección trae un «Ahora» posterior al corte del histórico (al
+  // cambiar de modelo, o si el reloj avanzó entre los dos pedidos), le faltan las
+  // últimas lecturas y la línea saltea horas: se vuelve a pedir el histórico.
+  const historyIsStale = Boolean(
+    history?.window_end && projection
+    && new Date(history.window_end).getTime() < new Date(projection.generated_at).getTime()
+  )
+
+  useEffect(() => {
+    if (!historyIsStale) return
+    let cancelled = false
+    fetchSiteHistory(siteId)
+      .then((historyData) => {
+        if (!cancelled) setHistory(historyData)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [siteId, historyIsStale])
 
   // Agrupar por hora para que quede un único punto con el nivel promedio del sitio por cada hora
   const historyPoints = useMemo(() => {

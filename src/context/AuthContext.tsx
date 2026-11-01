@@ -88,10 +88,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (accessToken) {
       manualLogoutRef.current = false;
       fetchCurrentUser();
-    } else if (import.meta.env.MODE !== 'test' && !manualLogoutRef.current) {
+    } else if (import.meta.env.DEV && import.meta.env.MODE !== 'test' && !manualLogoutRef.current) {
       // =========================================================================
       // MODO AUTO-LOGIN DE DESARROLLO / PRUEBA
-      // Para activar el login real manual, comentar este bloque 'autoAuth()'
+      // Solo con el servidor de desarrollo: en un build de producción hay que iniciar sesión.
       // =========================================================================
       const autoAuth = async () => {
         const defaultCreds = {
